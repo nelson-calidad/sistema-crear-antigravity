@@ -27,4 +27,4 @@ The app now uses a backend adapter for appointments instead of Firebase.
 2. If `VITE_SHEETS_ENDPOINT_URL` is not set, the app uses `localStorage` so you can keep building immediately.
 3. Later, you can switch the same adapter to Supabase by changing `VITE_BACKEND_MODE` and replacing the adapter internals, without changing the UI.
 
-See [docs/google-sheets-setup.md](docs/google-sheets-setup.md) for the exact Google Sheets deployment steps and the Apps Script file to paste.
+See [guides/google-sheets-setup.md](guides/google-sheets-setup.md) for the exact Google Sheets deployment steps and the Apps Script file to paste.
