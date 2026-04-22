@@ -20,12 +20,12 @@ const professionalsWithDetails = PROFESSIONALS.map(pro => ({
 export const ProfessionalsGrid = () => {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Gestión Humana</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Gestión Humana</h1>
           <p className="text-slate-500">Administra el equipo de profesionales y sus configuraciones.</p>
         </div>
-        <button className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
+        <button className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
           Nuevo Profesional
         </button>
       </div>

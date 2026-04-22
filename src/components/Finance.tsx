@@ -49,15 +49,15 @@ export const Finance = () => {
     <div className="space-y-8 h-full">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Finanzas</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Finanzas</h1>
           <p className="text-slate-500">Control de flujo de caja, gastos y liquidaciones de profesionales.</p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">
             <Download className="w-4 h-4" /> Exportar Reporte
           </button>
-          <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
+          <button className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
             <Plus className="w-4 h-4" /> Nuevo Movimiento
           </button>
         </div>
@@ -66,7 +66,7 @@ export const Finance = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main transaction list */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-slate-50 flex items-center justify-between">
+          <div className="p-6 border-b border-slate-50 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h3 className="font-bold text-lg text-slate-900">Últimas Transacciones</h3>
             <div className="flex gap-2">
               <div className="relative">

@@ -219,7 +219,51 @@ export const Agenda = ({ onOpenModal, appointments }: AgendaProps) => {
       <div className="flex-1 overflow-hidden bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col">
         {timeMode === 'daily' ? (
           <>
-            <div className="flex border-b border-slate-100 bg-slate-50/40">
+            <div className="md:hidden p-4 space-y-3 overflow-y-auto custom-scrollbar">
+              {visibleAppointments.length === 0 ? (
+                <div className="p-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center">
+                  <p className="text-sm font-bold text-slate-700">No hay turnos para este día</p>
+                  <p className="text-xs text-slate-500 mt-1">Creá un bloque nuevo para empezar.</p>
+                </div>
+              ) : (
+                visibleAppointments.map((app) => {
+                  const pro = PROFESSIONALS.find((p) => p.id === app.proId);
+                  const room = ROOMS.find((r) => r.id === app.roomId);
+                  return (
+                    <button
+                      key={app.id}
+                      type="button"
+                      onClick={() => onOpenModal(room?.name, pro?.name, app)}
+                      className={cn(
+                        'w-full text-left rounded-2xl p-4 border shadow-sm',
+                        getTypeStyles(app.type),
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2">
+                            {app.start} - {app.end}
+                          </p>
+                          <p className="font-bold text-sm truncate">{formatLabel(app.title)}</p>
+                          <p className="text-xs opacity-80 mt-1 truncate">
+                            {app.patient || app.notes || 'Sin detalle adicional'}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-black uppercase opacity-75">
+                          {getTypeLabel(app.type)}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between text-[10px] font-bold uppercase opacity-75">
+                        <span>{viewMode === 'professionals' ? room?.name || 'Sistema' : pro?.name || 'Sistema'}</span>
+                        <span>{app.recurrence && app.recurrence !== 'none' ? app.recurrence : 'Único'}</span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="hidden md:flex border-b border-slate-100 bg-slate-50/40">
               <div className="w-20 border-r border-slate-100 flex items-center justify-center bg-slate-100/50">
                 <Clock className="w-4 h-4 text-slate-400" />
               </div>

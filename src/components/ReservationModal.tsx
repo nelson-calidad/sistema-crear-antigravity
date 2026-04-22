@@ -142,7 +142,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden shadow-slate-900/20"
+          className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden shadow-slate-900/20 max-h-[92vh] md:max-h-none"
         >
           <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div>
@@ -167,9 +167,9 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
             </div>
           </div>
 
-          <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="p-5 md:p-8 space-y-6 max-h-[72vh] md:max-h-[70vh] overflow-y-auto custom-scrollbar">
             {/* Type Selector */}
-            <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2">
+            <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2 overflow-x-auto">
               {[
                 { id: 'session', label: 'Sesión', icon: User },
                 { id: 'interview', label: 'Entrevista', icon: FileText },
@@ -189,7 +189,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Profesional Corresponsal</label>
                 <select 
@@ -284,7 +284,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
               </motion.div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Hora Inicio</label>
                 <div className="relative">
@@ -312,7 +312,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
             </div>
           </div>
 
-          <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
+          <div className="p-4 md:p-6 bg-slate-50 border-t border-slate-100 flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
             <button 
               onClick={onClose}
               className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-100 transition-colors"

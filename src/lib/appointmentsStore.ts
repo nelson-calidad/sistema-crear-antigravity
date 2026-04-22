@@ -219,7 +219,7 @@ const persistRemoteAppointment = async (appointment: AppointmentRecord, id?: str
   const response = await fetch(SHEET_ENDPOINT, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'text/plain;charset=utf-8',
       Accept: 'application/json',
     },
     body: JSON.stringify({
@@ -245,7 +245,7 @@ const deleteRemoteAppointment = async (id: string) => {
   const response = await fetch(SHEET_ENDPOINT, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'text/plain;charset=utf-8',
       Accept: 'application/json',
     },
     body: JSON.stringify({

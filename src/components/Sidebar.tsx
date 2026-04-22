@@ -62,9 +62,11 @@ const SidebarItem = ({ icon: Icon, label, active, collapsed, onClick }: SidebarI
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
-export const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
+export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }: SidebarProps) => {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
 
   const menuItems = [
@@ -76,10 +78,25 @@ export const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
   ];
 
   return (
-    <motion.div
-      animate={{ width: isCollapsed ? '80px' : '260px' }}
-      className="h-screen bg-white border-r border-slate-100 flex flex-col relative"
-    >
+    <>
+      <button
+        type="button"
+        onClick={onCloseMobile}
+        className={cn(
+          "fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden transition-opacity",
+          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+        aria-label="Cerrar navegación"
+      />
+      <motion.div
+        animate={{ width: isCollapsed ? '80px' : '260px' }}
+        className={cn(
+          "h-screen bg-white border-r border-slate-100 flex flex-col relative",
+          "fixed md:static inset-y-0 left-0 w-[280px] max-w-[85vw] md:w-auto z-50 md:z-auto",
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          "transition-transform duration-200 md:transition-none"
+        )}
+      >
       <div className="p-6 flex items-center mb-6">
         <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-blue-200 shadow-lg">
           <Stethoscope className="w-6 h-6" />
@@ -122,6 +139,7 @@ export const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
           onClick={() => {}}
         />
       </div>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };

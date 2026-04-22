@@ -36,13 +36,13 @@ export const Settings = () => {
   return (
     <div className="space-y-8 h-full max-w-5xl mx-auto">
       <header>
-        <h1 className="text-3xl font-bold text-slate-900">Configuración</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Configuración</h1>
         <p className="text-slate-500">Administra las bases de datos de obras sociales, plantillas y alertas del sistema.</p>
       </header>
 
-      <div className="flex flex-col md:flex-row gap-8">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-8">
         {/* Sub-navigation */}
-        <aside className="w-full md:w-64 space-y-1">
+        <aside className="w-full md:w-64 space-y-1 flex md:block overflow-x-auto md:overflow-visible pb-2 md:pb-0">
           <button
             onClick={() => setActiveSubTab('insurances')}
             className={cn(

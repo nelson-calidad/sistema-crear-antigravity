@@ -65,14 +65,14 @@ const StatCard = ({ title, value, change, icon: Icon, color, trend }: any) => (
 export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) => {
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <header>
-          <h1 className="text-3xl font-bold text-slate-900">Resumen Administrativo</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Resumen Administrativo</h1>
           <p className="text-slate-500 font-medium">Estado de Neurometric LAB al {new Date().toLocaleDateString()}</p>
         </header>
         <button 
           onClick={onQuickReserve}
-          className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
         >
            <Zap className="w-4 h-4 text-amber-400" /> Reserva Rápida
         </button>
@@ -116,9 +116,9 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-8">
               <h3 className="font-bold text-slate-800 text-lg">Flujo de Caja Anual</h3>
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4">
                 <div className="flex items-center text-xs font-medium text-slate-500">
                   <div className="w-2 h-2 rounded-full bg-blue-500 mr-2" /> Ingresos
                 </div>
