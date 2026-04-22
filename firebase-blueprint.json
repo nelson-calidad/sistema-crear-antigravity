@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "Appointment": {
+      "title": "Appointment",
+      "description": "A scheduled session, interview or survey in a consultory.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Patient name or session title" },
+        "proId": { "type": "string", "description": "Professional ID" },
+        "roomId": { "type": "string", "description": "Consultory ID" },
+        "start": { "type": "string", "description": "Start time in HH:mm format" },
+        "end": { "type": "string", "description": "End time in HH:mm format" },
+        "date": { "type": "string", "description": "Date in YYYY-MM-DD format" },
+        "type": { "type": "string", "enum": ["session", "interview", "survey"] },
+        "recurrence": { "type": "string", "enum": ["none", "daily", "weekly", "weekdays"] },
+        "selectedDays": { "type": "array", "items": { "type": "number" } },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "roomId", "start", "end", "date", "type"]
+    },
+    "Professional": {
+      "title": "Professional",
+      "description": "Healthcare professional details.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "specialty": { "type": "string" },
+        "status": { "type": "string", "enum": ["Activo", "En Pausa"] },
+        "color": { "type": "string" },
+        "email": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Global collection for all scheduled events."
+    },
+    "/professionals/{proId}": {
+      "schema": "Professional",
+      "description": "Professional registry."
+    }
+  }
+}
