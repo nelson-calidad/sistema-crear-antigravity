@@ -81,7 +81,7 @@ const parseDay = (value?: string | Date | null) => {
 const getAppointmentName = (appointment: AppointmentRecord) => {
   const raw = appointment.patient?.trim() || appointment.title?.trim() || '';
 
-  if (!raw) {
+  if (!raw || raw === 'Nueva Reserva') {
     return 'Sin nombre';
   }
 
