@@ -163,6 +163,8 @@ export default function App() {
           try {
             const appointmentData = {
               ...data,
+              start: data.startTime,
+              end: data.endTime,
               title: data.patient || (data.type === 'survey' ? 'Encuesta' : 'Nueva Reserva'),
               createdBy: user.uid
             };

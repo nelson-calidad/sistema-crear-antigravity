@@ -79,7 +79,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
         setSelectedRoomId(initialData.roomId || '');
         setFormData({
           patient: initialData.title,
-          date: new Date().toISOString().split('T')[0],
+          date: initialData.date || new Date().toISOString().split('T')[0],
           startTime: initialData.start,
           endTime: initialData.end || '09:00',
           notes: initialData.notes || ''
