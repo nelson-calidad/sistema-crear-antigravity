@@ -168,7 +168,7 @@ export default function App() {
               start: data.startTime,
               end: data.endTime,
               patient: patientName || undefined,
-              title: patientName || (data.type === 'survey' ? 'Encuesta' : 'Sin nombre'),
+              title: patientName || data.title || (data.type === 'survey' ? 'Encuesta' : 'Nueva Reserva'),
               createdBy: user.uid
             };
             await saveAppointment(appointmentData, modalContext.appointment?.id);
