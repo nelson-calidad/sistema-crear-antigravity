@@ -211,7 +211,7 @@ export const getBackendLabel = () => {
 
 export const getSessionUser = () => ({
   uid: `session-${BACKEND_MODE}`,
-  displayName: 'Admin LAB',
+  displayName: 'Admin CREAR',
   photoURL: '',
 });
 

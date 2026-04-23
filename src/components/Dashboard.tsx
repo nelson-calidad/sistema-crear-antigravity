@@ -72,7 +72,7 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <header>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Resumen Administrativo</h1>
-          <p className="text-slate-500 font-medium">Estado de Neurometric LAB al {todayLabel}</p>
+          <p className="text-slate-500 font-medium">Estado de CREAR al {todayLabel}</p>
         </header>
         <button 
           onClick={onQuickReserve}
