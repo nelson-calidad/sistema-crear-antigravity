@@ -14,8 +14,17 @@ export type ProfessionalRecord = {
   image: string;
 };
 
+type BackendMode = 'sheet' | 'supabase' | 'local';
+
 const STORAGE_KEY = 'creare.professionals';
+const BACKEND_MODE = (import.meta.env.VITE_BACKEND_MODE ?? 'sheet') as BackendMode;
+const SHEET_ENDPOINT = import.meta.env.VITE_SHEETS_ENDPOINT_URL as string | undefined;
+const hasRemoteSheet = BACKEND_MODE === 'sheet' && Boolean(SHEET_ENDPOINT);
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop';
+
+const listeners = new Set<(professionals: ProfessionalRecord[]) => void>();
+let remotePollHandle: number | undefined;
+let cachedProfessionals = createDefaultProfessionals();
 
 const slugify = (value: string) =>
   value
@@ -46,7 +55,9 @@ const enrichProfessional = (professional: typeof DEFAULT_PROFESSIONALS[number]):
       : '1438761681033-6461ffad8d80'}?w=150&h=150&fit=crop`,
 });
 
-const createDefaultProfessionals = (): ProfessionalRecord[] => DEFAULT_PROFESSIONALS.map(enrichProfessional);
+function createDefaultProfessionals(): ProfessionalRecord[] {
+  return DEFAULT_PROFESSIONALS.map(enrichProfessional);
+}
 
 const normalizeProfessional = (
   professional: Partial<ProfessionalRecord> & { id: string },
@@ -71,9 +82,20 @@ const normalizeProfessional = (
   };
 };
 
-const readProfessionals = (): ProfessionalRecord[] => {
+const buildProfessionalsUrl = () => {
+  if (!SHEET_ENDPOINT) {
+    return null;
+  }
+
+  const url = new URL(SHEET_ENDPOINT);
+  url.searchParams.set('entity', 'professionals');
+  url.searchParams.set('_ts', String(Date.now()));
+  return url.toString();
+};
+
+const readLocalProfessionals = (): ProfessionalRecord[] => {
   if (typeof window === 'undefined') {
-    return createDefaultProfessionals();
+    return cachedProfessionals;
   }
 
   const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -104,7 +126,9 @@ const readProfessionals = (): ProfessionalRecord[] => {
   }
 };
 
-const writeProfessionals = (professionals: ProfessionalRecord[]) => {
+const writeLocalProfessionals = (professionals: ProfessionalRecord[]) => {
+  cachedProfessionals = professionals;
+
   if (typeof window === 'undefined') {
     return;
   }
@@ -112,12 +136,272 @@ const writeProfessionals = (professionals: ProfessionalRecord[]) => {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(professionals));
 };
 
-let cachedProfessionals = createDefaultProfessionals();
-const listeners = new Set<(professionals: ProfessionalRecord[]) => void>();
-
 const emit = (professionals: ProfessionalRecord[]) => {
   cachedProfessionals = professionals;
   listeners.forEach((listener) => listener(professionals));
+};
+
+const upsertCachedProfessional = (professional: ProfessionalRecord, id?: string) => {
+  const targetId = String(id || professional.id);
+
+  return cachedProfessionals.some((item) => item.id === targetId)
+    ? cachedProfessionals.map((item) => (item.id === targetId ? { ...item, ...professional, id: targetId } : item))
+    : [...cachedProfessionals, { ...professional, id: targetId }];
+};
+
+const deleteCachedProfessional = (id: string) => {
+  return cachedProfessionals.filter((professional) => professional.id !== id);
+};
+
+const readRemoteProfessionals = async (): Promise<ProfessionalRecord[]> => {
+  if (!SHEET_ENDPOINT) {
+    return readLocalProfessionals();
+  }
+
+  try {
+    const url = buildProfessionalsUrl();
+    if (!url) {
+      return readLocalProfessionals();
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      throw new Error(`No se pudieron leer los colaboradores (${response.status})`);
+    }
+
+    const payload = await response.json();
+    const rawProfessionals = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.professionals)
+        ? payload.professionals
+        : [];
+
+    const normalized = rawProfessionals.map((item) => normalizeProfessional({
+      ...item,
+      id: String(item.id || createId()),
+    }));
+
+    writeLocalProfessionals(normalized);
+    return normalized;
+  } catch (error) {
+    console.warn('Leyendo colaboradores desde cache local porque falló Sheets.', error);
+    if (hasRemoteSheet) {
+      return cachedProfessionals.length ? cachedProfessionals : readLocalProfessionals();
+    }
+
+    return cachedProfessionals.length ? cachedProfessionals : readLocalProfessionals();
+  }
+};
+
+const fetchRemoteProfessionalsStrict = async (): Promise<ProfessionalRecord[]> => {
+  const url = buildProfessionalsUrl();
+  if (!url) {
+    throw new Error('No hay endpoint de Sheets configurado.');
+  }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`No se pudieron leer los colaboradores (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const rawProfessionals = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.professionals)
+      ? payload.professionals
+      : [];
+
+  return rawProfessionals.map((item) => normalizeProfessional({
+    ...item,
+    id: String(item.id || createId()),
+  }));
+};
+
+const broadcast = async () => {
+  const professionals = hasRemoteSheet ? await readRemoteProfessionals() : readLocalProfessionals();
+  emit(professionals);
+};
+
+const ensureRemotePolling = () => {
+  if (!hasRemoteSheet || remotePollHandle || typeof window === 'undefined') {
+    return;
+  }
+
+  remotePollHandle = window.setInterval(() => {
+    void broadcast().catch((error) => {
+      console.warn('No se pudo refrescar el equipo remotamente.', error);
+    });
+  }, 30000);
+};
+
+const stopRemotePolling = () => {
+  if (remotePollHandle) {
+    window.clearInterval(remotePollHandle);
+    remotePollHandle = undefined;
+  }
+};
+
+const persistLocalProfessional = async (professional: ProfessionalRecord, id?: string) => {
+  const current = readLocalProfessionals();
+  const now = new Date().toISOString();
+  const normalized = normalizeProfessional({
+    ...professional,
+    id: id || professional.id,
+  });
+
+  const next = id
+    ? current.map((item) => (item.id === id ? { ...item, ...normalized } : item))
+    : [...current, normalized];
+
+  const final = next.map((item) => ({
+    ...item,
+    id: String(item.id),
+    status: item.status === 'En Pausa' ? 'En Pausa' : 'Activo',
+    email: item.email || `${slugify(item.name)}@lab.com`,
+    image: item.image || DEFAULT_IMAGE,
+    hours: item.hours || 'Lun, Mie, Vie (08:00 - 14:00)',
+    retention: item.retention || '20%',
+    createdAt: (item as unknown as { createdAt?: string }).createdAt || now,
+    updatedAt: now,
+  }));
+
+  writeLocalProfessionals(final);
+  emit(final);
+  await broadcast();
+};
+
+const deleteLocalProfessional = async (id: string) => {
+  const next = readLocalProfessionals().filter((professional) => professional.id !== id);
+  writeLocalProfessionals(next);
+  emit(next);
+  await broadcast();
+};
+
+const persistRemoteProfessional = async (professional: ProfessionalRecord, id?: string) => {
+  const url = buildProfessionalsUrl();
+  if (!url) {
+    await persistLocalProfessional(professional, id);
+    return;
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+    body: JSON.stringify({
+      entity: 'professionals',
+      action: id ? 'update' : 'create',
+      id,
+      professional,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`No se pudo guardar el colaborador (${response.status})`);
+  }
+
+  const nextProfessionals = upsertCachedProfessional(professional, id);
+  writeLocalProfessionals(nextProfessionals);
+  emit(nextProfessionals);
+
+  const remoteProfessionals = await fetchRemoteProfessionalsStrict();
+  const targetId = String(id || professional.id);
+  if (!remoteProfessionals.some((item) => item.id === targetId)) {
+    throw new Error('Sheets respondió, pero el colaborador no quedó guardado.');
+  }
+
+  void broadcast().catch((error) => {
+    console.warn('No se pudo refrescar el equipo luego de guardar.', error);
+  });
+};
+
+const deleteRemoteProfessional = async (id: string) => {
+  const url = buildProfessionalsUrl();
+  if (!url) {
+    await deleteLocalProfessional(id);
+    return;
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+    body: JSON.stringify({
+      entity: 'professionals',
+      action: 'delete',
+      id,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`No se pudo eliminar el colaborador (${response.status})`);
+  }
+
+  const nextProfessionals = deleteCachedProfessional(id);
+  writeLocalProfessionals(nextProfessionals);
+  emit(nextProfessionals);
+
+  const remoteProfessionals = await fetchRemoteProfessionalsStrict();
+  if (remoteProfessionals.some((item) => item.id === id)) {
+    throw new Error('Sheets respondió, pero el colaborador no se eliminó.');
+  }
+
+  void broadcast().catch((error) => {
+    console.warn('No se pudo refrescar el equipo luego de eliminar.', error);
+  });
+};
+
+const resetRemoteProfessionals = async () => {
+  const url = buildProfessionalsUrl();
+  if (!url) {
+    const defaults = createDefaultProfessionals();
+    writeLocalProfessionals(defaults);
+    emit(defaults);
+    return defaults;
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+    body: JSON.stringify({
+      entity: 'professionals',
+      action: 'reset',
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`No se pudo restaurar la base (${response.status})`);
+  }
+
+  const defaults = createDefaultProfessionals();
+  writeLocalProfessionals(defaults);
+  emit(defaults);
+
+  void broadcast().catch((error) => {
+    console.warn('No se pudo refrescar el equipo luego de restaurar.', error);
+  });
+
+  return defaults;
 };
 
 export const getProfessionalsSnapshot = () => {
@@ -125,32 +409,50 @@ export const getProfessionalsSnapshot = () => {
     return cachedProfessionals;
   }
 
-  cachedProfessionals = readProfessionals();
+  cachedProfessionals = readLocalProfessionals();
   return cachedProfessionals;
 };
 
-export const updateProfessional = (id: string, patch: Partial<ProfessionalRecord>) => {
-  const current = getProfessionalsSnapshot();
-  const next = current.map((professional) => (
-    professional.id === id
-      ? normalizeProfessional(
-          {
-            ...professional,
-            ...patch,
-            id: professional.id,
-          },
-          professional,
-        )
-      : professional
-  ));
+export const refreshProfessionals = async () => {
+  await broadcast();
+};
 
-  writeProfessionals(next);
-  emit(next);
+export const forceRefreshProfessionals = async () => {
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(STORAGE_KEY);
+  }
+
+  cachedProfessionals = createDefaultProfessionals();
+  await broadcast();
+};
+
+export const updateProfessional = async (id: string, patch: Partial<ProfessionalRecord>) => {
+  const current = getProfessionalsSnapshot();
+  const updated = current.find((professional) => professional.id === id);
+
+  if (!updated) {
+    return current;
+  }
+
+  const next = normalizeProfessional(
+    {
+      ...updated,
+      ...patch,
+      id: updated.id,
+    },
+    updated,
+  );
+
+  if (BACKEND_MODE === 'sheet' && SHEET_ENDPOINT) {
+    await persistRemoteProfessional(next, id);
+    return next;
+  }
+
+  await persistLocalProfessional(next, id);
   return next;
 };
 
-export const createProfessional = (data: Partial<ProfessionalRecord>) => {
-  const current = getProfessionalsSnapshot();
+export const createProfessional = async (data: Partial<ProfessionalRecord>) => {
   const nextProfessional = normalizeProfessional({
     id: createId(),
     name: String(data.name || 'Sin nombre'),
@@ -164,25 +466,34 @@ export const createProfessional = (data: Partial<ProfessionalRecord>) => {
     image: String(data.image || DEFAULT_IMAGE),
   });
 
-  const next = [...current, nextProfessional];
-  writeProfessionals(next);
-  emit(next);
+  if (BACKEND_MODE === 'sheet' && SHEET_ENDPOINT) {
+    await persistRemoteProfessional(nextProfessional);
+    return nextProfessional;
+  }
+
+  await persistLocalProfessional(nextProfessional);
   return nextProfessional;
 };
 
-export const deleteProfessional = (id: string) => {
-  const current = getProfessionalsSnapshot();
-  const next = current.filter((professional) => professional.id !== id);
-  writeProfessionals(next);
-  emit(next);
-  return next;
+export const deleteProfessional = async (id: string) => {
+  if (BACKEND_MODE === 'sheet' && SHEET_ENDPOINT) {
+    await deleteRemoteProfessional(id);
+    return getProfessionalsSnapshot();
+  }
+
+  await deleteLocalProfessional(id);
+  return getProfessionalsSnapshot();
 };
 
-export const resetProfessionals = () => {
-  const next = createDefaultProfessionals();
-  writeProfessionals(next);
-  emit(next);
-  return next;
+export const resetProfessionals = async () => {
+  if (BACKEND_MODE === 'sheet' && SHEET_ENDPOINT) {
+    return resetRemoteProfessionals();
+  }
+
+  const defaults = createDefaultProfessionals();
+  writeLocalProfessionals(defaults);
+  emit(defaults);
+  return defaults;
 };
 
 export const useProfessionals = () => {
@@ -193,9 +504,18 @@ export const useProfessionals = () => {
 
     const listener = (next: ProfessionalRecord[]) => setProfessionals(next);
     listeners.add(listener);
+    ensureRemotePolling();
+
+    void broadcast().catch((error) => {
+      console.warn('No se pudo cargar el equipo inicial.', error);
+    });
 
     return () => {
       listeners.delete(listener);
+
+      if (!listeners.size) {
+        stopRemotePolling();
+      }
     };
   }, []);
 

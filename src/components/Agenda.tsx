@@ -32,7 +32,7 @@ import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { AppointmentRecord } from '../types';
 import { ROOMS } from '../constants';
-import { buildDailyPdfHtml, buildMonthlyPdfHtml, openPrintableReport } from '../lib/appointmentPdf';
+import { buildDailyPdfHtml, buildMonthlyPdfHtml, buildWeeklyAvailabilityPdfHtml, openPrintableReport } from '../lib/appointmentPdf';
 import { useProfessionals } from '../lib/professionalsStore';
 import { forceRefreshAppointments } from '../lib/appointmentsStore';
 
@@ -337,6 +337,11 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
     openPrintableReport(`Agenda mensual - ${formatDateEs(selectedDate, 'MMMM yyyy')}`, html);
   };
 
+  const handleWeeklyPdf = () => {
+    const html = buildWeeklyAvailabilityPdfHtml(selectedDate, appointments);
+    openPrintableReport(`Disponibilidad semanal - ${formatDateEs(selectedDate, 'dd-MM-yyyy')}`, html);
+  };
+
   const resolveNextAvailableStart = (columnAppointments: AppointmentRecord[], requestedStart: number) => {
     const baseStart = Math.max(requestedStart, 8 * 60);
     let candidateStart = baseStart;
@@ -514,6 +519,14 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             >
               <Printer className="w-3.5 h-3.5 shrink-0" />
               PDF Mes
+            </button>
+
+            <button
+              onClick={handleWeeklyPdf}
+              className="hidden sm:inline-flex items-center justify-center gap-2 px-3 md:px-3.5 py-1.5 md:py-2 bg-white/80 text-slate-700 border border-slate-200 rounded-xl font-bold text-[10px] hover:bg-slate-50 transition-colors shadow-sm w-full md:w-auto backdrop-blur-sm shrink-0 whitespace-nowrap"
+            >
+              <Printer className="w-3.5 h-3.5 shrink-0" />
+              PDF Semana
             </button>
 
             <button

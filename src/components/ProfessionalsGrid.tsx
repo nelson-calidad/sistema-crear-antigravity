@@ -70,7 +70,7 @@ export const ProfessionalsGrid = () => {
     setForm(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form || !editorMode) return;
 
     const payload = {
@@ -78,23 +78,33 @@ export const ProfessionalsGrid = () => {
       status: form.status === 'En Pausa' ? 'En Pausa' : 'Activo',
     };
 
-    if (editorMode === 'create') {
-      createProfessional(payload);
-    } else if (editingProfessional) {
-      updateProfessional(editingProfessional.id, payload);
-    }
+    try {
+      if (editorMode === 'create') {
+        await createProfessional(payload);
+      } else if (editingProfessional) {
+        await updateProfessional(editingProfessional.id, payload);
+      }
 
-    closeEditor();
+      closeEditor();
+    } catch (error) {
+      console.error('No se pudo guardar el colaborador.', error);
+      window.alert('No se pudo guardar el colaborador. Reintentá en unos segundos.');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!editingProfessional) return;
 
     const confirmed = window.confirm(`Eliminar a ${editingProfessional.name}? Esta accion no se puede deshacer.`);
     if (!confirmed) return;
 
-    deleteProfessional(editingProfessional.id);
-    closeEditor();
+    try {
+      await deleteProfessional(editingProfessional.id);
+      closeEditor();
+    } catch (error) {
+      console.error('No se pudo eliminar el colaborador.', error);
+      window.alert('No se pudo eliminar el colaborador. Reintentá en unos segundos.');
+    }
   };
 
   return (
@@ -106,7 +116,12 @@ export const ProfessionalsGrid = () => {
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <button
-            onClick={() => resetProfessionals()}
+            onClick={() => {
+              void resetProfessionals().catch((error) => {
+                console.error('No se pudo restaurar la base de colaboradores.', error);
+                window.alert('No se pudo restaurar la base. Reintentá en unos segundos.');
+              });
+            }}
             className="inline-flex items-center justify-center px-5 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors shadow-sm"
           >
             Restaurar base

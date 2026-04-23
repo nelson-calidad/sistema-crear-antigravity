@@ -119,6 +119,80 @@ const getStats = (appointments: AppointmentRecord[]) => {
   return { coverage, types };
 };
 
+const getWeekRange = (selectedDate: Date) => {
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  return { weekStart, weekEnd, weekDays };
+};
+
+const getWeekKey = (value: Date) => format(value, 'yyyy-MM-dd');
+
+const getRoomLabel = (roomId?: string) => {
+  const room = ROOMS.find((entry) => entry.id === roomId);
+  return room?.name || 'Sin consultorio';
+};
+
+const buildWeeklyRoomMatrix = (selectedDate: Date, appointments: AppointmentRecord[]) => {
+  const { weekStart, weekEnd, weekDays } = getWeekRange(selectedDate);
+  const weekAppointments = appointments.filter((appointment) => {
+    const parsed = parseDay(appointment.date);
+    if (!parsed) return false;
+    return parsed >= weekStart && parsed <= weekEnd && appointment.roomId;
+  });
+
+  const grouped = weekAppointments.reduce<Record<string, AppointmentRecord[]>>((acc, appointment) => {
+    const parsed = parseDay(appointment.date);
+    if (!parsed) return acc;
+
+    const key = `${appointment.roomId}:${getWeekKey(parsed)}`;
+    acc[key] = acc[key] || [];
+    acc[key].push(appointment);
+    return acc;
+  }, {});
+
+  const rooms = ROOMS.map((room) => {
+    const dayCells = weekDays.map((day) => {
+      const dayKey = `${room.id}:${getWeekKey(day)}`;
+      const dayAppointments = sortByStart(grouped[dayKey] || []);
+
+      return {
+        day,
+        appointments: dayAppointments,
+        free: dayAppointments.length === 0,
+      };
+    });
+
+    const freeDays = dayCells.filter((cell) => cell.free).length;
+    return {
+      room,
+      dayCells,
+      totalAppointments: dayCells.reduce((acc, cell) => acc + cell.appointments.length, 0),
+      freeDays,
+    };
+  });
+
+  const daySummary = weekDays.map((day) => {
+    const dayKey = getWeekKey(day);
+    const dayAppointments = weekAppointments.filter((appointment) => {
+      const parsed = parseDay(appointment.date);
+      return parsed ? getWeekKey(parsed) === dayKey : false;
+    });
+    const occupiedRooms = new Set(dayAppointments.map((appointment) => appointment.roomId).filter(Boolean));
+    const freeRooms = ROOMS.filter((room) => !occupiedRooms.has(room.id));
+
+    return {
+      day,
+      appointments: sortByStart(dayAppointments),
+      freeRooms,
+      occupiedRooms: ROOMS.length - freeRooms.length,
+    };
+  });
+
+  return { weekDays, weekAppointments, rooms, daySummary };
+};
+
 const renderReportShell = (title: string, subtitle: string, body: string, landscape = false) => `<!doctype html>
 <html lang="es">
   <head>
@@ -360,6 +434,115 @@ const renderReportShell = (title: string, subtitle: string, body: string, landsc
       .month-badge.interview { background: #fef3c7; color: #92400e; border-color: #fde68a; }
       .month-badge.block { background: #f3e8ff; color: #6b21a8; border-color: #e9d5ff; }
       .month-badge .time { font-size: 9px; }
+      .week-summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .week-grid {
+        display: grid;
+        grid-template-columns: 128px repeat(7, minmax(0, 1fr));
+        gap: 8px;
+        align-items: stretch;
+      }
+      .week-head {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+        color: #64748b;
+        font-weight: 800;
+        padding: 6px 8px;
+      }
+      .week-room {
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        padding: 10px;
+        min-height: 92px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .week-room .room-name {
+        font-size: 12px;
+        font-weight: 900;
+        color: #0f172a;
+        margin: 0;
+      }
+      .week-room .room-meta {
+        font-size: 10px;
+        color: #64748b;
+        font-weight: 700;
+        margin-top: 4px;
+      }
+      .week-cell {
+        min-height: 92px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        break-inside: avoid;
+      }
+      .week-cell.free {
+        background: linear-gradient(180deg, #f0fdf4 0%, #f8fafc 100%);
+        border-color: #bbf7d0;
+      }
+      .week-cell.busy {
+        border-color: #bfdbfe;
+      }
+      .week-cell .count {
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        color: #64748b;
+      }
+      .week-cell .free-label {
+        font-size: 12px;
+        font-weight: 900;
+        color: #15803d;
+      }
+      .week-cell .mini-list {
+        display: grid;
+        gap: 4px;
+      }
+      .week-pill {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        padding: 5px 7px;
+        border-radius: 999px;
+        font-size: 9px;
+        font-weight: 800;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+      }
+      .week-pill.interview { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+      .week-pill.block { background: #f3e8ff; color: #6b21a8; border-color: #e9d5ff; }
+      .week-pill .time { font-size: 8px; opacity: .8; }
+      .day-free-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .day-free-list .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: #ecfeff;
+        color: #155e75;
+        border: 1px solid #a5f3fc;
+        font-size: 10px;
+        font-weight: 800;
+      }
       @media print {
         body { background: white; }
         .sheet { max-width: none; }
@@ -566,6 +749,131 @@ export const buildMonthlyPdfHtml = (selectedDate: Date, appointments: Appointmen
       </div>
       ${monthGrid}
       <div class="footer">Reporte mensual listo para imprimir o guardar como PDF.</div>
+    `,
+    true,
+  );
+};
+
+export const buildWeeklyAvailabilityPdfHtml = (selectedDate: Date, appointments: AppointmentRecord[]) => {
+  const professionals = getProfessionalsSnapshot();
+  const weekLabel = `${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: es })} - ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: es })}`;
+  const { weekDays, weekAppointments, rooms, daySummary } = buildWeeklyRoomMatrix(selectedDate, appointments);
+  const generatedAt = format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es });
+  const { coverage, types } = getStats(weekAppointments);
+  const freeRoomDays = rooms.reduce((acc, room) => acc + room.freeDays, 0);
+  const fullyFreeDays = daySummary.filter((day) => day.freeRooms.length === ROOMS.length).length;
+  const todayKey = getWeekKey(selectedDate);
+  const selectedDaySummary = daySummary.find((day) => getWeekKey(day.day) === todayKey);
+  const todayFreeRooms = selectedDaySummary?.freeRooms.length || 0;
+
+  const matrix = `
+    <div class="section">
+      <div class="section-header">
+        <h2>Disponibilidad por consultorio</h2>
+        <span>${escapeHtml(weekLabel)}</span>
+      </div>
+      <div class="week-grid">
+        <div></div>
+        ${weekDays.map((day) => `<div class="week-head">${escapeHtml(format(day, 'EEE dd', { locale: es }))}</div>`).join('')}
+        ${rooms.map(({ room, dayCells, totalAppointments, freeDays }) => `
+          <div class="week-room">
+            <div>
+              <p class="room-name">${escapeHtml(room.name)}</p>
+              <div class="room-meta">${totalAppointments} turnos · ${freeDays} libres</div>
+            </div>
+            <div class="room-meta">Consultorio fijo</div>
+          </div>
+          ${dayCells.map((cell) => `
+            <div class="week-cell ${cell.free ? 'free' : 'busy'}">
+              <div class="count">${cell.appointments.length} turno${cell.appointments.length === 1 ? '' : 's'}</div>
+              ${cell.free ? '<div class="free-label">Libre</div>' : `
+                <div class="mini-list">
+                  ${cell.appointments.slice(0, 2).map((appointment) => `
+                    <div class="week-pill ${appointment.kind || appointment.type}">
+                      <span>${escapeHtml(getTypeLabel(appointment.kind || appointment.type))}</span>
+                      <span class="time">${escapeHtml(formatTimeOnly(appointment.start))}</span>
+                    </div>
+                  `).join('')}
+                  ${cell.appointments.length > 2 ? `<div class="subtle">+ ${cell.appointments.length - 2} más</div>` : ''}
+                </div>
+              `}
+            </div>
+          `).join('')}
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  const freeDaysList = daySummary
+    .filter((day) => day.freeRooms.length > 0)
+    .map((day) => `
+      <span class="chip">
+        ${escapeHtml(format(day.day, 'EEE dd', { locale: es }))} · ${day.freeRooms.length} libres
+      </span>
+    `)
+    .join('');
+
+  return renderReportShell(
+    `Disponibilidad semanal - ${weekLabel}`,
+    'Resumen semanal de consultorios para compartir con colaboradores.',
+    `
+      <div class="hero">
+        <div>
+          <h1>Disponibilidad semanal</h1>
+          <p>${escapeHtml(weekLabel)}</p>
+        </div>
+        <div class="meta">
+          <span class="pill">Generado: ${escapeHtml(generatedAt)}</span>
+          <span class="pill">Consultorios: ${ROOMS.length}</span>
+        </div>
+      </div>
+      <div class="summary">
+        <div class="card"><div class="label">Turnos semana</div><div class="value">${weekAppointments.length}</div></div>
+        <div class="card"><div class="label">Consultorios libres hoy</div><div class="value">${todayFreeRooms}/${ROOMS.length}</div></div>
+        <div class="card"><div class="label">Días totalmente libres</div><div class="value">${fullyFreeDays}</div></div>
+        <div class="card"><div class="label">Bloques libres</div><div class="value">${freeRoomDays}</div></div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <h2>Resumen rápido</h2>
+          <span>${escapeHtml(weekLabel)}</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Indicador</th>
+              <th>Total</th>
+              <th>Sesiones</th>
+              <th>Entrevistas</th>
+              <th>Bloqueos</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Semana actual</td>
+              <td>${weekAppointments.length}</td>
+              <td>${types.Sesion || 0}</td>
+              <td>${types.Entrevista || 0}</td>
+              <td>${types.Bloqueo || 0}</td>
+            </tr>
+            <tr>
+              <td>Consultorios</td>
+              <td colspan="4">${ROOMS.map((room) => escapeHtml(room.name)).join(' · ')}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      ${matrix}
+      <div class="section">
+        <div class="section-header">
+          <h2>Días con espacio libre</h2>
+          <span>${escapeHtml(weekLabel)}</span>
+        </div>
+        <div class="day-free-list">
+          ${freeDaysList || '<div class="empty">No hay días libres en esta semana.</div>'}
+        </div>
+      </div>
+      <div class="footer">Reporte semanal de disponibilidad listo para imprimir o guardar como PDF.</div>
     `,
     true,
   );
