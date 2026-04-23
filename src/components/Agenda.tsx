@@ -287,7 +287,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
   const mobileRoomColumns = useMemo(() => {
     const roomPalette = ['bg-cyan-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500', 'bg-rose-500', 'bg-sky-500'];
-    const previewLimit = 3;
+    const previewLimit = 4;
 
     return ROOMS.map((room, index) => ({
       ...room,
@@ -602,34 +602,34 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                   {mobileRoomColumns.map((room) => (
                     <div
                       key={room.id}
-                      className="rounded-2xl border border-slate-100 bg-white/95 shadow-sm p-2.5 min-h-[320px] flex flex-col"
+                      className="rounded-2xl border border-slate-100 bg-white/95 shadow-sm p-2 min-h-[250px] flex flex-col"
                     >
-                      <div className="flex items-center justify-between gap-1.5 mb-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center text-white font-black text-[10px]', room.colorClass)}>
+                      <div className="flex items-center justify-between gap-1 mb-1.5">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <div className={cn('w-6.5 h-6.5 rounded-xl flex items-center justify-center text-white font-black text-[9px]', room.colorClass)}>
                             {room.name[0]}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[11px] font-black text-slate-900 truncate leading-tight">{room.name}</p>
-                            <p className="text-[9px] uppercase font-bold text-slate-400 truncate">Consultorio</p>
+                            <p className="text-[10px] font-black text-slate-900 truncate leading-tight">{room.name}</p>
+                            <p className="text-[8px] uppercase font-bold text-slate-400 truncate">Consultorio</p>
                           </div>
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-700 bg-cyan-50 border border-cyan-100 px-1.5 py-0.5 rounded-full shrink-0">
+                        <span className="text-[8px] font-black uppercase tracking-[0.1em] text-cyan-700 bg-cyan-50 border border-cyan-100 px-1 py-0.5 rounded-full shrink-0">
                           {room.totalAppointments}
                         </span>
                       </div>
 
-                      <div className="flex-1 space-y-1.5">
+                      <div className="flex-1 space-y-1">
                         {room.appointments.length === 0 ? (
-                          <div className="h-full min-h-[230px] rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-2 py-3 text-center flex items-center justify-center">
+                          <div className="h-full min-h-[180px] rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-2 py-2 text-center flex items-center justify-center">
                             <div>
-                              <p className="text-[11px] font-bold text-slate-700">Libre</p>
-                              <p className="text-[9px] text-slate-500 mt-1 leading-tight">Sin turnos</p>
+                              <p className="text-[10px] font-bold text-slate-700">Libre</p>
+                              <p className="text-[8px] text-slate-500 mt-1 leading-tight">Sin turnos</p>
                             </div>
                           </div>
                         ) : (
                           <>
-                            {room.appointments.slice(0, 3).map((app) => {
+                            {room.appointments.map((app) => {
                               const pro = professionals.find((p) => p.id === app.professionalId || p.id === app.proId);
                               return (
                                 <button
@@ -637,21 +637,21 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                   type="button"
                                   onClick={() => onOpenModal(room.name, pro?.name, app)}
                                   className={cn(
-                                    'w-full text-left rounded-2xl px-2 py-2 border shadow-sm backdrop-blur-sm min-h-[74px]',
+                                    'w-full text-left rounded-2xl px-1.5 py-1.5 border shadow-sm backdrop-blur-sm min-h-[58px]',
                                     getTypeStyles(app.kind || app.type),
                                   )}
                                 >
-                                  <div className="flex items-start justify-between gap-1.5">
+                                  <div className="flex items-start justify-between gap-1">
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-[10px] font-black uppercase tracking-[0.14em] leading-none mb-1">
+                                      <p className="text-[9px] font-black uppercase tracking-[0.12em] leading-none mb-0.5">
                                         {app.start} - {app.end}
                                       </p>
-                                      <p className="font-black text-[11px] truncate leading-tight">{getAppointmentName(app)}</p>
-                                      <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide opacity-85 truncate">
+                                      <p className="font-black text-[10px] truncate leading-tight">{getAppointmentName(app)}</p>
+                                      <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wide opacity-85 truncate">
                                         {getTypeLabel(app.kind || app.type)}
                                       </p>
                                     </div>
-                                    <span className="text-[8px] font-black uppercase opacity-75 shrink-0">
+                                    <span className="text-[7px] font-black uppercase opacity-75 shrink-0">
                                       {getCoverageLabel(app)}
                                     </span>
                                   </div>
