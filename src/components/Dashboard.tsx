@@ -3,33 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  PieChart,
-  Users,
-  Calendar as CalendarIcon,
-  ArrowUpRight,
-  ArrowDownRight
-} from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell
-} from 'recharts';
+import { TrendingUp, TrendingDown, DollarSign, PieChart, ArrowUpRight, ArrowDownRight, DoorOpen, Stethoscope, Clock, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { cn } from '../lib/utils';
 
-const data = [
+const monthlyCashflow = [
   { name: 'Ene', ingresos: 4000, gastos: 2400 },
   { name: 'Feb', ingresos: 3000, gastos: 1398 },
   { name: 'Mar', ingresos: 2000, gastos: 6800 },
@@ -37,9 +15,6 @@ const data = [
   { name: 'May', ingresos: 1890, gastos: 4800 },
   { name: 'Jun', ingresos: 2390, gastos: 3800 },
 ];
-
-import { cn } from '../lib/utils';
-import { DoorOpen, Stethoscope, Clock, Zap } from 'lucide-react';
 
 const StatCard = ({ title, value, change, icon: Icon, color, trend }: any) => (
   <motion.div
@@ -51,13 +26,13 @@ const StatCard = ({ title, value, change, icon: Icon, color, trend }: any) => (
       <div>
         <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
         <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
-        <div className={cn("flex items-center mt-2 text-xs font-semibold", trend === 'up' ? "text-emerald-600" : "text-rose-600")}>
+        <div className={cn('flex items-center mt-2 text-xs font-semibold', trend === 'up' ? 'text-emerald-600' : 'text-rose-600')}>
           {trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
           {change}
           <span className="text-slate-400 font-normal ml-1">vs mes pasado</span>
         </div>
       </div>
-      <div className={cn("p-3 rounded-xl", color)}>
+      <div className={cn('p-3 rounded-xl', color)}>
         <Icon className="w-6 h-6 text-white" />
       </div>
     </div>
@@ -65,7 +40,13 @@ const StatCard = ({ title, value, change, icon: Icon, color, trend }: any) => (
 );
 
 export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) => {
-  const todayLabel = format(new Date(), "d 'de' MMMM yyyy", { locale: es });
+  const todayLabel = new Intl.DateTimeFormat('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date());
+
+  const maxCashflow = Math.max(...monthlyCashflow.flatMap((item) => [item.ingresos, item.gastos]));
 
   return (
     <div className="space-y-8">
@@ -74,47 +55,19 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Resumen Administrativo</h1>
           <p className="text-slate-500 font-medium">Estado de CREAR al {todayLabel}</p>
         </header>
-        <button 
+        <button
           onClick={onQuickReserve}
           className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
         >
-           <Zap className="w-4 h-4 text-amber-400" /> Reserva rápida
+          <Zap className="w-4 h-4 text-amber-400" /> Reserva rápida
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Ingresos Totales" 
-          value="$1,240,000" 
-          change="+12.5%" 
-          trend="up"
-          icon={TrendingUp} 
-          color="bg-blue-600"
-        />
-        <StatCard 
-          title="Gastos Operativos" 
-          value="$450,000" 
-          change="-2.4%" 
-          trend="down"
-          icon={TrendingDown} 
-          color="bg-rose-500"
-        />
-        <StatCard 
-          title="Fondo Común" 
-          value="$150,000" 
-          change="+5.1%" 
-          trend="up"
-          icon={PieChart} 
-          color="bg-amber-500"
-        />
-        <StatCard 
-          title="Ganancia Neta" 
-          value="$640,000" 
-          change="+18.2%" 
-          trend="up"
-          icon={DollarSign} 
-          color="bg-emerald-500"
-        />
+        <StatCard title="Ingresos Totales" value="$1,240,000" change="+12.5%" trend="up" icon={TrendingUp} color="bg-blue-600" />
+        <StatCard title="Gastos Operativos" value="$450,000" change="-2.4%" trend="down" icon={TrendingDown} color="bg-rose-500" />
+        <StatCard title="Fondo Común" value="$150,000" change="+5.1%" trend="up" icon={PieChart} color="bg-amber-500" />
+        <StatCard title="Ganancia Neta" value="$640,000" change="+18.2%" trend="up" icon={DollarSign} color="bg-emerald-500" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -131,25 +84,32 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
                 </div>
               </div>
             </div>
+
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data}>
-                  <defs>
-                    <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                  <Tooltip 
-                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
-                  />
-                  <Area type="monotone" dataKey="ingresos" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorIngresos)" />
-                  <Area type="monotone" dataKey="gastos" stroke="#e2e8f0" strokeWidth={2} fill="transparent" />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div className="grid h-full grid-cols-6 gap-3 items-end">
+                {monthlyCashflow.map((item) => {
+                  const incomeHeight = Math.max(12, (item.ingresos / maxCashflow) * 100);
+                  const expenseHeight = Math.max(12, (item.gastos / maxCashflow) * 100);
+
+                  return (
+                    <div key={item.name} className="flex h-full flex-col items-center justify-end gap-2">
+                      <div className="flex w-full flex-1 items-end gap-2">
+                        <div
+                          className="flex-1 rounded-t-xl bg-blue-500/90 shadow-sm"
+                          style={{ height: `${incomeHeight}%` }}
+                          title={`Ingresos ${item.name}`}
+                        />
+                        <div
+                          className="flex-1 rounded-t-xl bg-slate-200 shadow-sm"
+                          style={{ height: `${expenseHeight}%` }}
+                          title={`Gastos ${item.name}`}
+                        />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{item.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -159,19 +119,24 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
               { id: 'C.2', status: 'free', pro: '-', end: '-', until: 'Libre para reserva' },
               { id: 'C.3', status: 'occupied', pro: 'Carlos', end: '11:00', until: 'Ocupado' },
             ].map((room) => (
-              <div key={room.id} className={cn(
-                "p-4 rounded-2xl border transition-all",
-                room.status === 'occupied' ? "bg-white border-slate-100" : "bg-emerald-50 border-emerald-100 shadow-sm shadow-emerald-100"
-              )}>
+              <div
+                key={room.id}
+                className={cn(
+                  'p-4 rounded-2xl border transition-all',
+                  room.status === 'occupied' ? 'bg-white border-slate-100' : 'bg-emerald-50 border-emerald-100 shadow-sm shadow-emerald-100',
+                )}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <DoorOpen className={cn("w-4 h-4", room.status === 'occupied' ? "text-slate-400" : "text-emerald-500")} />
+                    <DoorOpen className={cn('w-4 h-4', room.status === 'occupied' ? 'text-slate-400' : 'text-emerald-500')} />
                     <span className="font-bold text-slate-900">{room.id}</span>
                   </div>
-                  <div className={cn(
-                    "w-2 h-2 rounded-full",
-                    room.status === 'occupied' ? "bg-amber-400 animate-pulse" : "bg-emerald-500"
-                  )} />
+                  <div
+                    className={cn(
+                      'w-2 h-2 rounded-full',
+                      room.status === 'occupied' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500',
+                    )}
+                  />
                 </div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">{room.until}</p>
                 {room.status === 'occupied' ? (
@@ -184,7 +149,7 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
                     </div>
                   </div>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => onQuickReserve?.()}
                     className="w-full py-2 bg-white text-emerald-600 text-[10px] font-bold rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors"
                   >
@@ -206,9 +171,7 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
               { time: '01:00 PM', name: 'Carlos - Paciente: Luis R.', room: 'C.1' },
             ].map((appointment, i) => (
               <div key={i} className="flex items-center p-3 bg-white/5 rounded-xl border border-white/10">
-                <div className="bg-blue-500/20 text-blue-400 p-2 rounded-lg text-xs font-mono font-bold">
-                  {appointment.time}
-                </div>
+                <div className="bg-blue-500/20 text-blue-400 p-2 rounded-lg text-xs font-mono font-bold">{appointment.time}</div>
                 <div className="ml-4 flex-1">
                   <p className="text-sm font-medium">{appointment.name}</p>
                   <p className="text-white/40 text-xs">{appointment.room}</p>
@@ -216,7 +179,7 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
               </div>
             ))}
           </div>
-          <button 
+          <button
             onClick={() => onQuickReserve?.()}
             className="w-full mt-8 py-3 bg-white text-slate-900 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors"
           >
