@@ -58,10 +58,18 @@ const parseDay = (value?: string | Date | null) => {
 };
 
 const overlaps = (startA: string, endA: string, startB: string, endB: string) => {
+  if (!startA || !endA || !startB || !endB) {
+    return false;
+  }
+
   const [aStartH, aStartM] = startA.split(':').map(Number);
   const [aEndH, aEndM] = endA.split(':').map(Number);
   const [bStartH, bStartM] = startB.split(':').map(Number);
   const [bEndH, bEndM] = endB.split(':').map(Number);
+
+  if ([aStartH, aStartM, aEndH, aEndM, bStartH, bStartM, bEndH, bEndM].some((value) => Number.isNaN(value))) {
+    return false;
+  }
 
   const aStart = aStartH * 60 + aStartM;
   const aEnd = aEndH * 60 + aEndM;
