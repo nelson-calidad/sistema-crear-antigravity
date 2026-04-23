@@ -287,13 +287,19 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
   const mobileRoomColumns = useMemo(() => {
     const roomPalette = ['bg-cyan-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500', 'bg-rose-500', 'bg-sky-500'];
+    const previewLimit = 3;
 
     return ROOMS.map((room, index) => ({
       ...room,
       colorClass: roomPalette[index % roomPalette.length],
-      appointments: sortByStart(
-        selectedDateAppointments.filter((appointment) => appointment.roomId === room.id),
-      ),
+      ...(() => {
+        const roomAppointments = sortByStart(selectedDateAppointments.filter((appointment) => appointment.roomId === room.id));
+        return {
+          totalAppointments: roomAppointments.length,
+          appointments: roomAppointments.slice(0, previewLimit),
+          overflowCount: Math.max(roomAppointments.length - previewLimit, 0),
+        };
+      })(),
     }));
   }, [selectedDateAppointments]);
 
@@ -592,69 +598,76 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                   )}
                 </>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar snap-x snap-mandatory">
-                    {mobileRoomColumns.map((room) => (
-                      <div
-                        key={room.id}
-                        className="min-w-[96%] snap-start rounded-3xl border border-slate-100 bg-white/95 shadow-sm p-4 shrink-0"
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-[11px]', room.colorClass)}>
-                              {room.name[0]}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-black text-slate-900 truncate">{room.name}</p>
-                              <p className="text-[10px] uppercase font-bold text-slate-400 truncate">Consultorio</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {mobileRoomColumns.map((room) => (
+                    <div
+                      key={room.id}
+                      className="rounded-2xl border border-slate-100 bg-white/95 shadow-sm p-2.5 min-h-[320px] flex flex-col"
+                    >
+                      <div className="flex items-center justify-between gap-1.5 mb-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center text-white font-black text-[10px]', room.colorClass)}>
+                            {room.name[0]}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-black text-slate-900 truncate leading-tight">{room.name}</p>
+                            <p className="text-[9px] uppercase font-bold text-slate-400 truncate">Consultorio</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-700 bg-cyan-50 border border-cyan-100 px-1.5 py-0.5 rounded-full shrink-0">
+                          {room.totalAppointments}
+                        </span>
+                      </div>
+
+                      <div className="flex-1 space-y-1.5">
+                        {room.appointments.length === 0 ? (
+                          <div className="h-full min-h-[230px] rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-2 py-3 text-center flex items-center justify-center">
+                            <div>
+                              <p className="text-[11px] font-bold text-slate-700">Libre</p>
+                              <p className="text-[9px] text-slate-500 mt-1 leading-tight">Sin turnos</p>
                             </div>
                           </div>
-                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700 bg-cyan-50 border border-cyan-100 px-2 py-1 rounded-full">
-                            {room.appointments.length} turnos
-                          </span>
-                        </div>
-
-                        <div className="space-y-2 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
-                          {room.appointments.length === 0 ? (
-                            <div className="p-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center">
-                              <p className="text-sm font-bold text-slate-700">Sin turnos</p>
-                              <p className="text-xs text-slate-500 mt-1">Tocá el encabezado para crear uno.</p>
-                            </div>
-                          ) : (
-                            room.appointments.map((app) => {
-                              const pro = professionals.find((p) => p.id === app.professionalId || app.proId);
+                        ) : (
+                          <>
+                            {room.appointments.slice(0, 3).map((app) => {
+                              const pro = professionals.find((p) => p.id === app.professionalId || p.id === app.proId);
                               return (
                                 <button
                                   key={app.id}
                                   type="button"
                                   onClick={() => onOpenModal(room.name, pro?.name, app)}
                                   className={cn(
-                                    'w-full text-left rounded-[1.9rem] p-4.5 border shadow-md backdrop-blur-sm min-h-[118px]',
+                                    'w-full text-left rounded-2xl px-2 py-2 border shadow-sm backdrop-blur-sm min-h-[74px]',
                                     getTypeStyles(app.kind || app.type),
                                   )}
                                 >
-                                  <div className="flex items-start justify-between gap-3.5">
+                                  <div className="flex items-start justify-between gap-1.5">
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-[11px] font-black uppercase tracking-[0.18em] mb-1.5">
+                                      <p className="text-[10px] font-black uppercase tracking-[0.14em] leading-none mb-1">
                                         {app.start} - {app.end}
                                       </p>
-                                      <p className="font-black text-[17px] truncate leading-tight">{getAppointmentName(app)}</p>
-                                      <p className="mt-2 text-[12px] font-semibold uppercase tracking-wide opacity-85 truncate">
-                                        {getTypeLabel(app.kind || app.type)} · {pro?.name || 'Sin profesional'}
+                                      <p className="font-black text-[11px] truncate leading-tight">{getAppointmentName(app)}</p>
+                                      <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide opacity-85 truncate">
+                                        {getTypeLabel(app.kind || app.type)}
                                       </p>
                                     </div>
-                                    <span className="text-[10px] font-black uppercase opacity-75 shrink-0">
+                                    <span className="text-[8px] font-black uppercase opacity-75 shrink-0">
                                       {getCoverageLabel(app)}
                                     </span>
                                   </div>
                                 </button>
                               );
-                            })
-                          )}
-                        </div>
+                            })}
+                            {room.overflowCount > 0 ? (
+                              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-2 py-2 text-center">
+                                <p className="text-[10px] font-bold text-slate-500">+{room.overflowCount} más</p>
+                              </div>
+                            ) : null}
+                          </>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
