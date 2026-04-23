@@ -40,8 +40,8 @@ function doPost(e) {
         throw new Error('Missing id');
       }
 
-      deleteAppointment_(sheet, String(body.id));
-      return json_({ ok: true });
+      const deleted = deleteAppointment_(sheet, String(body.id));
+      return json_({ ok: true, action: 'delete', id: String(body.id), deleted, lastRow: sheet.getLastRow() });
     }
 
     const appointment = normalizeAppointment_(body.appointment || {});
@@ -51,12 +51,13 @@ function doPost(e) {
         throw new Error('Missing id');
       }
 
-      upsertAppointment_(sheet, { ...appointment, id: String(body.id || appointment.id) }, true);
-      return json_({ ok: true });
+      const updatedId = String(body.id || appointment.id);
+      const rowNumber = upsertAppointment_(sheet, { ...appointment, id: updatedId }, true);
+      return json_({ ok: true, action: 'update', id: updatedId, rowNumber, lastRow: sheet.getLastRow() });
     }
 
-    upsertAppointment_(sheet, appointment, false);
-    return json_({ ok: true });
+    const rowNumber = upsertAppointment_(sheet, appointment, false);
+    return json_({ ok: true, action: 'create', id: appointment.id, rowNumber, lastRow: sheet.getLastRow() });
   } catch (error) {
     return json_({ ok: false, error: error.message }, 500);
   }
@@ -225,25 +226,28 @@ function upsertAppointment_(sheet, appointment, allowUpdate) {
 
   if (targetRow > 1) {
     sheet.getRange(targetRow, 1, 1, HEADER.length).setValues([rowValues]);
-    return;
+    return targetRow;
   }
 
   sheet.insertRowBefore(2);
   sheet.getRange(2, 1, 1, HEADER.length).setValues([rowValues]);
+  return 2;
 }
 
 function deleteAppointment_(sheet, id) {
   const values = sheet.getDataRange().getValues();
   if (values.length <= 1) {
-    return;
+    return false;
   }
 
   for (let row = values.length; row >= 2; row -= 1) {
     if (String(values[row - 1][0]) === id) {
       sheet.deleteRow(row);
-      return;
+      return true;
     }
   }
+
+  return false;
 }
 
 function objectToRow_(appointment) {
