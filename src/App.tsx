@@ -34,6 +34,7 @@ export default function App() {
   const [agendaFocusDate, setAgendaFocusDate] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastTimers = useRef<number[]>([]);
+  const syncErrorShown = useRef(false);
 
   const pushToast = (tone: ToastTone, title: string, message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -49,9 +50,25 @@ export default function App() {
   };
 
   useEffect(() => {
-    const unsubscribeApps = subscribeToAppointments((apps) => {
-      setAppointments(apps);
-    });
+    const unsubscribeApps = subscribeToAppointments(
+      (apps) => {
+        syncErrorShown.current = false;
+        setAppointments(apps);
+      },
+      (error) => {
+        console.error('Sync error with Sheets', error);
+        if (syncErrorShown.current) {
+          return;
+        }
+
+        syncErrorShown.current = true;
+        pushToast(
+          'error',
+          'No se pudo sincronizar',
+          'Este navegador no pudo leer Sheets. Probá recargar o usar otro navegador.',
+        );
+      },
+    );
 
     return () => {
       unsubscribeApps();

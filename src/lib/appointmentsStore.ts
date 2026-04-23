@@ -185,6 +185,9 @@ const readRemoteAppointments = async (): Promise<AppointmentRecord[]> => {
     return normalized;
   } catch (error) {
     console.warn('Leyendo desde el cache local porque falló el Sheet.', error);
+    if (hasRemoteSheet) {
+      throw error;
+    }
     return cachedAppointments.length ? cachedAppointments : readLocalAppointments();
   }
 };
@@ -267,12 +270,16 @@ export const signInWithGoogle = async () => getSessionUser();
 
 export const logout = async () => undefined;
 
-export const subscribeToAppointments = (callback: (appointments: AppointmentRecord[]) => void) => {
+export const subscribeToAppointments = (
+  callback: (appointments: AppointmentRecord[]) => void,
+  onError?: (error: unknown) => void,
+) => {
   listeners.add(callback);
   ensureRemotePolling();
 
   void broadcast().catch((error) => {
     console.warn('No se pudo cargar la agenda inicial.', error);
+    onError?.(error);
   });
 
   return () => {
