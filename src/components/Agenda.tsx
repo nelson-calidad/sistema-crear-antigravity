@@ -25,11 +25,13 @@ import {
   Users,
   MapPin,
   BadgeInfo,
+  Printer,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { AppointmentRecord } from '../types';
 import { PROFESSIONALS, ROOMS } from '../constants';
+import { buildDailyPdfHtml, buildMonthlyPdfHtml, openPrintableReport } from '../lib/appointmentPdf';
 
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
 const UNASSIGNED_COLUMN = { id: 'unassigned', name: 'Sin asignar', color: 'bg-slate-400' };
@@ -205,6 +207,16 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
       : appointment.roomId === columnId;
   };
 
+  const handleDailyPdf = () => {
+    const html = buildDailyPdfHtml(selectedDate, appointments);
+    openPrintableReport(`Agenda diaria - ${format(selectedDate, 'dd-MM-yyyy')}`, html);
+  };
+
+  const handleMonthlyPdf = () => {
+    const html = buildMonthlyPdfHtml(selectedDate, appointments);
+    openPrintableReport(`Agenda mensual - ${format(selectedDate, 'MMMM yyyy')}`, html);
+  };
+
   return (
     <div className="h-full flex flex-col gap-2 md:gap-4 min-h-0">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
@@ -312,6 +324,22 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           >
             <Plus className="w-3.5 h-3.5" />
             Nuevo Bloque
+          </button>
+
+          <button
+            onClick={handleDailyPdf}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm w-full md:w-auto"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            PDF Día
+          </button>
+
+          <button
+            onClick={handleMonthlyPdf}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm w-full md:w-auto"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            PDF Mes
           </button>
         </div>
       </div>
