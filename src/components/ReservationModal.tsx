@@ -129,6 +129,9 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
         });
       } else {
         // Reset/New
+        setType('session');
+        setRecurrence('none');
+        setSelectedDays([]);
         setFormData(prev => ({
           ...prev,
           patient: '',
