@@ -130,8 +130,8 @@ function normalizeAppointment_(appointment) {
     patient: appointment.patient ? String(appointment.patient) : '',
     notes: appointment.notes ? String(appointment.notes) : '',
     date: formatDateValue_(appointment.date),
-    start: String(appointment.start || '08:00'),
-    end: String(appointment.end || '08:45'),
+    start: formatTimeValue_(appointment.start, '08:00'),
+    end: formatTimeValue_(appointment.end, '08:45'),
     recurrence: String(appointment.recurrence || 'none'),
     selectedDays: parsedSelectedDays,
     createdBy: appointment.createdBy ? String(appointment.createdBy) : '',
@@ -176,6 +176,36 @@ function formatDateValue_(value) {
   }
 
   return raw;
+}
+
+function formatTimeValue_(value, fallback) {
+  if (!value) {
+    return fallback;
+  }
+
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    if (isNaN(value.getTime())) {
+      return fallback;
+    }
+
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm');
+  }
+
+  const raw = String(value).trim();
+  if (!raw) {
+    return fallback;
+  }
+
+  if (/^\d{2}:\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  const parsed = new Date(raw);
+  if (!isNaN(parsed.getTime())) {
+    return Utilities.formatDate(parsed, Session.getScriptTimeZone(), 'HH:mm');
+  }
+
+  return fallback;
 }
 
 function upsertAppointment_(sheet, appointment, allowUpdate) {
