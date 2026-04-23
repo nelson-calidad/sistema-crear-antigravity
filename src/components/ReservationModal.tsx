@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   Calendar as CalendarIcon, 
@@ -18,18 +18,59 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
 import { PROFESSIONALS, ROOMS } from '../constants';
+import { AppointmentRecord } from '../types';
 
 interface ReservationModalProps {
   isOpen: boolean;
   onClose: () => void;
   room?: string;
   professional?: string;
+  appointments?: AppointmentRecord[];
   initialData?: any;
   onSave: (data: any) => void;
   onDelete?: (id: string) => void;
 }
 
-export const ReservationModal = ({ isOpen, onClose, room, professional, initialData, onSave, onDelete }: ReservationModalProps) => {
+const parseDay = (value?: string | Date | null) => {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const parsed = new Date(`${raw}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+    const [day, month, year] = raw.split('/').map(Number);
+    const parsed = new Date(year, month - 1, day);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const overlaps = (startA: string, endA: string, startB: string, endB: string) => {
+  const [aStartH, aStartM] = startA.split(':').map(Number);
+  const [aEndH, aEndM] = endA.split(':').map(Number);
+  const [bStartH, bStartM] = startB.split(':').map(Number);
+  const [bEndH, bEndM] = endB.split(':').map(Number);
+
+  const aStart = aStartH * 60 + aStartM;
+  const aEnd = aEndH * 60 + aEndM;
+  const bStart = bStartH * 60 + bStartM;
+  const bEnd = bEndH * 60 + bEndM;
+
+  return aStart < bEnd && aEnd > bStart;
+};
+
+export const ReservationModal = ({ isOpen, onClose, room, professional, appointments = [], initialData, onSave, onDelete }: ReservationModalProps) => {
   const [type, setType] = useState<'session' | 'interview' | 'survey'>(initialData?.type || 'session');
   const [coverageType, setCoverageType] = useState<'obra social' | 'particular'>(initialData?.coverageType || 'particular');
   const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'weekdays'>('none');
@@ -113,7 +154,46 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
 
   const isEditing = !!initialData;
 
+  const selectedDayAppointments = useMemo(() => {
+    const targetDate = parseDay(formData.date);
+    if (!targetDate) return [];
+
+    return appointments.filter((appointment) => {
+      if (initialData && appointment.id === initialData.id) {
+        return false;
+      }
+
+      const appointmentDate = parseDay(appointment.date);
+      if (!appointmentDate) return false;
+
+      return appointmentDate.toDateString() === targetDate.toDateString();
+    });
+  }, [appointments, formData.date, initialData]);
+
+  const occupiedProfessionalIds = useMemo(() => {
+    return selectedDayAppointments
+      .filter((appointment) => appointment.proId && overlaps(formData.startTime, formData.endTime, appointment.start, appointment.end))
+      .map((appointment) => appointment.proId as string);
+  }, [selectedDayAppointments, formData.endTime, formData.startTime]);
+
+  const occupiedRoomIds = useMemo(() => {
+    return selectedDayAppointments
+      .filter((appointment) => appointment.roomId && overlaps(formData.startTime, formData.endTime, appointment.start, appointment.end))
+      .map((appointment) => appointment.roomId as string);
+  }, [selectedDayAppointments, formData.endTime, formData.startTime]);
+
+  const isProfessionalBusy = (proId: string) => occupiedProfessionalIds.includes(proId);
+  const isRoomBusy = (roomId: string) => occupiedRoomIds.includes(roomId);
+
+  const selectedProfessionalBusy = selectedProId ? isProfessionalBusy(selectedProId) : false;
+  const selectedRoomBusy = selectedRoomId ? isRoomBusy(selectedRoomId) : false;
+
   const handleSave = () => {
+    if (selectedProfessionalBusy || selectedRoomBusy) {
+      alert('Ese colaborador o consultorio ya está ocupado en ese horario. Elegí otro.');
+      return;
+    }
+
     onSave({
       ...formData,
       type,
@@ -216,9 +296,29 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
                 >
                    <option value="">Seleccionar...</option>
                    {activeProfessionals.map(pro => (
-                     <option key={pro.id} value={pro.id}>{pro.name} ({pro.specialty})</option>
+                     <option key={pro.id} value={pro.id} disabled={isProfessionalBusy(pro.id)}>
+                       {pro.name} ({pro.specialty}){isProfessionalBusy(pro.id) ? ' - Ocupado' : ''}
+                     </option>
                    ))}
                 </select>
+                {selectedProfessionalBusy && (
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    Ese profesional ya está ocupado en este horario.
+                  </div>
+                )}
+                {!selectedProfessionalBusy && selectedDayAppointments.some((appointment) => appointment.proId) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeProfessionals
+                      .filter((pro) => isProfessionalBusy(pro.id))
+                      .slice(0, 4)
+                      .map((pro) => (
+                        <span key={pro.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-wider">
+                          {pro.name} ocupado
+                        </span>
+                      ))}
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Consultorio</label>
@@ -229,9 +329,28 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
                 >
                    <option value="">Seleccionar...</option>
                    {ROOMS.map(r => (
-                     <option key={r.id} value={r.id}>{r.name}</option>
+                     <option key={r.id} value={r.id} disabled={isRoomBusy(r.id)}>
+                       {r.name}{isRoomBusy(r.id) ? ' - Ocupado' : ''}
+                     </option>
                    ))}
                 </select>
+                {selectedRoomBusy && (
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    Ese consultorio ya está ocupado en este horario.
+                  </div>
+                )}
+                {!selectedRoomBusy && selectedDayAppointments.some((appointment) => appointment.roomId) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {ROOMS.filter((r) => isRoomBusy(r.id))
+                      .slice(0, 4)
+                      .map((r) => (
+                        <span key={r.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-wider">
+                          {r.name} ocupado
+                        </span>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -335,9 +454,15 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, initialD
             >
               Cancelar
             </button>
-            <button 
+            <button
               onClick={handleSave}
-              className="flex-[2] py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+              disabled={selectedProfessionalBusy || selectedRoomBusy}
+              className={cn(
+                'flex-[2] py-3 rounded-2xl font-bold text-sm transition-colors shadow-lg',
+                selectedProfessionalBusy || selectedRoomBusy
+                  ? 'bg-rose-100 text-rose-400 cursor-not-allowed shadow-none'
+                  : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200',
+              )}
             >
               Confirmar Reservación
             </button>

@@ -154,6 +154,7 @@ export default function App() {
         onClose={() => setIsModalOpen(false)}
         room={modalContext.room}
         professional={modalContext.pro}
+        appointments={appointments}
         initialData={modalContext.appointment}
         onSave={async (data) => {
           if (!user) {
