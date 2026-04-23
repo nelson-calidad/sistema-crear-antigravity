@@ -22,6 +22,16 @@ const createId = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
+const buildSheetUrl = () => {
+  if (!SHEET_ENDPOINT) {
+    return null;
+  }
+
+  const url = new URL(SHEET_ENDPOINT);
+  url.searchParams.set('_ts', String(Date.now()));
+  return url.toString();
+};
+
 const normalizeTime = (value?: unknown, fallback = '08:00') => {
   if (typeof value !== 'string') {
     return fallback;
@@ -146,7 +156,12 @@ const readRemoteAppointments = async (): Promise<AppointmentRecord[]> => {
   }
 
   try {
-    const response = await fetch(SHEET_ENDPOINT, {
+    const sheetUrl = buildSheetUrl();
+    if (!sheetUrl) {
+      return readLocalAppointments();
+    }
+
+    const response = await fetch(sheetUrl, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -179,7 +194,12 @@ const fetchRemoteAppointmentsStrict = async (): Promise<AppointmentRecord[]> => 
     throw new Error('No hay endpoint de Sheets configurado.');
   }
 
-  const response = await fetch(SHEET_ENDPOINT, {
+  const sheetUrl = buildSheetUrl();
+  if (!sheetUrl) {
+    throw new Error('No hay endpoint de Sheets configurado.');
+  }
+
+  const response = await fetch(sheetUrl, {
     method: 'GET',
     headers: {
       Accept: 'application/json',
