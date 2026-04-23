@@ -161,26 +161,6 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
     hasSyncedInitialDateRef.current = true;
   }, [appointments]);
 
-  useEffect(() => {
-    if (timeMode !== 'daily') {
-      return;
-    }
-
-    const container = dailyTimelineRef.current;
-    if (!container) {
-      return;
-    }
-
-    const firstAppointment = selectedDateAppointments[0];
-    const targetTop = firstAppointment ? Math.max(getPositionFromTime(firstAppointment.start) - 120, 0) : 0;
-
-    const frame = window.requestAnimationFrame(() => {
-      container.scrollTo({ top: targetTop, behavior: 'smooth' });
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, [selectedDateAppointments, timeMode]);
-
   const selectedDateAppointments = useMemo(() => {
     return sortByStart(
       appointments.filter((appointment) => {
@@ -238,6 +218,26 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
     const html = buildMonthlyPdfHtml(selectedDate, appointments);
     openPrintableReport(`Agenda mensual - ${format(selectedDate, 'MMMM yyyy')}`, html);
   };
+
+  useEffect(() => {
+    if (timeMode !== 'daily') {
+      return;
+    }
+
+    const container = dailyTimelineRef.current;
+    if (!container) {
+      return;
+    }
+
+    const firstAppointment = selectedDateAppointments[0];
+    const targetTop = firstAppointment ? Math.max(getPositionFromTime(firstAppointment.start) - 120, 0) : 0;
+
+    const frame = window.requestAnimationFrame(() => {
+      container.scrollTo({ top: targetTop, behavior: 'smooth' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedDateAppointments, timeMode]);
 
   return (
     <div className="h-full flex flex-col gap-2 md:gap-4 min-h-0">
