@@ -78,7 +78,7 @@ export default function App() {
       />
       
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-slate-100 px-4 md:px-8 py-4 md:py-0 flex flex-col gap-3 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0">
+        <header className="bg-white/70 backdrop-blur-xl border-b border-white/10 px-4 md:px-8 py-4 md:py-0 flex flex-col gap-3 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0">
           <div className="flex items-center gap-3 md:hidden">
             <button
               onClick={() => setMobileSidebarOpen((open) => !open)}
@@ -99,7 +99,7 @@ export default function App() {
               <input
                 type="text"
                 placeholder="Buscar pacientes, turnos o profesionales..."
-                className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-blue-100 focus:ring-0 rounded-xl text-sm transition-all"
+                className="w-full pl-11 pr-4 py-2.5 bg-slate-50/80 border border-white/10 focus:bg-white/90 focus:border-cyan-200/30 focus:ring-0 rounded-xl text-sm transition-all backdrop-blur-sm"
               />
             </div>
           </div>
@@ -110,23 +110,23 @@ export default function App() {
               <input
                 type="text"
                 placeholder="Buscar..."
-                className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-blue-100 focus:ring-0 rounded-xl text-sm transition-all"
+                className="w-full pl-11 pr-4 py-2.5 bg-slate-50/80 border border-white/10 focus:bg-white/90 focus:border-cyan-200/30 focus:ring-0 rounded-xl text-sm transition-all backdrop-blur-sm"
               />
             </div>
           </div>
           
           <div className="flex items-center justify-between md:justify-end gap-3 md:gap-4">
-            <button className="relative p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-all">
+            <button className="relative p-2 text-slate-400 hover:text-slate-900 hover:bg-white/60 rounded-xl transition-all border border-transparent hover:border-slate-200/70">
               <Bell className="w-5 h-5" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
             </button>
-            <div className="hidden md:block h-8 w-px bg-slate-100 mx-2" />
+            <div className="hidden md:block h-8 w-px bg-white/10 mx-2" />
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right">
                 <p className="text-sm font-bold text-slate-900">{user?.displayName || 'Admin LAB'}</p>
                 <p className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">{getBackendLabel()} conectado</p>
               </div>
-              <button className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
+              <button className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 flex items-center justify-center text-white font-bold text-xs overflow-hidden shadow-lg shadow-slate-900/20">
                 {user?.photoURL ? <img src={user.photoURL} alt="avatar" /> : 'AD'}
               </button>
             </div>
