@@ -146,19 +146,49 @@ function doPost(e) {
         }
 
         const deleted = deleteProfessional_(sheet, String(body.id));
-        return json_({ ok: true, entity: 'professionals', action: 'delete', id: String(body.id), deleted, lastRow: sheet.getLastRow() });
+        const professionals = readProfessionals_(sheet);
+        return json_({
+          ok: true,
+          entity: 'professionals',
+          action: 'delete',
+          id: String(body.id),
+          deleted,
+          professionals,
+          lastRow: sheet.getLastRow(),
+        });
       }
 
       const professional = normalizeProfessional_(body.professional || {});
 
       if (body.action === 'update') {
         const updatedId = String(body.id || professional.id);
-        const rowNumber = upsertProfessional_(sheet, { ...professional, id: updatedId }, true);
-        return json_({ ok: true, entity: 'professionals', action: 'update', id: updatedId, rowNumber, lastRow: sheet.getLastRow() });
+        const normalizedProfessional = { ...professional, id: updatedId };
+        const rowNumber = upsertProfessional_(sheet, normalizedProfessional, true);
+        const professionals = readProfessionals_(sheet);
+        return json_({
+          ok: true,
+          entity: 'professionals',
+          action: 'update',
+          id: updatedId,
+          rowNumber,
+          professional: normalizedProfessional,
+          professionals,
+          lastRow: sheet.getLastRow(),
+        });
       }
 
       const rowNumber = upsertProfessional_(sheet, professional, false);
-      return json_({ ok: true, entity: 'professionals', action: 'create', id: professional.id, rowNumber, lastRow: sheet.getLastRow() });
+      const professionals = readProfessionals_(sheet);
+      return json_({
+        ok: true,
+        entity: 'professionals',
+        action: 'create',
+        id: professional.id,
+        rowNumber,
+        professional,
+        professionals,
+        lastRow: sheet.getLastRow(),
+      });
     }
 
     const action = body.action || 'create';
@@ -464,7 +494,7 @@ function normalizeProfessional_(professional) {
     email: String(professional.email || seed.email || `${slugify_(name)}@lab.com`),
     phone: String(professional.phone || seed.phone || ''),
     hours: String(professional.hours || seed.hours || 'Lun, Mie, Vie (08:00 - 14:00)'),
-    retention: String(professional.retention || seed.retention || '20%'),
+    retention: formatRetentionValue_(professional.retention || seed.retention || '20%'),
     image: String(professional.image || seed.image || ''),
   };
 }
@@ -534,6 +564,32 @@ function slugify_(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/(^\.|\.$)/g, '');
+}
+
+function formatRetentionValue_(value) {
+  if (value === null || value === undefined || value === '') {
+    return '20%';
+  }
+
+  const raw = String(value).trim();
+  if (!raw) {
+    return '20%';
+  }
+
+  if (raw.endsWith('%')) {
+    return raw;
+  }
+
+  const numeric = Number(raw);
+  if (!Number.isNaN(numeric)) {
+    if (numeric > 0 && numeric < 1) {
+      return `${Math.round(numeric * 100)}%`;
+    }
+
+    return `${Math.round(numeric)}%`;
+  }
+
+  return raw;
 }
 
 function newId_() {

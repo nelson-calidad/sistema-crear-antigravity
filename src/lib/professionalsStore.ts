@@ -34,6 +34,32 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/(^\.|\.$)/g, '');
 
+const formatRetentionValue = (value: unknown, fallback = '20%') => {
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+
+  const raw = String(value).trim();
+  if (!raw) {
+    return fallback;
+  }
+
+  if (raw.endsWith('%')) {
+    return raw;
+  }
+
+  const numeric = Number(raw);
+  if (!Number.isNaN(numeric)) {
+    if (numeric > 0 && numeric < 1) {
+      return `${Math.round(numeric * 100)}%`;
+    }
+
+    return `${Math.round(numeric)}%`;
+  }
+
+  return raw;
+};
+
 const createId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -77,7 +103,7 @@ const normalizeProfessional = (
     email: String(professional.email || (name ? `${slugify(name)}@lab.com` : '') || base.email || ''),
     phone: String(professional.phone || base.phone || ''),
     hours: String(professional.hours || base.hours || 'Lun, Mie, Vie (08:00 - 14:00)'),
-    retention: String(professional.retention || base.retention || '20%'),
+    retention: formatRetentionValue(professional.retention || base.retention || '20%'),
     image: String(professional.image || base.image || DEFAULT_IMAGE),
   };
 };
@@ -227,6 +253,23 @@ const fetchRemoteProfessionalsStrict = async (): Promise<ProfessionalRecord[]> =
   }));
 };
 
+const normalizeProfessionalsPayload = (payload: unknown): ProfessionalRecord[] | null => {
+  const rawProfessionals = Array.isArray(payload)
+    ? payload
+    : Array.isArray((payload as { professionals?: unknown }).professionals)
+      ? (payload as { professionals: unknown[] }).professionals
+      : null;
+
+  if (!rawProfessionals) {
+    return null;
+  }
+
+  return rawProfessionals.map((item) => normalizeProfessional({
+    ...(item as Partial<ProfessionalRecord>),
+    id: String((item as { id?: string }).id || createId()),
+  }));
+};
+
 const broadcast = async () => {
   const professionals = hasRemoteSheet ? await readRemoteProfessionals() : readLocalProfessionals();
   emit(professionals);
@@ -270,7 +313,7 @@ const persistLocalProfessional = async (professional: ProfessionalRecord, id?: s
     email: item.email || `${slugify(item.name)}@lab.com`,
     image: item.image || DEFAULT_IMAGE,
     hours: item.hours || 'Lun, Mie, Vie (08:00 - 14:00)',
-    retention: item.retention || '20%',
+    retention: formatRetentionValue(item.retention || '20%'),
     createdAt: (item as unknown as { createdAt?: string }).createdAt || now,
     updatedAt: now,
   }));
@@ -313,19 +356,22 @@ const persistRemoteProfessional = async (professional: ProfessionalRecord, id?: 
     throw new Error(`No se pudo guardar el colaborador (${response.status})`);
   }
 
+  const payload = await response.json();
+  const remoteProfessionals = normalizeProfessionalsPayload(payload);
+
+  if (remoteProfessionals) {
+    writeLocalProfessionals(remoteProfessionals);
+    emit(remoteProfessionals);
+    return;
+  }
+
   const nextProfessionals = upsertCachedProfessional(professional, id);
   writeLocalProfessionals(nextProfessionals);
   emit(nextProfessionals);
 
-  const remoteProfessionals = await fetchRemoteProfessionalsStrict();
-  const targetId = String(id || professional.id);
-  if (!remoteProfessionals.some((item) => item.id === targetId)) {
-    throw new Error('Sheets respondió, pero el colaborador no quedó guardado.');
-  }
-
-  void broadcast().catch((error) => {
-    console.warn('No se pudo refrescar el equipo luego de guardar.', error);
-  });
+  const confirmedProfessionals = await fetchRemoteProfessionalsStrict();
+  writeLocalProfessionals(confirmedProfessionals);
+  emit(confirmedProfessionals);
 };
 
 const deleteRemoteProfessional = async (id: string) => {
@@ -353,18 +399,22 @@ const deleteRemoteProfessional = async (id: string) => {
     throw new Error(`No se pudo eliminar el colaborador (${response.status})`);
   }
 
+  const payload = await response.json();
+  const remoteProfessionals = normalizeProfessionalsPayload(payload);
+
+  if (remoteProfessionals) {
+    writeLocalProfessionals(remoteProfessionals);
+    emit(remoteProfessionals);
+    return;
+  }
+
   const nextProfessionals = deleteCachedProfessional(id);
   writeLocalProfessionals(nextProfessionals);
   emit(nextProfessionals);
 
-  const remoteProfessionals = await fetchRemoteProfessionalsStrict();
-  if (remoteProfessionals.some((item) => item.id === id)) {
-    throw new Error('Sheets respondió, pero el colaborador no se eliminó.');
-  }
-
-  void broadcast().catch((error) => {
-    console.warn('No se pudo refrescar el equipo luego de eliminar.', error);
-  });
+  const confirmedProfessionals = await fetchRemoteProfessionalsStrict();
+  writeLocalProfessionals(confirmedProfessionals);
+  emit(confirmedProfessionals);
 };
 
 const resetRemoteProfessionals = async () => {
@@ -393,15 +443,24 @@ const resetRemoteProfessionals = async () => {
     throw new Error(`No se pudo restaurar la base (${response.status})`);
   }
 
+  const payload = await response.json();
+  const remoteProfessionals = normalizeProfessionalsPayload(payload);
+
+  if (remoteProfessionals) {
+    writeLocalProfessionals(remoteProfessionals);
+    emit(remoteProfessionals);
+    return remoteProfessionals;
+  }
+
   const defaults = createDefaultProfessionals();
   writeLocalProfessionals(defaults);
   emit(defaults);
 
-  void broadcast().catch((error) => {
-    console.warn('No se pudo refrescar el equipo luego de restaurar.', error);
-  });
+  const confirmedProfessionals = await fetchRemoteProfessionalsStrict();
+  writeLocalProfessionals(confirmedProfessionals);
+  emit(confirmedProfessionals);
 
-  return defaults;
+  return confirmedProfessionals;
 };
 
 export const getProfessionalsSnapshot = () => {
@@ -462,7 +521,7 @@ export const createProfessional = async (data: Partial<ProfessionalRecord>) => {
     email: String(data.email || ''),
     phone: String(data.phone || ''),
     hours: String(data.hours || 'Lun, Mie, Vie (08:00 - 14:00)'),
-    retention: String(data.retention || '20%'),
+    retention: formatRetentionValue(data.retention || '20%'),
     image: String(data.image || DEFAULT_IMAGE),
   });
 
