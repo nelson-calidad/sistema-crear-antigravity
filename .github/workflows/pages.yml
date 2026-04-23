@@ -35,6 +35,8 @@ jobs:
         run: npm run build
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VITE_BACKEND_MODE: sheet
+          VITE_SHEETS_ENDPOINT_URL: https://script.google.com/macros/s/AKfycbz_MO9KSj562v2Rcsz-7VqnizbS2cRGxRDC6hMcttLdw8TGPPonD2yWzo8FO0aq5wrb/exec
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
