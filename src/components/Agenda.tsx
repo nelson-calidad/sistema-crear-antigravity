@@ -549,7 +549,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 md:gap-2.5">
+      <div className="grid gap-2 md:gap-3 lg:gap-4 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))] items-stretch">
         <div className="rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 shadow-sm">
           <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">Turnos del día</p>
           <p className="mt-1 text-lg font-black text-slate-900">{appointmentKindSummary.total}</p>
@@ -566,7 +566,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           <p className="text-[9px] font-black uppercase tracking-[0.22em] opacity-80">Bloqueos</p>
           <p className="mt-1 text-lg font-black">{appointmentKindSummary.block}</p>
         </div>
-        <div className="col-span-2 lg:col-span-1 rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 shadow-sm">
           <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">{resourceAvailability.label}</p>
           <p className="mt-1 text-lg font-black text-slate-900">{resourceAvailability.free}/{resourceAvailability.total}</p>
           <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">{resourceAvailability.busy} ocupados</p>
