@@ -38,6 +38,8 @@ import { useProfessionals } from '../lib/professionalsStore';
 import { forceRefreshAppointments } from '../lib/appointmentsStore';
 
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
+const HOUR_HEIGHT = 88;
+const HALF_HOUR_HEIGHT = HOUR_HEIGHT / 2;
 const UNASSIGNED_COLUMN = { id: 'unassigned', name: 'Sin asignar', color: 'bg-slate-400' };
 
 type AgendaProps = {
@@ -256,12 +258,12 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   const visibleAppointments = sortByStart(selectedDateAppointments);
   const getPositionFromTime = (timeStr: string) => {
     const minutesSinceStart = parseTimeToMinutes(timeStr) - (8 * 60);
-    return (minutesSinceStart / 60) * 100;
+    return (minutesSinceStart / 60) * HOUR_HEIGHT;
   };
 
   const getHeightFromInterval = (start: string, end: string) => {
     const duration = parseTimeToMinutes(end) - parseTimeToMinutes(start);
-    return Math.max((duration / 60) * 100, 70);
+    return Math.max((duration / 60) * HOUR_HEIGHT, 68);
   };
 
   const isUnassigned = (appointment: AppointmentRecord) => !appointment.proId && !appointment.roomId;
@@ -307,16 +309,16 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
     <div className="h-full flex flex-col gap-2 md:gap-4 min-h-0">
       <div className="flex flex-col gap-2 md:gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-1 md:space-y-1.5">
-          <div className="flex items-start gap-2.5 md:gap-3">
-            <div className="p-1.5 md:p-2 rounded-2xl bg-gradient-to-br from-cyan-100 via-blue-50 to-lavender-100 text-blue-600 border border-blue-100 shrink-0 shadow-sm">
-              <CalendarIcon className="w-4 h-4 md:w-5 md:h-5" />
+          <div className="flex items-start gap-2 md:gap-2.5">
+            <div className="p-1.5 rounded-2xl bg-gradient-to-br from-cyan-100 via-blue-50 to-lavender-100 text-blue-600 border border-blue-100 shrink-0 shadow-sm">
+              <CalendarIcon className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-[1rem] md:text-[2rem] font-black text-slate-900 tracking-tight leading-tight">
+              <h1 className="text-[0.95rem] md:text-[1.65rem] font-black text-slate-900 tracking-tight leading-tight">
                 <span className="md:hidden">Agenda</span>
                 <span className="hidden md:inline">Agenda Operativa</span>
               </h1>
-              <p className="hidden md:block text-sm text-slate-500 max-w-xl">
+              <p className="hidden md:block text-[12px] text-slate-500 max-w-xl leading-snug">
                 {timeMode === 'daily'
                   ? 'Controla turnos por profesional o consultorio con lectura rápida.'
                   : 'Visualiza la carga del mes y entra al día con un clic.'}
@@ -325,21 +327,21 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           </div>
 
           <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/90 text-slate-600 text-[9px] font-bold border border-slate-200/70">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/90 text-slate-600 text-[8px] font-bold border border-slate-200/70">
               <BadgeInfo className="w-3 h-3" />
               {titleCase(formatDateEs(selectedDate, 'EEEE, d MMMM'))}
             </span>
-            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50/90 text-blue-700 text-[9px] font-bold border border-blue-100">
+            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50/90 text-blue-700 text-[8px] font-bold border border-blue-100">
               {selectedDateAppointments.length} turno{selectedDateAppointments.length === 1 ? '' : 's'} en el día
             </span>
-            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50/90 text-emerald-700 text-[9px] font-bold border border-emerald-100">
+            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50/90 text-emerald-700 text-[8px] font-bold border border-emerald-100">
               {currentMonthAppointments.length} turno{currentMonthAppointments.length === 1 ? '' : 's'} en el mes
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:flex md:flex-row md:flex-wrap items-stretch md:items-center gap-1.5 md:gap-2 w-full xl:w-auto">
-          <div className="flex bg-slate-100/80 p-0.5 rounded-xl gap-1 col-span-2 md:col-span-1 w-full md:w-auto border border-slate-200/70">
+        <div className="flex flex-wrap items-center gap-1.5 md:gap-2 w-full xl:w-auto xl:flex-nowrap overflow-x-auto xl:overflow-visible pb-1 xl:pb-0 custom-scrollbar">
+          <div className="flex bg-slate-100/80 p-0.5 rounded-xl gap-1 w-full md:w-auto border border-slate-200/70 shrink-0">
             <button
               onClick={() => setTimeMode('daily')}
               className={cn(
@@ -361,14 +363,14 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           </div>
 
           {timeMode === 'daily' && (
-            <div className="flex bg-white/80 rounded-xl border border-slate-100 p-1 shadow-sm col-span-2 md:col-span-1 w-full md:w-auto backdrop-blur-sm">
+            <div className="flex bg-white/80 rounded-xl border border-slate-100 p-1 shadow-sm w-full md:w-auto backdrop-blur-sm shrink-0">
               <button
                 onClick={() => setSelectedDate(subDays(selectedDate, 1))}
                 className="p-2 hover:bg-slate-50 rounded-lg transition-colors shrink-0"
               >
                 <ChevronLeft className="w-4 h-4 text-slate-400" />
               </button>
-              <div className="px-2.5 py-1.5 font-bold text-slate-700 text-center flex-1 md:min-w-[170px] text-[11px] md:text-sm leading-tight truncate">
+              <div className="px-2.5 py-1.5 font-bold text-slate-700 text-center flex-1 md:min-w-[160px] text-[11px] md:text-sm leading-tight truncate">
                 {titleCase(formatDateEs(selectedDate, 'EEEE, d MMMM'))}
               </div>
               <button
@@ -381,11 +383,11 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           )}
 
           {timeMode === 'daily' && (
-            <div className="bg-slate-100/80 p-0.5 rounded-xl flex gap-1 col-span-2 md:col-span-1 w-full md:w-auto border border-slate-200/70">
+            <div className="bg-slate-100/80 p-0.5 rounded-xl flex gap-1 w-full md:w-auto border border-slate-200/70 shrink-0">
               <button
                 onClick={() => setViewMode('professionals')}
                 className={cn(
-                  'flex-1 md:flex-none px-2.5 md:px-3 py-1.25 md:py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
+                  'flex-1 md:flex-none px-2.5 md:px-3 py-1.25 md:py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5 whitespace-nowrap',
                   viewMode === 'professionals' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700',
                 )}
               >
@@ -395,7 +397,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               <button
                 onClick={() => setViewMode('rooms')}
                 className={cn(
-                  'flex-1 md:flex-none px-2.5 md:px-3 py-1.25 md:py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
+                  'flex-1 md:flex-none px-2.5 md:px-3 py-1.25 md:py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5 whitespace-nowrap',
                   viewMode === 'rooms' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700',
                 )}
               >
@@ -407,7 +409,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
           <button
             onClick={() => onOpenModal()}
-            className="inline-flex items-center justify-center gap-2 px-3.5 md:px-4 py-2 bg-gradient-to-r from-cyan-500 via-blue-600 to-lavender-500 text-white rounded-xl font-bold text-xs hover:brightness-105 transition-colors shadow-lg shadow-blue-200/40 col-span-2 md:col-span-1 w-full md:w-auto"
+            className="inline-flex items-center justify-center gap-2 px-3.5 md:px-4 py-2 bg-gradient-to-r from-cyan-500 via-blue-600 to-lavender-500 text-white rounded-xl font-bold text-xs hover:brightness-105 transition-colors shadow-lg shadow-blue-200/40 w-full md:w-auto shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             Nuevo Bloque
@@ -415,7 +417,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
           <button
             onClick={handleDailyPdf}
-          className="hidden sm:inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/80 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm col-span-1 w-full md:w-auto backdrop-blur-sm"
+            className="hidden sm:inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/80 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm w-full md:w-auto backdrop-blur-sm shrink-0"
           >
             <Printer className="w-3.5 h-3.5" />
             PDF Día
@@ -423,7 +425,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
           <button
             onClick={handleMonthlyPdf}
-          className="hidden sm:inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/80 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm col-span-1 w-full md:w-auto backdrop-blur-sm"
+            className="hidden sm:inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/80 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm w-full md:w-auto backdrop-blur-sm shrink-0"
           >
             <Printer className="w-3.5 h-3.5" />
             PDF Mes
@@ -435,7 +437,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 console.warn('No se pudo refrescar la agenda manualmente.', error);
               });
             }}
-            className="inline-flex items-center justify-center gap-2 px-3.5 md:px-4 py-2 bg-white/80 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm col-span-2 md:col-span-1 w-full md:w-auto backdrop-blur-sm"
+            className="inline-flex items-center justify-center gap-2 px-3.5 md:px-4 py-2 bg-white/80 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm w-full md:w-auto backdrop-blur-sm shrink-0"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Refrescar
@@ -664,11 +666,12 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             </div>
 
             <div ref={dailyTimelineRef} className="flex-1 overflow-y-auto relative custom-scrollbar">
-              <div className="hidden md:flex min-h-[1300px]">
+              <div className="hidden md:flex min-h-[1232px]">
                 <div className="w-16 border-r border-slate-100 bg-slate-50/20 sticky left-0 z-20 backdrop-blur-sm">
                   {HOURS.map((hour) => (
-                    <div key={hour} className="h-[96px] border-b border-slate-100/50 flex items-start justify-center pt-2">
+                    <div key={hour} className="relative h-[88px] border-b border-slate-200/60 flex items-start justify-center pt-2">
                       <span className="text-[10px] font-black text-slate-400">{hour.toString().padStart(2, '0')}:00</span>
+                      <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200/80" />
                     </div>
                   ))}
                 </div>
@@ -691,7 +694,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                         }
                       >
                         {HOURS.map((hour) => (
-                          <div key={hour} className="h-[96px] border-b border-slate-50 w-full" />
+                          <div key={hour} className="relative h-[88px] border-b border-slate-200/60 w-full">
+                            <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200/70" />
+                          </div>
                         ))}
 
                         {columnAppointments.length === 0 ? (
