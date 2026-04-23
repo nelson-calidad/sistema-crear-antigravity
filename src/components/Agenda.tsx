@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -206,18 +206,18 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   };
 
   return (
-    <div className="h-full flex flex-col gap-3 md:gap-4">
+    <div className="h-full flex flex-col gap-2 md:gap-4 min-h-0">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-2">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
-              <CalendarIcon className="w-5 h-5" />
+              <CalendarIcon className="w-4 h-4 md:w-5 md:h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl md:text-[2rem] font-black text-slate-900 tracking-tight leading-tight">
+              <h1 className="text-xl md:text-[2rem] font-black text-slate-900 tracking-tight leading-tight">
                 Agenda Operativa
               </h1>
-              <p className="text-sm text-slate-500 max-w-xl">
+              <p className="text-xs md:text-sm text-slate-500 max-w-xl">
                 {timeMode === 'daily'
                   ? 'Controla turnos por profesional o consultorio con lectura rápida.'
                   : 'Visualiza la carga del mes y entra al día con un clic.'}
@@ -225,15 +225,15 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
-              <BadgeInfo className="w-3.5 h-3.5" />
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[9px] md:text-[10px] font-bold">
+              <BadgeInfo className="w-3 h-3" />
               {format(selectedDate, 'EEEE, d MMMM')}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[9px] md:text-[10px] font-bold">
               {selectedDateAppointments.length} turno{selectedDateAppointments.length === 1 ? '' : 's'} en el día
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[9px] md:text-[10px] font-bold">
               {currentMonthAppointments.length} turno{currentMonthAppointments.length === 1 ? '' : 's'} en el mes
             </span>
           </div>
@@ -244,7 +244,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             <button
               onClick={() => setTimeMode('daily')}
               className={cn(
-                'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.22em] transition-all',
+                'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-[0.22em] transition-all',
                 timeMode === 'daily' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500',
               )}
             >
@@ -253,7 +253,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             <button
               onClick={() => setTimeMode('monthly')}
               className={cn(
-                'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.22em] transition-all',
+                'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-[0.22em] transition-all',
                 timeMode === 'monthly' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500',
               )}
             >
@@ -269,7 +269,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               >
                 <ChevronLeft className="w-4 h-4 text-slate-400" />
               </button>
-              <div className="px-3 py-1.5 font-bold text-slate-700 text-center flex-1 md:min-w-[170px] text-xs md:text-sm leading-tight">
+              <div className="px-2.5 py-1.5 font-bold text-slate-700 text-center flex-1 md:min-w-[170px] text-[11px] md:text-sm leading-tight">
                 {format(selectedDate, 'EEEE, d MMMM')}
               </div>
               <button
@@ -286,7 +286,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               <button
                 onClick={() => setViewMode('professionals')}
                 className={cn(
-                  'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
+                  'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
                   viewMode === 'professionals' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700',
                 )}
               >
@@ -296,7 +296,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               <button
                 onClick={() => setViewMode('rooms')}
                 className={cn(
-                  'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
+                  'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
                   viewMode === 'rooms' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700',
                 )}
               >
@@ -486,90 +486,91 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             </div>
           </>
         ) : (
-          <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar">
-            <div className="overflow-x-auto">
-              <div className="min-w-[42rem] md:min-w-0 grid grid-cols-7 gap-px bg-slate-100 border border-slate-100 rounded-3xl overflow-hidden">
-                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day) => (
+          <div className="flex-1 p-2 md:p-6 overflow-y-auto custom-scrollbar">
+            <div className="grid grid-cols-7 gap-px bg-slate-100 border border-slate-100 rounded-2xl md:rounded-3xl overflow-hidden">
+              {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day) => (
+                <div
+                  key={day}
+                  className="bg-slate-50 py-1 px-1 text-center text-[7px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.12em]"
+                >
+                  {day}
+                </div>
+              ))}
+
+              {eachDayOfInterval({
+                start: startOfWeek(startOfMonth(selectedDate)),
+                end: endOfWeek(endOfMonth(selectedDate)),
+              }).map((day) => {
+                const dayAppointments = sortByStart(
+                  appointments.filter((appointment) => {
+                    const appointmentDate = parseDay(appointment.date);
+                    return appointmentDate ? isSameDay(appointmentDate, day) : false;
+                  }),
+                );
+
+                return (
                   <div
-                    key={day}
-                    className="bg-slate-50 p-2 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                    key={day.toISOString()}
+                    className={cn(
+                      'min-h-[76px] md:min-h-[140px] bg-white p-1 md:p-2 border-slate-50 transition-colors hover:bg-slate-50/50 cursor-pointer',
+                      !isSameMonth(day, selectedDate) && 'opacity-30',
+                    )}
+                    onClick={() => {
+                      setSelectedDate(day);
+                      setTimeMode('daily');
+                    }}
                   >
-                    {day}
-                  </div>
-                ))}
-
-                {eachDayOfInterval({
-                  start: startOfWeek(startOfMonth(selectedDate)),
-                  end: endOfWeek(endOfMonth(selectedDate)),
-                }).map((day) => {
-                  const dayAppointments = sortByStart(
-                    appointments.filter((appointment) => {
-                      const appointmentDate = parseDay(appointment.date);
-                      return appointmentDate ? isSameDay(appointmentDate, day) : false;
-                    }),
-                  );
-
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={cn(
-                        'min-h-[140px] bg-white p-2 border-slate-50 transition-colors hover:bg-slate-50/50 cursor-pointer',
-                        !isSameMonth(day, selectedDate) && 'opacity-30',
-                      )}
-                      onClick={() => {
-                        setSelectedDate(day);
-                        setTimeMode('daily');
-                      }}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span
-                          className={cn(
-                            'text-xs font-bold',
-                            isSameDay(day, new Date())
-                              ? 'w-6 h-6 flex items-center justify-center bg-blue-600 text-white rounded-full'
-                              : 'text-slate-400',
-                          )}
-                        >
-                          {format(day, 'd')}
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span
+                        className={cn(
+                          'text-[10px] md:text-xs font-bold',
+                          isSameDay(day, new Date())
+                            ? 'w-5 h-5 md:w-6 md:h-6 flex items-center justify-center bg-blue-600 text-white rounded-full'
+                            : 'text-slate-400',
+                        )}
+                      >
+                        {format(day, 'd')}
+                      </span>
+                      {dayAppointments.length > 0 && (
+                        <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                          {dayAppointments.length}
                         </span>
-                        {dayAppointments.length > 0 && (
-                          <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-blue-50 text-blue-700">
-                            {dayAppointments.length}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="space-y-1">
-                        {dayAppointments.slice(0, 3).map((app) => {
-                          const pro = PROFESSIONALS.find((p) => p.id === app.proId);
-                          const room = ROOMS.find((r) => r.id === app.roomId);
-                          return (
-                            <div
-                              key={app.id}
-                              className={cn('text-[9px] px-2 py-1.5 rounded-xl font-bold truncate border', getTypeStyles(app.type))}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="truncate">
-                                  {formatTimeOnly(app.start)} {formatLabel(app.patient || app.title)}
-                                </span>
-                                <span className="opacity-70">{getCoverageLabel(app)}</span>
-                              </div>
-                              <div className="mt-1 flex items-center justify-between gap-2 text-[8px] font-bold uppercase opacity-70">
-                                <span className="truncate">{getTypeLabel(app.type)}</span>
-                                <span className="truncate">{room?.name || pro?.name || 'Sys'}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        {dayAppointments.length > 3 && (
-                          <div className="text-[9px] text-slate-400 font-bold pl-1">+ {dayAppointments.length - 3} más</div>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+
+                    <div className="space-y-1">
+                      {dayAppointments.slice(0, 2).map((app) => {
+                        const pro = PROFESSIONALS.find((p) => p.id === app.proId);
+                        const room = ROOMS.find((r) => r.id === app.roomId);
+                        return (
+                          <div
+                            key={app.id}
+                            className={cn(
+                              'text-[7px] md:text-[9px] px-1 py-1 rounded-lg font-bold truncate border leading-tight',
+                              getTypeStyles(app.type),
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate">
+                                {formatTimeOnly(app.start)} {formatLabel(app.patient || app.title)}
+                              </span>
+                              <span className="shrink-0 opacity-70">{getCoverageLabel(app)}</span>
+                            </div>
+                            <div className="mt-0.5 flex items-center justify-between gap-2 text-[7px] font-bold uppercase opacity-70">
+                              <span className="truncate">{getTypeLabel(app.type)}</span>
+                              <span className="truncate">{room?.name || pro?.name || 'Sin asignar'}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {dayAppointments.length > 2 && (
+                        <div className="text-[8px] text-slate-400 font-bold pl-1">+ {dayAppointments.length - 2} más</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
