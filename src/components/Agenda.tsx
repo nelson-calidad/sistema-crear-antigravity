@@ -579,7 +579,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             <div className="md:hidden p-2 pb-2 space-y-2 overflow-y-auto custom-scrollbar">
               {viewMode === 'professionals' ? (
                 <>
-                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
                     {mobileResources.map((resource) => {
                       const isActive = resource.count > 0;
 
@@ -603,22 +603,18 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                             }
                           }}
                           className={cn(
-                            'min-w-[96px] px-2.5 py-2 rounded-2xl border text-left transition-all shrink-0',
-                            isActive ? 'bg-white border-blue-200 shadow-md shadow-blue-100/40' : 'bg-slate-50/80 border-slate-100 opacity-70',
+                            'min-w-[84px] px-2 py-1.5 rounded-2xl border text-left transition-all shrink-0',
+                            isActive ? 'bg-white border-blue-200 shadow-sm shadow-blue-100/40' : 'bg-slate-50/80 border-slate-100 opacity-70',
                           )}
                         >
-                          <div className="flex items-center gap-2">
-                            <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center text-white font-black text-[10px]', resource.colorClass)}>
+                          <div className="flex items-center gap-1.5">
+                            <div className={cn('w-6 h-6 rounded-lg flex items-center justify-center text-white font-black text-[9px]', resource.colorClass)}>
                               {resource.name[0]}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-[10px] font-black text-slate-900 truncate">{resource.name}</p>
-                              <p className="hidden sm:block text-[9px] uppercase font-bold text-slate-400 truncate">{resource.subtitle}</p>
+                              <p className="text-[9px] font-black text-slate-900 truncate">{resource.name}</p>
+                              <p className="text-[8px] uppercase font-bold text-slate-400 truncate">{resource.count} turnos</p>
                             </div>
-                          </div>
-                          <div className="mt-2 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.14em]">
-                            <span className={isActive ? 'text-blue-600' : 'text-slate-400'}>{resource.count} turnos</span>
-                            <span className="text-slate-400">activo</span>
                           </div>
                         </button>
                       );
@@ -640,15 +636,15 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                           key={app.id}
                           type="button"
                           onClick={() => onOpenModal(room?.name, pro?.name, app)}
-                          className={cn('w-full text-left rounded-2xl p-2.5 border shadow-sm backdrop-blur-sm', getTypeStyles(app.kind || app.type))}
+                          className={cn('w-full text-left rounded-3xl p-3.5 md:p-4 border shadow-md backdrop-blur-sm', getTypeStyles(app.kind || app.type))}
                         >
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <p className="text-[10px] font-black uppercase tracking-[0.18em] mb-1.5">
                                 {app.start} - {app.end}
                               </p>
-                              <p className="font-bold text-[13px] truncate leading-tight">{getAppointmentName(app)}</p>
-                              <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide opacity-85 truncate">
+                              <p className="font-black text-[15px] truncate leading-tight">{getAppointmentName(app)}</p>
+                              <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide opacity-85 truncate">
                                 {getTypeLabel(app.kind || app.type)} · {getCorrespondsToLabel(app)}
                               </p>
                             </div>
@@ -663,7 +659,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 </>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
                     {mobileRoomColumns.map((room) => {
                       const isActive = room.appointments.length > 0;
 
@@ -673,22 +669,18 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                           type="button"
                           onClick={() => onOpenModal(room.name, undefined)}
                           className={cn(
-                            'min-w-[116px] px-2.5 py-2 rounded-2xl border text-left transition-all shrink-0',
-                            isActive ? 'bg-white border-cyan-200 shadow-md shadow-cyan-100/40' : 'bg-slate-50/80 border-slate-100 opacity-70',
+                            'min-w-[84px] px-2 py-1.5 rounded-2xl border text-left transition-all shrink-0',
+                            isActive ? 'bg-white border-cyan-200 shadow-sm shadow-cyan-100/40' : 'bg-slate-50/80 border-slate-100 opacity-70',
                           )}
                         >
-                          <div className="flex items-center gap-2">
-                            <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center text-white font-black text-[10px]', room.colorClass)}>
+                          <div className="flex items-center gap-1.5">
+                            <div className={cn('w-6 h-6 rounded-lg flex items-center justify-center text-white font-black text-[9px]', room.colorClass)}>
                               {room.name[0]}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-[10px] font-black text-slate-900 truncate">{room.name}</p>
-                              <p className="text-[9px] uppercase font-bold text-slate-400 truncate">Consultorio</p>
+                              <p className="text-[9px] font-black text-slate-900 truncate">{room.name}</p>
+                              <p className="text-[8px] uppercase font-bold text-slate-400 truncate">{room.appointments.length} turnos</p>
                             </div>
-                          </div>
-                          <div className="mt-2 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.14em]">
-                            <span className={isActive ? 'text-cyan-600' : 'text-slate-400'}>{room.appointments.length} turnos</span>
-                            <span className="text-slate-400">abrir</span>
                           </div>
                         </button>
                       );
@@ -699,9 +691,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                     {mobileRoomColumns.map((room) => (
                       <div
                         key={room.id}
-                        className="min-w-[84%] snap-start rounded-3xl border border-slate-100 bg-white/90 shadow-sm p-3 shrink-0"
+                        className="min-w-[92%] snap-start rounded-3xl border border-slate-100 bg-white/95 shadow-sm p-3.5 shrink-0"
                       >
-                        <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center justify-between gap-2 mb-2.5">
                           <div className="flex items-center gap-2 min-w-0">
                             <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-[11px]', room.colorClass)}>
                               {room.name[0]}
@@ -716,7 +708,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                           </span>
                         </div>
 
-                        <div className="space-y-2 max-h-[52vh] overflow-y-auto custom-scrollbar pr-1">
+                        <div className="space-y-2 max-h-[58vh] overflow-y-auto custom-scrollbar pr-1">
                           {room.appointments.length === 0 ? (
                             <div className="p-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center">
                               <p className="text-sm font-bold text-slate-700">Sin turnos</p>
@@ -731,17 +723,17 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                   type="button"
                                   onClick={() => onOpenModal(room.name, pro?.name, app)}
                                   className={cn(
-                                    'w-full text-left rounded-2xl p-2.5 border shadow-sm backdrop-blur-sm',
+                                    'w-full text-left rounded-3xl p-3.5 border shadow-md backdrop-blur-sm',
                                     getTypeStyles(app.kind || app.type),
                                   )}
                                 >
-                                  <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
                                       <p className="text-[10px] font-black uppercase tracking-[0.18em] mb-1.5">
                                         {app.start} - {app.end}
                                       </p>
-                                      <p className="font-bold text-[13px] truncate leading-tight">{getAppointmentName(app)}</p>
-                                      <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide opacity-85 truncate">
+                                      <p className="font-black text-[15px] truncate leading-tight">{getAppointmentName(app)}</p>
+                                      <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide opacity-85 truncate">
                                         {getTypeLabel(app.kind || app.type)} · {pro?.name || 'Sin profesional'}
                                       </p>
                                     </div>
