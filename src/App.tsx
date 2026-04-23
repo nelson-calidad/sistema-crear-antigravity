@@ -193,26 +193,29 @@ export default function App() {
       />
       
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-slate-100 px-4 md:px-8 py-3 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0 shadow-[0_8px_28px_rgba(148,117,96,0.04)]">
+        <header className="bg-white border-b border-slate-100 px-3 md:px-8 py-2 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0 shadow-[0_8px_28px_rgba(148,117,96,0.04)]">
           <div className="flex items-center justify-between gap-2 md:hidden w-full">
             <button
               onClick={() => setMobileSidebarOpen((open) => !open)}
-              className="w-9 h-9 rounded-lg bg-white border border-slate-100 overflow-hidden shadow-sm flex items-center justify-center shrink-0"
+              className="w-8 h-8 rounded-lg bg-white border border-slate-100 overflow-hidden shadow-sm flex items-center justify-center shrink-0"
               aria-label="Abrir menú"
             >
               {mobileSidebarOpen ? <X className="w-4 h-4 text-slate-900" /> : <img src={logoCrear} alt="CREAR" className="w-full h-full object-contain p-0.5" />}
             </button>
-            <div className="min-w-0 flex-1 flex items-center gap-2">
+            <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm font-black text-slate-900 truncate leading-none">{mobileTabLabel}</p>
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400 leading-none mt-0.5">
-                  {getBackendLabel()} conectado
+                <p className="text-[13px] font-black text-slate-900 truncate leading-none">{mobileTabLabel}</p>
+                <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-slate-400 leading-none mt-0.5">
+                  {getBackendLabel()}
                 </p>
               </div>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-[8px] font-black uppercase tracking-[0.18em] text-slate-500 shrink-0">
+                Conectado
+              </span>
             </div>
-            <button className="relative p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200/70 shrink-0">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
+            <button className="relative p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200/70 shrink-0">
+              <Bell className="w-4.5 h-4.5" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-rose-500 rounded-full border border-white" />
             </button>
           </div>
 

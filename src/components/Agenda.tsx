@@ -401,7 +401,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   return (
     <div className="h-full flex flex-col gap-1.5 md:gap-2 min-h-0">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-1 max-w-2xl min-w-0">
+        <div className="hidden md:block space-y-1 max-w-2xl min-w-0">
           <div className="flex items-start gap-2 md:gap-2.5">
             <div className="p-1.5 rounded-2xl bg-gradient-to-br from-cyan-100 via-blue-50 to-lavender-100 text-blue-600 border border-blue-100 shrink-0 shadow-sm">
               <CalendarIcon className="w-4 h-4" />
@@ -416,7 +416,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
         </div>
 
-        <div className="flex w-full flex-col gap-2 lg:w-auto lg:items-end">
+        <div className="flex w-full flex-col gap-1.5 lg:w-auto lg:items-end">
           <div className="flex flex-wrap items-center justify-end gap-1.5 w-full">
             <div className="flex bg-slate-100/80 p-0.5 rounded-xl gap-1 w-full sm:w-auto border border-slate-200/70 shrink-0 min-w-0">
             <button
