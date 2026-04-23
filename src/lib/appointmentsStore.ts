@@ -22,6 +22,18 @@ const createId = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
+const resolveAppointmentKind = (value?: unknown): AppointmentRecord['kind'] => {
+  if (value === 'interview') return 'interview';
+  if (value === 'block' || value === 'survey') return 'block';
+  return 'session';
+};
+
+const resolveAppointmentStatus = (value?: unknown): AppointmentRecord['status'] => {
+  if (value === 'completed') return 'completed';
+  if (value === 'cancelled') return 'cancelled';
+  return 'scheduled';
+};
+
 const buildSheetUrl = () => {
   if (!SHEET_ENDPOINT) {
     return null;
@@ -56,7 +68,10 @@ const demoAppointments: AppointmentRecord[] = [
   {
     id: 'demo-1',
     title: 'Sesión Juan P.',
+    kind: 'session',
+    status: 'scheduled',
     type: 'session',
+    professionalId: '1',
     proId: '1',
     roomId: 'c1',
     date: today(),
@@ -67,7 +82,10 @@ const demoAppointments: AppointmentRecord[] = [
   {
     id: 'demo-2',
     title: 'Entrevista Maria G.',
+    kind: 'interview',
+    status: 'scheduled',
     type: 'interview',
+    professionalId: '2',
     proId: '2',
     roomId: 'c3',
     date: today(),
@@ -78,7 +96,9 @@ const demoAppointments: AppointmentRecord[] = [
   {
     id: 'demo-3',
     title: 'Otros de ingreso',
-    type: 'survey',
+    kind: 'block',
+    status: 'scheduled',
+    type: 'block',
     roomId: 'c2',
     date: today(),
     start: '11:15',
@@ -90,9 +110,12 @@ const demoAppointments: AppointmentRecord[] = [
 const normalizeAppointment = (appointment: Partial<AppointmentRecord> & Record<string, unknown>): AppointmentRecord => ({
   id: String(appointment.id || createId()),
   title: String(appointment.title || 'Nueva Reserva'),
-  type: (appointment.type as AppointmentRecord['type']) || 'session',
+  kind: resolveAppointmentKind(appointment.kind ?? appointment.type),
+  status: resolveAppointmentStatus(appointment.status),
+  type: resolveAppointmentKind(appointment.kind ?? appointment.type),
   coverageType: (appointment.coverageType as AppointmentRecord['coverageType']) || 'particular',
-  proId: appointment.proId ? String(appointment.proId) : undefined,
+  professionalId: appointment.professionalId ? String(appointment.professionalId) : appointment.proId ? String(appointment.proId) : undefined,
+  proId: appointment.professionalId ? String(appointment.professionalId) : appointment.proId ? String(appointment.proId) : undefined,
   roomId: appointment.roomId ? String(appointment.roomId) : undefined,
   patient: appointment.patient ? String(appointment.patient) : undefined,
   notes: appointment.notes ? String(appointment.notes) : undefined,

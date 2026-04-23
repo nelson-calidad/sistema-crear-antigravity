@@ -4,6 +4,9 @@
  */
 
 export type Role = 'admin' | 'professional' | 'secretary';
+export type AppointmentKind = 'session' | 'interview' | 'block';
+export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
+export type AppointmentType = AppointmentKind;
 
 export interface UserProfile {
   uid: string;
@@ -30,9 +33,6 @@ export interface Patient {
   healthInsurance: string;
   phone: string;
 }
-
-export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
-export type AppointmentType = 'session' | 'interview';
 
 export interface Appointment {
   id: string;
@@ -71,8 +71,11 @@ export interface FinancialSummary {
 export interface AppointmentRecord {
   id: string;
   title: string;
-  type: 'session' | 'interview' | 'survey';
+  kind: AppointmentKind;
+  status: AppointmentStatus;
   coverageType?: 'obra social' | 'particular';
+  type?: AppointmentKind;
+  professionalId?: string;
   proId?: string;
   roomId?: string;
   patient?: string;

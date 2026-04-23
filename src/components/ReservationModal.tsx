@@ -84,9 +84,9 @@ const overlaps = (startA: string, endA: string, startB: string, endB: string) =>
   return aStart < bEnd && aEnd > bStart;
 };
 
-const getDurationMinutes = (type: 'session' | 'interview' | 'survey') => {
-  if (type === 'interview') return 30;
-  if (type === 'survey') return 20;
+const getDurationMinutes = (kind: 'session' | 'interview' | 'block') => {
+  if (kind === 'interview') return 30;
+  if (kind === 'block') return 60;
   return 45;
 };
 
@@ -111,7 +111,7 @@ const addMinutesToTime = (time: string, minutes: number) => {
 
 export const ReservationModal = ({ isOpen, onClose, room, professional, appointments = [], initialData, initialDate, initialStartTime, onSave, onDelete, isSaving = false, isDeleting = false }: ReservationModalProps) => {
   const [professionals] = useProfessionals();
-  const [type, setType] = useState<'session' | 'interview' | 'survey'>(initialData?.type || 'session');
+  const [kind, setKind] = useState<'session' | 'interview' | 'block'>(initialData?.kind || initialData?.type || 'session');
   const [coverageType, setCoverageType] = useState<'obra social' | 'particular'>(initialData?.coverageType || 'particular');
   const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'weekdays'>('none');
   const [selectedDays, setSelectedDays] = useState<number[]>([]); // 0-6 for Sun-Sat
@@ -124,7 +124,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
     patient: initialData?.title || '',
     date: initialData?.date || initialDate || new Date().toISOString().split('T')[0],
     startTime: initialData?.start || initialStartTime || '08:00',
-    endTime: initialData?.end || addMinutesToTime(initialData?.start || initialStartTime || '08:00', getDurationMinutes(initialData?.type || 'session')),
+    endTime: initialData?.end || addMinutesToTime(initialData?.start || initialStartTime || '08:00', getDurationMinutes(initialData?.kind || initialData?.type || 'session')),
     notes: initialData?.notes || ''
   });
 
@@ -133,9 +133,9 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
   // Dynamic End Time logic
   useEffect(() => {
     if (!initialData && formData.startTime) { // Only auto-change for NEW reservations
-      setFormData(prev => ({ ...prev, endTime: addMinutesToTime(prev.startTime, getDurationMinutes(type)) }));
+      setFormData(prev => ({ ...prev, endTime: addMinutesToTime(prev.startTime, getDurationMinutes(kind)) }));
     }
-  }, [type, initialData, formData.startTime]);
+  }, [kind, initialData, formData.startTime]);
 
   // Filter ONLY active professionals as requested
   const activeProfessionals = professionals.filter((p) => p.status === 'Activo');
@@ -160,8 +160,8 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
 
   const occupiedProfessionalIds = useMemo(() => {
     return selectedDayAppointments
-      .filter((appointment) => appointment.proId && overlaps(formData.startTime, formData.endTime, appointment.start, appointment.end))
-      .map((appointment) => appointment.proId as string);
+      .filter((appointment) => (appointment.professionalId || appointment.proId) && overlaps(formData.startTime, formData.endTime, appointment.start, appointment.end))
+      .map((appointment) => (appointment.professionalId || appointment.proId) as string);
   }, [selectedDayAppointments, formData.endTime, formData.startTime]);
 
   const occupiedRoomIds = useMemo(() => {
@@ -174,7 +174,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        setType(initialData.type);
+        setKind(initialData.kind || initialData.type || 'session');
         setCoverageType(initialData.coverageType || 'particular');
         setSelectedProId(initialData.proId || '');
         setSelectedRoomId(initialData.roomId || '');
@@ -187,7 +187,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
         });
       } else {
         // Reset/New
-        setType('session');
+        setKind('session');
         setRecurrence('none');
         setSelectedDays([]);
         setFormData(prev => ({
@@ -222,6 +222,22 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
 
   const selectedProfessionalBusy = selectedProId ? isProfessionalBusy(selectedProId) : false;
   const selectedRoomBusy = selectedRoomId ? isRoomBusy(selectedRoomId) : false;
+  const kindLabel = kind === 'interview' ? 'entrevista' : kind === 'block' ? 'bloqueo' : 'sesión';
+  const modalTitle = isEditing ? `Editar ${kindLabel}` : `Crear ${kindLabel}`;
+  const modalSubtitle = kind === 'block'
+    ? 'Completa los detalles para bloquear el espacio.'
+    : kind === 'interview'
+      ? 'Completa los detalles para registrar la entrevista.'
+      : 'Completa los detalles para registrar la sesión.';
+  const personLabel = kind === 'block'
+    ? 'Detalle / Motivo'
+    : kind === 'interview'
+      ? 'Paciente / Responsable'
+      : 'Paciente';
+  const personPlaceholder = kind === 'block'
+    ? 'Motivo del bloqueo...'
+    : 'Nombre del paciente...';
+  const professionalLabel = kind === 'block' ? 'Profesional afectado (opcional)' : 'Profesional corresponsal';
 
   const handleSave = () => {
     if (isSaving || isDeleting) {
@@ -235,8 +251,11 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
 
     onSave({
       ...formData,
-      type,
+      kind,
+      type: kind,
       coverageType,
+      status: initialData?.status || 'scheduled',
+      professionalId: selectedProId || undefined,
       proId: selectedProId,
       roomId: selectedRoomId,
       recurrence,
@@ -275,9 +294,9 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-600">
                 {isEditing ? 'Editar registro' : 'Nuevo registro'}
               </p>
-              <h2 className="mt-1 text-lg md:text-xl font-black text-slate-900">{isEditing ? 'Editar bloque' : 'Crear bloque'}</h2>
+              <h2 className="mt-1 text-lg md:text-xl font-black text-slate-900">{modalTitle}</h2>
               <p className="hidden md:block text-xs text-slate-500 font-medium tracking-tight">
-                {isEditing ? 'Modifica los parÃ¡metros del bloque horario.' : 'Completa los detalles para bloquear el espacio.'}
+                {modalSubtitle}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -306,14 +325,19 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
               {[
                 { id: 'session', label: 'SesiÃ³n', icon: User },
                 { id: 'interview', label: 'Entrevista', icon: FileText },
-                { id: 'survey', label: 'Otros', icon: AlertCircle },
+                { id: 'block', label: 'Bloqueo', icon: AlertCircle },
               ].map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => setType(t.id as any)}
+                  onClick={() => {
+                    setKind(t.id as any);
+                    if (t.id === 'block') {
+                      setSelectedProId('');
+                    }
+                  }}
                   className={cn(
                     "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all",
-                    type === t.id ? "bg-white text-cyan-700 shadow-sm border border-cyan-200" : "text-slate-500 hover:text-slate-700"
+                    kind === t.id ? "bg-white text-cyan-700 shadow-sm border border-cyan-200" : "text-slate-500 hover:text-slate-700"
                   )}
                 >
                   <t.icon className="w-3.5 h-3.5" />
@@ -336,11 +360,11 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Profesional corresponsal</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">{professionalLabel}</label>
                 <select 
                   value={selectedProId}
                   onChange={(e) => setSelectedProId(e.target.value)}
-                  disabled={type === 'survey'}
+                  disabled={kind === 'block'}
                   className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 disabled:opacity-50 text-slate-900"
                 >
                    <option value="">Seleccionar...</option>
@@ -356,7 +380,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                     Ese profesional ya estÃ¡ ocupado en este horario.
                   </div>
                 )}
-                {!selectedProfessionalBusy && selectedDayAppointments.some((appointment) => appointment.proId) && (
+                {!selectedProfessionalBusy && selectedDayAppointments.some((appointment) => appointment.professionalId || appointment.proId) && (
                   <div className="flex flex-wrap gap-1.5">
                     {activeProfessionals
                       .filter((pro) => isProfessionalBusy(pro.id))
@@ -403,14 +427,14 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
               </div>
             </div>
 
-            {type !== 'survey' && (
+            {kind !== 'block' && (
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Paciente / Responsable</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">{personLabel}</label>
                 <input 
                   type="text" 
                   value={formData.patient}
                   onChange={(e) => setFormData({...formData, patient: e.target.value})}
-                  placeholder="Nombre del paciente..."
+                  placeholder={personPlaceholder}
                   className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-cyan-100 focus:bg-white transition-all outline-none text-slate-900 placeholder:text-slate-400"
                 />
               </div>

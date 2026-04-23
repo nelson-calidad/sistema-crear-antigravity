@@ -278,12 +278,19 @@ export default function App() {
           setModalAction('save');
           try {
             const patientName = data.patient?.trim();
+            const kind = data.kind || data.type || 'session';
+            const professionalId = data.professionalId || data.proId || undefined;
             const appointmentData = {
               ...data,
+              kind,
+              type: kind,
+              status: data.status || 'scheduled',
               start: data.startTime,
               end: data.endTime,
               patient: patientName || undefined,
-              title: patientName || data.title || (data.type === 'survey' ? 'Otros' : 'Nueva Reserva'),
+              title: patientName || data.title || (kind === 'block' ? 'Bloqueo' : kind === 'interview' ? 'Entrevista' : 'Nueva Reserva'),
+              professionalId,
+              proId: professionalId,
               createdBy: user.uid
             };
             const wasEditing = Boolean(modalContext.appointment);

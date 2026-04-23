@@ -62,16 +62,16 @@ const getAppointmentName = (appointment: AppointmentRecord) => {
   return raw;
 };
 
-const getTypeLabel = (type?: string) => {
-  if (type === 'interview') return 'Entrevista';
-  if (type === 'survey') return 'Otros';
+const getTypeLabel = (kind?: string) => {
+  if (kind === 'interview') return 'Entrevista';
+  if (kind === 'block') return 'Bloqueo';
   return 'Sesion';
 };
 
 const getCoverageLabel = (appointment: AppointmentRecord) => appointment.coverageType || 'particular';
 
 const getCorrespondsToLabel = (appointment: AppointmentRecord, professionals: ProfessionalRecord[]) => {
-  const pro = professionals.find((p) => p.id === appointment.proId);
+  const pro = professionals.find((p) => p.id === appointment.professionalId || appointment.proId);
   const room = ROOMS.find((r) => r.id === appointment.roomId);
 
   if (pro && room) return `${pro.name} · ${room.name}`;
@@ -109,11 +109,11 @@ const getStats = (appointments: AppointmentRecord[]) => {
 
   const types = appointments.reduce(
     (acc, appointment) => {
-      const key = getTypeLabel(appointment.type);
+      const key = getTypeLabel(appointment.kind || appointment.type);
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     },
-    { Sesion: 0, Entrevista: 0, Otros: 0 } as Record<string, number>,
+    { Sesion: 0, Entrevista: 0, Bloqueo: 0 } as Record<string, number>,
   );
 
   return { coverage, types };
@@ -247,7 +247,7 @@ const renderReportShell = (title: string, subtitle: string, body: string, landsc
       }
       .badge.session { background: #dbeafe; color: #1d4ed8; }
       .badge.interview { background: #fef3c7; color: #92400e; }
-      .badge.survey { background: #0f172a; color: white; }
+      .badge.block { background: #0f172a; color: white; }
       .badge.coverage { background: #eef2ff; color: #4338ca; }
       .day-card {
         border: 1px solid #e2e8f0;
@@ -358,7 +358,7 @@ const renderReportShell = (title: string, subtitle: string, body: string, landsc
       }
       .month-badge.session { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
       .month-badge.interview { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-      .month-badge.survey { background: #f3e8ff; color: #6b21a8; border-color: #e9d5ff; }
+      .month-badge.block { background: #f3e8ff; color: #6b21a8; border-color: #e9d5ff; }
       .month-badge .time { font-size: 9px; }
       @media print {
         body { background: white; }
@@ -412,7 +412,7 @@ export const buildDailyPdfHtml = (selectedDate: Date, appointments: AppointmentR
       <tr>
         <td><strong>${escapeHtml(formatTimeOnly(appointment.start))}</strong><div class="subtle">${escapeHtml(formatTimeOnly(appointment.end))}</div></td>
         <td><strong>${escapeHtml(getAppointmentName(appointment))}</strong><div class="subtle">${escapeHtml(getCorrespondsToLabel(appointment, professionals))}</div></td>
-        <td><span class="badge ${appointment.type}">${escapeHtml(getTypeLabel(appointment.type))}</span></td>
+        <td><span class="badge ${appointment.kind || appointment.type}">${escapeHtml(getTypeLabel(appointment.kind || appointment.type))}</span></td>
         <td><span class="badge coverage">${escapeHtml(getCoverageLabel(appointment))}</span></td>
         <td>${escapeHtml(appointment.notes || '-')}</td>
       </tr>
@@ -437,11 +437,11 @@ export const buildDailyPdfHtml = (selectedDate: Date, appointments: AppointmentR
         <div class="card"><div class="label">Total</div><div class="value">${sorted.length}</div></div>
         <div class="card"><div class="label">Particular</div><div class="value">${coverage.particular || 0}</div></div>
         <div class="card"><div class="label">Obra social</div><div class="value">${coverage['obra social'] || 0}</div></div>
-        <div class="card"><div class="label">Tipos</div><div class="value">${types.Sesion || 0}/${types.Entrevista || 0}/${types.Otros || 0}</div></div>
+        <div class="card"><div class="label">Tipos</div><div class="value">${types.Sesion || 0}/${types.Entrevista || 0}/${types.Bloqueo || 0}</div></div>
       </div>
       <div class="section">
         <div class="section-header">
-          <h2>Detalle del dia</h2>
+          <h2>Detalle del día</h2>
           <span>${escapeHtml(dateLabel)}</span>
         </div>
         <table>
@@ -508,7 +508,7 @@ export const buildMonthlyPdfHtml = (selectedDate: Date, appointments: Appointmen
                 </div>
                 <div class="month-badges">
                   ${dayAppointments.slice(0, 3).map((appointment) => `
-                    <div class="month-badge ${appointment.type}">
+                    <div class="month-badge ${appointment.kind || appointment.type}">
                       <span>${escapeHtml(getAppointmentName(appointment))}</span>
                       <span class="time">${escapeHtml(formatTimeOnly(appointment.start))}</span>
                     </div>
@@ -541,7 +541,7 @@ export const buildMonthlyPdfHtml = (selectedDate: Date, appointments: Appointmen
         <div class="card"><div class="label">Total</div><div class="value">${monthAppointments.length}</div></div>
         <div class="card"><div class="label">Particular</div><div class="value">${coverage.particular || 0}</div></div>
         <div class="card"><div class="label">Obra social</div><div class="value">${coverage['obra social'] || 0}</div></div>
-        <div class="card"><div class="label">Tipos</div><div class="value">${types.Sesion || 0}/${types.Entrevista || 0}/${types.Otros || 0}</div></div>
+        <div class="card"><div class="label">Tipos</div><div class="value">${types.Sesion || 0}/${types.Entrevista || 0}/${types.Bloqueo || 0}</div></div>
       </div>
       <div class="section">
         <div class="section-header">
@@ -558,9 +558,9 @@ export const buildMonthlyPdfHtml = (selectedDate: Date, appointments: Appointmen
             </tr>
           </thead>
           <tbody>
-            <tr><td>Sesion</td><td>${types.Sesion || 0}</td><td>${coverage.particular || 0}</td><td>${coverage['obra social'] || 0}</td></tr>
+            <tr><td>Sesión</td><td>${types.Sesion || 0}</td><td>${coverage.particular || 0}</td><td>${coverage['obra social'] || 0}</td></tr>
             <tr><td>Entrevista</td><td>${types.Entrevista || 0}</td><td colspan="2">Ver detalle diario</td></tr>
-            <tr><td>Otros</td><td>${types.Otros || 0}</td><td colspan="2">Ver detalle diario</td></tr>
+            <tr><td>Bloqueo</td><td>${types.Bloqueo || 0}</td><td colspan="2">Ver detalle diario</td></tr>
           </tbody>
         </table>
       </div>

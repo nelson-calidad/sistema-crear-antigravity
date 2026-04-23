@@ -5,6 +5,7 @@ const HEADER = [
   'title',
   'type',
   'proId',
+  'professionalId',
   'roomId',
   'patient',
   'notes',
@@ -17,6 +18,8 @@ const HEADER = [
   'createdAt',
   'updatedAt',
   'coverageType',
+  'kind',
+  'status',
 ];
 
 function doGet() {
@@ -77,8 +80,12 @@ function ensureSheet_() {
   if (isEmptyHeader) {
     sheet.getRange(1, 1, 1, HEADER.length).setValues([HEADER]);
     sheet.setFrozenRows(1);
-  } else if (!firstRow[HEADER.indexOf('coverageType')]) {
-    sheet.getRange(1, HEADER.indexOf('coverageType') + 1).setValue('coverageType');
+  } else {
+    HEADER.forEach((key, index) => {
+      if (!firstRow[index]) {
+        sheet.getRange(1, index + 1).setValue(key);
+      }
+    });
   }
 
   return sheet;
@@ -106,6 +113,9 @@ function rowToObject_(row) {
 }
 
 function normalizeAppointment_(appointment) {
+  const kind = appointment.kind || appointment.type || 'session';
+  const resolvedKind = kind === 'survey' ? 'block' : kind;
+  const professionalId = appointment.professionalId || appointment.proId || '';
   const selectedDays = appointment.selectedDays;
   let parsedSelectedDays = [];
 
@@ -128,9 +138,10 @@ function normalizeAppointment_(appointment) {
   return {
     id: String(appointment.id || newId_()),
     title: String(appointment.title || 'Nueva Reserva'),
-    type: String(appointment.type || 'session'),
+    type: String(resolvedKind),
     coverageType: String(appointment.coverageType || 'particular'),
-    proId: appointment.proId ? String(appointment.proId) : '',
+    proId: professionalId ? String(professionalId) : '',
+    professionalId: professionalId ? String(professionalId) : '',
     roomId: appointment.roomId ? String(appointment.roomId) : '',
     patient: appointment.patient ? String(appointment.patient) : '',
     notes: appointment.notes ? String(appointment.notes) : '',
@@ -142,6 +153,8 @@ function normalizeAppointment_(appointment) {
     createdBy: appointment.createdBy ? String(appointment.createdBy) : '',
     createdAt: appointment.createdAt ? String(appointment.createdAt) : '',
     updatedAt: appointment.updatedAt ? String(appointment.updatedAt) : '',
+    kind: String(resolvedKind),
+    status: String(appointment.status || 'scheduled'),
   };
 }
 

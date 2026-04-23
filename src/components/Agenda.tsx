@@ -98,15 +98,17 @@ const getAppointmentName = (appointment: AppointmentRecord) => {
   return raw;
 };
 
-const getTypeLabel = (type?: string) => {
-  if (type === 'interview') return 'Entrevista';
-  if (type === 'survey') return 'Otros';
+const getAppointmentKind = (appointment: AppointmentRecord) => appointment.kind || appointment.type || 'session';
+
+const getTypeLabel = (kind?: string) => {
+  if (kind === 'interview') return 'Entrevista';
+  if (kind === 'block') return 'Bloqueo';
   return 'Sesión';
 };
 
-const getTypeStyles = (type?: string) => {
-  if (type === 'interview') return 'bg-amber-100 text-amber-950 border-amber-200';
-  if (type === 'survey') return 'bg-violet-100 text-violet-950 border-violet-200';
+const getTypeStyles = (kind?: string) => {
+  if (kind === 'interview') return 'bg-amber-100 text-amber-950 border-amber-200';
+  if (kind === 'block') return 'bg-violet-100 text-violet-950 border-violet-200';
   return 'bg-sky-100 text-sky-950 border-sky-200';
 };
 
@@ -152,7 +154,7 @@ const formatTimeOnly = (value?: string) => {
 
 const getCoverageLabel = (appointment: AppointmentRecord) => appointment.coverageType || 'particular';
 
-const hasAssignment = (appointment: AppointmentRecord) => Boolean(appointment.proId || appointment.roomId);
+const hasAssignment = (appointment: AppointmentRecord) => Boolean(appointment.professionalId || appointment.proId || appointment.roomId);
 
 const formatDateEs = (date: Date, pattern: string) =>
   format(date, pattern, { locale: es });
@@ -168,7 +170,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   const [professionals] = useProfessionals();
 
   const getCorrespondsToLabel = (appointment: AppointmentRecord) => {
-    const pro = professionals.find((p) => p.id === appointment.proId);
+    const pro = professionals.find((p) => p.id === appointment.professionalId || appointment.proId);
     const room = ROOMS.find((r) => r.id === appointment.roomId);
 
     if (pro && room) return `${pro.name} · ${room.name}`;
@@ -239,7 +241,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
         name: professional.name,
         subtitle: professional.specialty,
         colorClass: professional.color,
-        count: selectedDateAppointments.filter((appointment) => appointment.proId === professional.id).length,
+        count: selectedDateAppointments.filter((appointment) => (appointment.professionalId || appointment.proId) === professional.id).length,
         kind: 'professional' as const,
       }));
     }
@@ -283,12 +285,12 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
     return Math.max((duration / 60) * HOUR_HEIGHT, 68);
   };
 
-  const isUnassigned = (appointment: AppointmentRecord) => !appointment.proId && !appointment.roomId;
+  const isUnassigned = (appointment: AppointmentRecord) => !appointment.professionalId && !appointment.proId && !appointment.roomId;
 
   const matchesColumn = (appointment: AppointmentRecord, columnId: string) => {
     if (columnId === 'unassigned') return isUnassigned(appointment);
     return viewMode === 'professionals'
-      ? appointment.proId === columnId
+      ? (appointment.professionalId || appointment.proId) === columnId
       : appointment.roomId === columnId;
   };
 
@@ -537,13 +539,13 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                             if (resource.count === 0) return;
                             const first = selectedDateAppointments.find((appointment) =>
                               resource.kind === 'professional'
-                                ? appointment.proId === resource.id
+                                ? (appointment.professionalId || appointment.proId) === resource.id
                                 : appointment.roomId === resource.id,
                             );
                             if (first) {
                               onOpenModal(
                                 ROOMS.find((room) => room.id === first.roomId)?.name,
-                                professionals.find((professional) => professional.id === first.proId)?.name,
+                                professionals.find((professional) => professional.id === first.professionalId || first.proId)?.name,
                                 first,
                               );
                             }
@@ -578,7 +580,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                     </div>
                   ) : (
                     visibleAppointments.map((app) => {
-                      const pro = professionals.find((p) => p.id === app.proId);
+                      const pro = professionals.find((p) => p.id === app.professionalId || app.proId);
                       const room = ROOMS.find((r) => r.id === app.roomId);
 
                       return (
@@ -586,7 +588,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                           key={app.id}
                           type="button"
                           onClick={() => onOpenModal(room?.name, pro?.name, app)}
-                          className={cn('w-full text-left rounded-2xl p-2.5 border shadow-sm backdrop-blur-sm', getTypeStyles(app.type))}
+                          className={cn('w-full text-left rounded-2xl p-2.5 border shadow-sm backdrop-blur-sm', getTypeStyles(app.kind || app.type))}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
@@ -595,7 +597,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                               </p>
                               <p className="font-bold text-[13px] truncate leading-tight">{getAppointmentName(app)}</p>
                               <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide opacity-85 truncate">
-                                {getTypeLabel(app.type)} · {getCorrespondsToLabel(app)}
+                                {getTypeLabel(app.kind || app.type)} · {getCorrespondsToLabel(app)}
                               </p>
                             </div>
                             <span className="text-[10px] font-black uppercase opacity-75 shrink-0">
@@ -670,7 +672,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                             </div>
                           ) : (
                             room.appointments.map((app) => {
-                              const pro = professionals.find((p) => p.id === app.proId);
+                              const pro = professionals.find((p) => p.id === app.professionalId || app.proId);
                               return (
                                 <button
                                   key={app.id}
@@ -678,7 +680,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                   onClick={() => onOpenModal(room.name, pro?.name, app)}
                                   className={cn(
                                     'w-full text-left rounded-2xl p-2.5 border shadow-sm backdrop-blur-sm',
-                                    getTypeStyles(app.type),
+                                    getTypeStyles(app.kind || app.type),
                                   )}
                                 >
                                   <div className="flex items-start justify-between gap-2">
@@ -688,7 +690,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                       </p>
                                       <p className="font-bold text-[13px] truncate leading-tight">{getAppointmentName(app)}</p>
                                       <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide opacity-85 truncate">
-                                        {getTypeLabel(app.type)} · {pro?.name || 'Sin profesional'}
+                                        {getTypeLabel(app.kind || app.type)} · {pro?.name || 'Sin profesional'}
                                       </p>
                                     </div>
                                     <span className="text-[10px] font-black uppercase opacity-75 shrink-0">
@@ -780,7 +782,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                         ) : null}
 
                         {columnAppointments.map((app) => {
-                  const pro = professionals.find((p) => p.id === app.proId);
+                  const pro = professionals.find((p) => p.id === app.professionalId || app.proId);
                           const room = ROOMS.find((r) => r.id === app.roomId);
 
                           return (
@@ -798,7 +800,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                               }}
                               className={cn(
                                 'absolute left-1 right-1 rounded-2xl p-2.5 border shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-100',
-                                getTypeStyles(app.type),
+                                getTypeStyles(app.kind || app.type),
                               )}
                             >
                               <div className="flex items-center justify-between gap-2">
@@ -812,7 +814,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
                               <p className="text-[12px] font-bold truncate leading-tight mt-1">{getAppointmentName(app)}</p>
                               <p className="text-[10px] font-medium truncate opacity-85 mt-0.5">
-                                {getTypeLabel(app.type)} · {getCorrespondsToLabel(app)}
+                                {getTypeLabel(app.kind || app.type)} · {getCorrespondsToLabel(app)}
                               </p>
                             </motion.div>
                           );
@@ -879,14 +881,14 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
                     <div className="space-y-1">
                       {dayAppointments.slice(0, 2).map((app) => {
-                        const pro = professionals.find((p) => p.id === app.proId);
+                        const pro = professionals.find((p) => p.id === app.professionalId || app.proId);
                         const room = ROOMS.find((r) => r.id === app.roomId);
                         return (
                           <div
                             key={app.id}
                             className={cn(
                               'text-[7px] md:text-[9px] px-1 py-1 rounded-lg font-bold truncate border leading-tight',
-                              getTypeStyles(app.type),
+                              getTypeStyles(app.kind || app.type),
                             )}
                           >
                             <div className="flex items-center justify-between gap-2">
@@ -894,7 +896,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                               <span className="shrink-0 opacity-70">{getCoverageLabel(app)}</span>
                             </div>
                             <div className="mt-0.5 flex items-center justify-between gap-2 text-[7px] font-bold uppercase opacity-70">
-                              <span className="truncate">{getTypeLabel(app.type)}</span>
+                              <span className="truncate">{getTypeLabel(app.kind || app.type)}</span>
                               <span className="truncate">{room?.name || pro?.name || 'Sin asignar'}</span>
                             </div>
                           </div>
