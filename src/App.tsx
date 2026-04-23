@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -66,7 +66,7 @@ export default function App() {
         pushToast(
           'error',
           'No se pudo sincronizar',
-          'Este navegador no pudo leer Sheets. Probá recargar o usar otro navegador.',
+          'Este navegador no pudo leer Sheets. ProbÃ¡ recargar o usar otro navegador.',
         );
       },
     );
@@ -124,19 +124,28 @@ export default function App() {
       />
       
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-slate-100 px-4 md:px-8 py-4 md:py-0 flex flex-col gap-3 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0 shadow-[0_8px_28px_rgba(148,117,96,0.04)]">
-          <div className="flex items-center gap-3 md:hidden">
+        <header className="bg-white border-b border-slate-100 px-4 md:px-8 py-3 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0 shadow-[0_8px_28px_rgba(148,117,96,0.04)]">
+          <div className="flex items-center justify-between gap-3 md:hidden w-full">
             <button
               onClick={() => setMobileSidebarOpen((open) => !open)}
-              className="w-11 h-11 rounded-xl bg-white border border-slate-100 overflow-hidden shadow-sm flex items-center justify-center"
+              className="w-11 h-11 rounded-xl bg-white border border-slate-100 overflow-hidden shadow-sm flex items-center justify-center shrink-0"
               aria-label="Abrir menú"
             >
               {mobileSidebarOpen ? <X className="w-5 h-5 text-slate-900" /> : <img src={logoCrear} alt="CREAR" className="w-full h-full object-cover p-0.5" />}
             </button>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">CREAR</p>
-              <p className="text-sm font-bold text-slate-900">{activeTab}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 leading-none">CREAR</p>
+              <div className="mt-0.5 flex items-center gap-2 min-w-0">
+                <p className="text-sm font-black text-slate-900 truncate">{activeTab}</p>
+                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                  {getBackendLabel()}
+                </span>
+              </div>
             </div>
+            <button className="relative p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200/70 shrink-0">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
+            </button>
           </div>
 
           <div className="flex-1 max-w-xl hidden md:block">
@@ -150,18 +159,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="md:hidden">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-              <input
-                type="text"
-                placeholder="Buscar..."
-                className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 focus:bg-white focus:border-cyan-200 focus:ring-0 rounded-xl text-sm transition-all"
-              />
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between md:justify-end gap-3 md:gap-4">
+          <div className="hidden md:flex items-center justify-between md:justify-end gap-3 md:gap-4">
             <button className="relative p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200/70">
               <Bell className="w-5 h-5" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
@@ -204,7 +202,7 @@ export default function App() {
         initialData={modalContext.appointment}
         onSave={async (data) => {
           if (!user) {
-            pushToast('error', 'Sesión requerida', 'Inicia sesión para guardar cambios en la agenda.');
+            pushToast('error', 'SesiÃ³n requerida', 'Inicia sesiÃ³n para guardar cambios en la agenda.');
             return;
           }
           setModalAction('save');
@@ -227,12 +225,12 @@ export default function App() {
               'success',
               wasEditing ? 'Turno actualizado' : 'Turno creado',
               wasEditing
-                ? 'La reserva se guardó correctamente en CREAR.'
-                : 'La nueva reserva se guardó correctamente en CREAR.',
+                ? 'La reserva se guardÃ³ correctamente en CREAR.'
+                : 'La nueva reserva se guardÃ³ correctamente en CREAR.',
             );
           } catch (error) {
             console.error("Error saving appointment", error);
-            pushToast('error', 'No se pudo guardar', 'Verificá tu conexión o permisos e intentá de nuevo.');
+            pushToast('error', 'No se pudo guardar', 'VerificÃ¡ tu conexiÃ³n o permisos e intentÃ¡ de nuevo.');
           } finally {
             setModalAction(null);
           }
@@ -242,10 +240,10 @@ export default function App() {
           try {
             await deleteAppointment(id);
             setIsModalOpen(false);
-            pushToast('success', 'Turno eliminado', 'La reserva se borró correctamente.');
+            pushToast('success', 'Turno eliminado', 'La reserva se borrÃ³ correctamente.');
           } catch (error) {
             console.error("Error deleting appointment", error);
-            pushToast('error', 'No se pudo borrar', 'Intentá de nuevo en unos segundos.');
+            pushToast('error', 'No se pudo borrar', 'IntentÃ¡ de nuevo en unos segundos.');
           } finally {
             setModalAction(null);
           }
@@ -298,7 +296,7 @@ export default function App() {
                     type="button"
                     onClick={() => removeToast(toast.id)}
                     className="rounded-lg p-1 text-current/60 transition-colors hover:bg-white/60 hover:text-current"
-                    aria-label="Cerrar notificación"
+                    aria-label="Cerrar notificaciÃ³n"
                   >
                     <X className="h-4 w-4" />
                   </button>

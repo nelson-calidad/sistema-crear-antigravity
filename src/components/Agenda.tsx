@@ -269,14 +269,14 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
   return (
     <div className="h-full flex flex-col gap-2 md:gap-4 min-h-0">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-        <div className="space-y-1.5">
-          <div className="flex items-start gap-3">
+      <div className="flex flex-col gap-2 md:gap-3 xl:flex-row xl:items-end xl:justify-between">
+        <div className="space-y-1 md:space-y-1.5">
+          <div className="flex items-start gap-2.5 md:gap-3">
             <div className="p-1.5 md:p-2 rounded-2xl bg-gradient-to-br from-cyan-100 via-blue-50 to-lavender-100 text-blue-600 border border-blue-100 shrink-0 shadow-sm">
               <CalendarIcon className="w-4 h-4 md:w-5 md:h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg md:text-[2rem] font-black text-slate-900 tracking-tight leading-tight">
+              <h1 className="text-[1.15rem] md:text-[2rem] font-black text-slate-900 tracking-tight leading-tight">
                 Agenda Operativa
               </h1>
               <p className="hidden md:block text-sm text-slate-500 max-w-xl">
@@ -287,12 +287,12 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/90 text-slate-600 text-[9px] font-bold border border-slate-200/70">
               <BadgeInfo className="w-3 h-3" />
               {titleCase(formatDateEs(selectedDate, 'EEEE, d MMMM'))}
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50/90 text-blue-700 text-[9px] font-bold border border-blue-100">
+            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50/90 text-blue-700 text-[9px] font-bold border border-blue-100">
               {selectedDateAppointments.length} turno{selectedDateAppointments.length === 1 ? '' : 's'} en el día
             </span>
             <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50/90 text-emerald-700 text-[9px] font-bold border border-emerald-100">
@@ -301,12 +301,12 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:flex md:flex-row md:flex-wrap items-stretch md:items-center gap-2 w-full xl:w-auto">
+        <div className="grid grid-cols-2 md:flex md:flex-row md:flex-wrap items-stretch md:items-center gap-1.5 md:gap-2 w-full xl:w-auto">
           <div className="flex bg-slate-100/80 p-0.5 rounded-xl gap-1 col-span-2 md:col-span-1 w-full md:w-auto border border-slate-200/70">
             <button
               onClick={() => setTimeMode('daily')}
               className={cn(
-                'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-[0.22em] transition-all',
+                'flex-1 md:flex-none px-2.5 md:px-3 py-1.25 md:py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-[0.22em] transition-all',
                 timeMode === 'daily' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500',
               )}
             >
@@ -315,7 +315,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             <button
               onClick={() => setTimeMode('monthly')}
               className={cn(
-                'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-[0.22em] transition-all',
+                'flex-1 md:flex-none px-2.5 md:px-3 py-1.25 md:py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-[0.22em] transition-all',
                 timeMode === 'monthly' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500',
               )}
             >
@@ -348,7 +348,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               <button
                 onClick={() => setViewMode('professionals')}
                 className={cn(
-                  'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
+                  'flex-1 md:flex-none px-2.5 md:px-3 py-1.25 md:py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
                   viewMode === 'professionals' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700',
                 )}
               >
@@ -358,7 +358,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               <button
                 onClick={() => setViewMode('rooms')}
                 className={cn(
-                  'flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
+                  'flex-1 md:flex-none px-2.5 md:px-3 py-1.25 md:py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold transition-all inline-flex items-center justify-center gap-1.5',
                   viewMode === 'rooms' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700',
                 )}
               >
@@ -370,7 +370,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
           <button
             onClick={() => onOpenModal()}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 via-blue-600 to-lavender-500 text-white rounded-xl font-bold text-xs hover:brightness-105 transition-colors shadow-lg shadow-blue-200/40 col-span-2 md:col-span-1 w-full md:w-auto"
+            className="inline-flex items-center justify-center gap-2 px-3.5 md:px-4 py-2 bg-gradient-to-r from-cyan-500 via-blue-600 to-lavender-500 text-white rounded-xl font-bold text-xs hover:brightness-105 transition-colors shadow-lg shadow-blue-200/40 col-span-2 md:col-span-1 w-full md:w-auto"
           >
             <Plus className="w-3.5 h-3.5" />
             Nuevo Bloque
@@ -398,7 +398,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 console.warn('No se pudo refrescar la agenda manualmente.', error);
               });
             }}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/80 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm col-span-2 md:col-span-1 w-full md:w-auto backdrop-blur-sm"
+            className="inline-flex items-center justify-center gap-2 px-3.5 md:px-4 py-2 bg-white/80 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm col-span-2 md:col-span-1 w-full md:w-auto backdrop-blur-sm"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Refrescar

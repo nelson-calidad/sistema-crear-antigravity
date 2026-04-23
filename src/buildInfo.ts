@@ -1,1 +1,1 @@
-export const BUILD_ID = '20260423-refreshfix';
+export const BUILD_ID = '20260423-mobilecompact';
