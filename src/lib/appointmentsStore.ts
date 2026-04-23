@@ -151,6 +151,7 @@ const readRemoteAppointments = async (): Promise<AppointmentRecord[]> => {
       headers: {
         Accept: 'application/json',
       },
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -272,6 +273,7 @@ const persistRemoteAppointment = async (appointment: AppointmentRecord, id?: str
       'Content-Type': 'text/plain;charset=utf-8',
       Accept: 'application/json',
     },
+    cache: 'no-store',
     body: JSON.stringify({
       action: id ? 'update' : 'create',
       id,
@@ -304,6 +306,7 @@ const deleteRemoteAppointment = async (id: string) => {
       'Content-Type': 'text/plain;charset=utf-8',
       Accept: 'application/json',
     },
+    cache: 'no-store',
     body: JSON.stringify({
       action: 'delete',
       id,
