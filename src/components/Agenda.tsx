@@ -217,6 +217,30 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
     return hasUnassigned ? [...base, UNASSIGNED_COLUMN] : base;
   }, [selectedDateAppointments, viewMode]);
 
+  const mobileResources = useMemo(() => {
+    if (viewMode === 'professionals') {
+      return professionals.map((professional) => ({
+        id: professional.id,
+        name: professional.name,
+        subtitle: professional.specialty,
+        colorClass: professional.color,
+        count: selectedDateAppointments.filter((appointment) => appointment.proId === professional.id).length,
+        kind: 'professional' as const,
+      }));
+    }
+
+    const roomPalette = ['bg-cyan-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500', 'bg-rose-500', 'bg-sky-500'];
+
+    return ROOMS.map((room, index) => ({
+      id: room.id,
+      name: room.name,
+      subtitle: 'Consultorio',
+      colorClass: roomPalette[index % roomPalette.length],
+      count: selectedDateAppointments.filter((appointment) => appointment.roomId === room.id).length,
+      kind: 'room' as const,
+    }));
+  }, [professionals, selectedDateAppointments, viewMode]);
+
   const visibleAppointments = sortByStart(selectedDateAppointments);
   const getPositionFromTime = (timeStr: string) => {
     const minutesSinceStart = parseTimeToMinutes(timeStr) - (8 * 60);
@@ -276,8 +300,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               <CalendarIcon className="w-4 h-4 md:w-5 md:h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-[1.15rem] md:text-[2rem] font-black text-slate-900 tracking-tight leading-tight">
-                Agenda Operativa
+              <h1 className="text-[1rem] md:text-[2rem] font-black text-slate-900 tracking-tight leading-tight">
+                <span className="md:hidden">Agenda</span>
+                <span className="hidden md:inline">Agenda Operativa</span>
               </h1>
               <p className="hidden md:block text-sm text-slate-500 max-w-xl">
                 {timeMode === 'daily'
@@ -411,21 +436,24 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           <>
             <div className="md:hidden p-2 pb-2 space-y-2 overflow-y-auto custom-scrollbar">
               <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                {professionals.map((professional) => {
-                  const count = selectedDateAppointments.filter((appointment) => appointment.proId === professional.id).length;
-                  const isActive = count > 0;
+                {mobileResources.map((resource) => {
+                  const isActive = resource.count > 0;
 
                   return (
                     <button
-                      key={professional.id}
+                      key={resource.id}
                       type="button"
                       onClick={() => {
-                        if (count === 0) return;
-                        const first = selectedDateAppointments.find((appointment) => appointment.proId === professional.id);
+                        if (resource.count === 0) return;
+                        const first = selectedDateAppointments.find((appointment) =>
+                          resource.kind === 'professional'
+                            ? appointment.proId === resource.id
+                            : appointment.roomId === resource.id,
+                        );
                         if (first) {
                           onOpenModal(
                             ROOMS.find((room) => room.id === first.roomId)?.name,
-                            professional.name,
+                            professionals.find((professional) => professional.id === first.proId)?.name,
                             first,
                           );
                         }
@@ -436,17 +464,17 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center text-white font-black text-[10px]', professional.color)}>
-                          {professional.name[0]}
+                        <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center text-white font-black text-[10px]', resource.colorClass)}>
+                          {resource.name[0]}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[10px] font-black text-slate-900 truncate">{professional.name}</p>
-                          <p className="hidden sm:block text-[9px] uppercase font-bold text-slate-400 truncate">{professional.specialty}</p>
+                          <p className="text-[10px] font-black text-slate-900 truncate">{resource.name}</p>
+                          <p className="hidden sm:block text-[9px] uppercase font-bold text-slate-400 truncate">{resource.subtitle}</p>
                         </div>
                       </div>
                       <div className="mt-2 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.14em]">
-                        <span className={isActive ? 'text-blue-600' : 'text-slate-400'}>{count} turnos</span>
-                        <span className="text-slate-400">{professional.status}</span>
+                        <span className={isActive ? 'text-blue-600' : 'text-slate-400'}>{resource.count} turnos</span>
+                        <span className="text-slate-400">{resource.kind === 'room' ? 'consultorio' : 'activo'}</span>
                       </div>
                     </button>
                   );

@@ -36,6 +36,22 @@ export default function App() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastTimers = useRef<number[]>([]);
   const syncErrorShown = useRef(false);
+  const mobileTabLabel = (() => {
+    switch (activeTab) {
+      case 'dashboard':
+        return 'Inicio';
+      case 'professionals':
+        return 'Profesionales';
+      case 'agenda':
+        return 'Agenda';
+      case 'finance':
+        return 'Finanzas';
+      case 'settings':
+        return 'Configuración';
+      default:
+        return activeTab;
+    }
+  })();
 
   const pushToast = (tone: ToastTone, title: string, message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -125,21 +141,20 @@ export default function App() {
       
       <main className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-slate-100 px-4 md:px-8 py-3 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0 shadow-[0_8px_28px_rgba(148,117,96,0.04)]">
-          <div className="flex items-center justify-between gap-3 md:hidden w-full">
+          <div className="flex items-center justify-between gap-2 md:hidden w-full">
             <button
               onClick={() => setMobileSidebarOpen((open) => !open)}
-              className="w-11 h-11 rounded-xl bg-white border border-slate-100 overflow-hidden shadow-sm flex items-center justify-center shrink-0"
+              className="w-9 h-9 rounded-lg bg-white border border-slate-100 overflow-hidden shadow-sm flex items-center justify-center shrink-0"
               aria-label="Abrir menú"
             >
-              {mobileSidebarOpen ? <X className="w-5 h-5 text-slate-900" /> : <img src={logoCrear} alt="CREAR" className="w-full h-full object-cover p-0.5" />}
+              {mobileSidebarOpen ? <X className="w-4 h-4 text-slate-900" /> : <img src={logoCrear} alt="CREAR" className="w-full h-full object-contain p-0.5" />}
             </button>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 leading-none">CREAR</p>
-              <div className="mt-0.5 flex items-center gap-2 min-w-0">
-                <p className="text-sm font-black text-slate-900 truncate">{activeTab}</p>
-                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                  {getBackendLabel()}
-                </span>
+            <div className="min-w-0 flex-1 flex items-center gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-black text-slate-900 truncate leading-none">{mobileTabLabel}</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400 leading-none mt-0.5">
+                  {getBackendLabel()} conectado
+                </p>
               </div>
             </div>
             <button className="relative p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200/70 shrink-0">
