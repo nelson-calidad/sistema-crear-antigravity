@@ -91,6 +91,21 @@ const getTypeStyles = (type?: string) => {
 
 const sortByStart = (items: AppointmentRecord[]) => [...items].sort((a, b) => a.start.localeCompare(b.start));
 
+const formatTimeOnly = (value?: string) => {
+  if (!value) return '--:--';
+
+  const match = String(value).match(/(\d{1,2}):(\d{2})/);
+  if (match) {
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+  }
+
+  return String(value).slice(0, 5);
+};
+
 const getCorrespondsToLabel = (appointment: AppointmentRecord) => {
   const pro = PROFESSIONALS.find((p) => p.id === appointment.proId);
   const room = ROOMS.find((r) => r.id === appointment.roomId);
@@ -444,7 +459,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-[8px] font-black tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full bg-white/75 border border-white/60">
-                                  {app.start}
+                                  {formatTimeOnly(app.start)}
                                 </span>
                                 <span className="text-[8px] font-black tracking-widest uppercase opacity-75">
                                   {getCoverageLabel(app)}
@@ -458,7 +473,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
                               <div className="mt-1.5 flex items-center justify-between gap-1 text-[8px] font-bold uppercase tracking-wide opacity-75">
                                 <span className="truncate">{getCoverageLabel(app)}</span>
-                                <span className="shrink-0">{app.end}</span>
+                                <span className="shrink-0">{formatTimeOnly(app.end)}</span>
                               </div>
                             </motion.div>
                           );
@@ -535,7 +550,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <span className="truncate">
-                                  {app.start} {formatLabel(app.patient || app.title)}
+                                  {formatTimeOnly(app.start)} {formatLabel(app.patient || app.title)}
                                 </span>
                                 <span className="opacity-70">{getCoverageLabel(app)}</span>
                               </div>
