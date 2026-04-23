@@ -26,8 +26,31 @@ type ToastItem = {
   message: string;
 };
 
+const VALID_TABS = new Set(['dashboard', 'professionals', 'agenda', 'finance', 'settings']);
+const TAB_QUERY_KEY = 'tab';
+
+const getTabFromLocation = () => {
+  if (typeof window === 'undefined') {
+    return 'dashboard';
+  }
+
+  const tab = new URL(window.location.href).searchParams.get(TAB_QUERY_KEY);
+  return tab && VALID_TABS.has(tab) ? tab : 'dashboard';
+};
+
+const buildTabUrl = (tab: string) => {
+  const url = new URL(window.location.href);
+  if (tab === 'dashboard') {
+    url.searchParams.delete(TAB_QUERY_KEY);
+  } else {
+    url.searchParams.set(TAB_QUERY_KEY, tab);
+  }
+
+  return `${url.pathname}${url.search}${url.hash}`;
+};
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => getTabFromLocation());
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [user] = useState(() => getSessionUser());
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -36,6 +59,23 @@ export default function App() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastTimers = useRef<number[]>([]);
   const syncErrorShown = useRef(false);
+  const navigateToTab = (tab: string, options?: { replace?: boolean }) => {
+    if (!VALID_TABS.has(tab) || tab === activeTab) {
+      setActiveTab(tab);
+      return;
+    }
+
+    const nextUrl = buildTabUrl(tab);
+    const state = { tab };
+    if (options?.replace) {
+      window.history.replaceState(state, '', nextUrl);
+    } else {
+      window.history.pushState(state, '', nextUrl);
+    }
+
+    setActiveTab(tab);
+  };
+
   const mobileTabLabel = (() => {
     switch (activeTab) {
       case 'dashboard':
@@ -67,6 +107,12 @@ export default function App() {
   };
 
   useEffect(() => {
+    const handlePopState = () => {
+      setActiveTab(getTabFromLocation());
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
     const unsubscribeApps = subscribeToAppointments(
       (apps) => {
         syncErrorShown.current = false;
@@ -88,6 +134,7 @@ export default function App() {
     );
 
     return () => {
+      window.removeEventListener('popstate', handlePopState);
       unsubscribeApps();
       toastTimers.current.forEach((timer) => window.clearTimeout(timer));
     };
@@ -103,7 +150,7 @@ export default function App() {
   };
 
   const handleQuickReserve = () => {
-    setActiveTab('agenda');
+    navigateToTab('agenda');
     setMobileSidebarOpen(false);
     window.requestAnimationFrame(() => {
       handleOpenModal();
@@ -132,7 +179,7 @@ export default function App() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(tab) => {
-          setActiveTab(tab);
+          navigateToTab(tab);
           setMobileSidebarOpen(false);
         }}
         mobileOpen={mobileSidebarOpen}
@@ -234,7 +281,7 @@ export default function App() {
             const wasEditing = Boolean(modalContext.appointment);
             await saveAppointment(appointmentData, modalContext.appointment?.id);
             setAgendaFocusDate(appointmentData.date);
-            setActiveTab('agenda');
+            navigateToTab('agenda', { replace: true });
             setIsModalOpen(false);
             pushToast(
               'success',
