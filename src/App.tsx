@@ -10,12 +10,21 @@ import { ProfessionalsGrid } from './components/ProfessionalsGrid';
 import { Agenda } from './components/Agenda';
 import { Finance } from './components/Finance';
 import { Settings } from './components/Settings';
-import { Bell, Search, User, X } from 'lucide-react';
+import { Bell, Search, User, X, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ReservationModal } from './components/ReservationModal';
 import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
 import logoCrear from './assets/logo-crear.jpeg';
+
+type ToastTone = 'success' | 'error' | 'info';
+
+type ToastItem = {
+  id: string;
+  tone: ToastTone;
+  title: string;
+  message: string;
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -23,6 +32,21 @@ export default function App() {
   const [user] = useState(() => getSessionUser());
   const [appointments, setAppointments] = useState<any[]>([]);
   const [agendaFocusDate, setAgendaFocusDate] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const toastTimers = useRef<number[]>([]);
+
+  const pushToast = (tone: ToastTone, title: string, message: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((current) => [...current, { id, tone, title, message }]);
+    const timer = window.setTimeout(() => {
+      setToasts((current) => current.filter((item) => item.id !== id));
+    }, 3200);
+    toastTimers.current.push(timer);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((current) => current.filter((item) => item.id !== id));
+  };
 
   useEffect(() => {
     const unsubscribeApps = subscribeToAppointments((apps) => {
@@ -31,6 +55,7 @@ export default function App() {
 
     return () => {
       unsubscribeApps();
+      toastTimers.current.forEach((timer) => window.clearTimeout(timer));
     };
   }, []);
 
@@ -161,7 +186,7 @@ export default function App() {
         initialData={modalContext.appointment}
         onSave={async (data) => {
           if (!user) {
-            alert('Por favor, inicia sesion para guardar cambios en la agenda.');
+            pushToast('error', 'Sesión requerida', 'Inicia sesión para guardar cambios en la agenda.');
             return;
           }
           try {
@@ -174,24 +199,89 @@ export default function App() {
               title: patientName || data.title || (data.type === 'survey' ? 'Otros' : 'Nueva Reserva'),
               createdBy: user.uid
             };
+            const wasEditing = Boolean(modalContext.appointment);
             await saveAppointment(appointmentData, modalContext.appointment?.id);
             setAgendaFocusDate(appointmentData.date);
             setActiveTab('agenda');
             setIsModalOpen(false);
+            pushToast(
+              'success',
+              wasEditing ? 'Turno actualizado' : 'Turno creado',
+              wasEditing
+                ? 'La reserva se guardó correctamente en CREAR.'
+                : 'La nueva reserva se guardó correctamente en CREAR.',
+            );
           } catch (error) {
             console.error("Error saving appointment", error);
-            alert('Error al guardar: verifica tu conexion o permisos.');
+            pushToast('error', 'No se pudo guardar', 'Verificá tu conexión o permisos e intentá de nuevo.');
           }
         }}
         onDelete={async (id) => {
           try {
             await deleteAppointment(id);
             setIsModalOpen(false);
+            pushToast('success', 'Turno eliminado', 'La reserva se borró correctamente.');
           } catch (error) {
             console.error("Error deleting appointment", error);
+            pushToast('error', 'No se pudo borrar', 'Intentá de nuevo en unos segundos.');
           }
         }}
       />
+
+      <div className="fixed right-4 top-4 z-[60] flex w-[min(92vw,360px)] flex-col gap-3 pointer-events-none">
+        <AnimatePresence initial={false}>
+          {toasts.map((toast) => {
+            const toneStyles = {
+              success: {
+                icon: CheckCircle2,
+                shell: 'bg-emerald-50 border-emerald-200 text-emerald-900',
+                accent: 'bg-emerald-500',
+              },
+              error: {
+                icon: XCircle,
+                shell: 'bg-rose-50 border-rose-200 text-rose-900',
+                accent: 'bg-rose-500',
+              },
+              info: {
+                icon: AlertCircle,
+                shell: 'bg-blue-50 border-blue-200 text-blue-900',
+                accent: 'bg-blue-500',
+              },
+            }[toast.tone];
+
+            const Icon = toneStyles.icon;
+
+            return (
+              <motion.div
+                key={toast.id}
+                initial={{ opacity: 0, y: -12, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                className={`pointer-events-auto overflow-hidden rounded-2xl border shadow-xl ${toneStyles.shell}`}
+              >
+                <div className={`h-1 w-full ${toneStyles.accent}`} />
+                <div className="flex items-start gap-3 p-4">
+                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/80">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black">{toast.title}</p>
+                    <p className="mt-0.5 text-xs font-medium opacity-80">{toast.message}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeToast(toast.id)}
+                    className="rounded-lg p-1 text-current/60 transition-colors hover:bg-white/60 hover:text-current"
+                    aria-label="Cerrar notificación"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
