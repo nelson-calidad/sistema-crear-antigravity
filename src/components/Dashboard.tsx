@@ -20,20 +20,20 @@ const StatCard = ({ title, value, change, icon: Icon, color, trend }: any) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
+    className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
   >
     <div className="flex items-start justify-between">
       <div>
         <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
-        <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
+        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{value}</h3>
         <div className={cn('flex items-center mt-2 text-xs font-semibold', trend === 'up' ? 'text-emerald-600' : 'text-rose-600')}>
           {trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
           {change}
           <span className="text-slate-400 font-normal ml-1">vs mes pasado</span>
         </div>
       </div>
-      <div className={cn('p-3 rounded-xl', color)}>
-        <Icon className="w-6 h-6 text-white" />
+      <div className={cn('p-3 rounded-xl bg-slate-50 text-slate-700 border border-slate-100')}>
+        <Icon className="w-6 h-6" />
       </div>
     </div>
   </motion.div>
@@ -57,7 +57,7 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
         </header>
         <button
           onClick={onQuickReserve}
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm"
         >
           <Zap className="w-4 h-4 text-amber-400" /> Reserva rápida
         </button>
@@ -77,7 +77,7 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
               <h3 className="font-bold text-slate-800 text-lg">Flujo de Caja Anual</h3>
               <div className="flex flex-wrap gap-4">
                 <div className="flex items-center text-xs font-medium text-slate-500">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mr-2" /> Ingresos
+                  <div className="w-2 h-2 rounded-full bg-slate-800 mr-2" /> Ingresos
                 </div>
                 <div className="flex items-center text-xs font-medium text-slate-500">
                   <div className="w-2 h-2 rounded-full bg-slate-200 mr-2" /> Gastos
@@ -95,7 +95,7 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
                     <div key={item.name} className="flex h-full flex-col items-center justify-end gap-2">
                       <div className="flex w-full flex-1 items-end gap-2">
                         <div
-                          className="flex-1 rounded-t-xl bg-blue-500/90 shadow-sm"
+                          className="flex-1 rounded-t-xl bg-slate-800"
                           style={{ height: `${incomeHeight}%` }}
                           title={`Ingresos ${item.name}`}
                         />
@@ -123,7 +123,7 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
                 key={room.id}
                 className={cn(
                   'p-4 rounded-2xl border transition-all',
-                  room.status === 'occupied' ? 'bg-white border-slate-100' : 'bg-emerald-50 border-emerald-100 shadow-sm shadow-emerald-100',
+                  room.status === 'occupied' ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 shadow-sm',
                 )}
               >
                 <div className="flex items-center justify-between mb-4">
@@ -170,11 +170,11 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
               { time: '11:15 AM', name: 'Vero - Entrevista', room: 'C.2' },
               { time: '01:00 PM', name: 'Carlos - Paciente: Luis R.', room: 'C.1' },
             ].map((appointment, i) => (
-              <div key={i} className="flex items-center p-3 bg-white/5 rounded-xl border border-white/10">
-                <div className="bg-blue-500/20 text-blue-400 p-2 rounded-lg text-xs font-mono font-bold">{appointment.time}</div>
+              <div key={i} className="flex items-center p-3 bg-slate-800 rounded-xl border border-slate-700">
+                <div className="bg-slate-700 text-slate-300 p-2 rounded-lg text-xs font-mono font-bold">{appointment.time}</div>
                 <div className="ml-4 flex-1">
                   <p className="text-sm font-medium">{appointment.name}</p>
-                  <p className="text-white/40 text-xs">{appointment.room}</p>
+                  <p className="text-slate-400 text-xs">{appointment.room}</p>
                 </div>
               </div>
             ))}

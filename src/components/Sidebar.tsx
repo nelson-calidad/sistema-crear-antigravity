@@ -34,11 +34,11 @@ const SidebarItem = ({ icon: Icon, label, active, collapsed, onClick }: SidebarI
     className={cn(
       'flex items-center w-full p-3 rounded-2xl transition-all duration-200 group relative border',
       active
-        ? 'bg-[#e4f3f4] text-slate-900 border-[#9dd8e3] shadow-sm'
-        : 'text-slate-500 hover:bg-white hover:text-slate-900 border-transparent hover:border-[#e3d8c9]',
+        ? 'bg-slate-100 text-slate-900 border-slate-200 shadow-sm'
+        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border-transparent',
     )}
   >
-    <Icon className={cn('w-5 h-5 flex-shrink-0', active ? 'text-cyan-700' : 'group-hover:text-cyan-700')} />
+    <Icon className={cn('w-5 h-5 flex-shrink-0', active ? 'text-slate-900' : 'group-hover:text-slate-700')} />
     <AnimatePresence>
       {!collapsed && (
         <motion.span
@@ -83,7 +83,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }: 
         type="button"
         onClick={onCloseMobile}
         className={cn(
-          'fixed inset-0 bg-[#f4ede3]/80 z-40 md:hidden transition-opacity',
+          'fixed inset-0 bg-slate-900/20 z-40 md:hidden transition-opacity',
           mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
         )}
         aria-label="Cerrar navegación"
@@ -91,7 +91,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }: 
       <motion.div
         animate={{ width: isCollapsed ? '80px' : '260px' }}
         className={cn(
-          'h-screen bg-[#f6efe6] border-r border-[#e6dbcf] flex flex-col relative shadow-[0_0_36px_rgba(148,117,96,0.05)]',
+          'h-screen bg-white border-r border-slate-200 flex flex-col relative',
           'fixed md:static inset-y-0 left-0 w-[280px] max-w-[85vw] md:w-auto z-50 md:z-auto',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
           'transition-transform duration-200 md:transition-none',
@@ -99,10 +99,10 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }: 
       >
         <div className="px-4 pt-5 pb-4 flex items-center mb-2">
           <div className={cn(
-            'overflow-hidden bg-white border border-[#e8dfd6] shadow-md shadow-slate-200/40 ring-1 ring-white/60',
-            isCollapsed ? 'w-14 h-14 rounded-2xl' : 'w-full h-20 rounded-[1.4rem]'
+            'overflow-hidden flex items-center justify-center transition-all duration-200',
+            isCollapsed ? 'w-10 h-10' : 'w-full h-16'
           )}>
-            <img src={logoCrear} alt="Logo CREAR" className={cn('w-full h-full', isCollapsed ? 'object-cover' : 'object-contain p-2')} />
+            <img src={logoCrear} alt="Logo CREAR" className="w-full h-full object-contain" />
           </div>
         </div>
 
