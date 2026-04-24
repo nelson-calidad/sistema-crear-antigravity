@@ -817,32 +817,42 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                   zIndex: 10 + appLayout.colIndex,
                                 }}
                                 className={cn(
-                                  'absolute rounded-xl border shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-100 flex flex-col',
-                                  appointmentHeight < 60 ? 'p-1.5' : 'p-2',
+                                  'absolute rounded-xl border border-slate-900 shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-300 flex flex-col',
+                                  appointmentHeight < 60 ? 'py-1.5 pr-1.5 pl-3' : 'py-2 pr-2.5 pl-4',
                                   getTypeStyles(app.kind || app.type),
                                 )}
                               >
-                              <div className="flex items-start justify-between gap-1.5">
-                                <span className="shrink-0 text-[8px] font-black leading-tight px-1.5 py-1 rounded-lg bg-white/85 text-slate-900 border border-white/90">
+                              <div className={cn('absolute left-0 top-0 bottom-0 w-2 border-r border-slate-900/10', pro?.color || 'bg-slate-400')} />
+
+                              <div className="flex items-start justify-between gap-1.5 relative z-10">
+                                <span className="shrink-0 text-[8px] font-black leading-tight px-1.5 py-1 rounded-lg bg-white/85 text-slate-900 border border-slate-200 shadow-sm">
                                   {formatTimeOnly(app.start)}
                                   <span className="block text-[7px] opacity-70">{formatTimeOnly(app.end)}</span>
                                 </span>
-                                <span className="min-w-0 text-right text-[7px] font-black tracking-[0.08em] uppercase opacity-75 leading-tight">
+                                <span className="min-w-0 text-right text-[7px] font-black tracking-[0.08em] uppercase opacity-80 leading-tight bg-white/40 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50">
                                   {getTypeLabel(app.kind || app.type)}
                                   <span className="block truncate">{getCoverageLabel(app)}</span>
                                 </span>
                               </div>
 
-                              <div className="flex-1 min-h-0 flex items-end justify-between gap-2 mt-1">
-                                <div className="shrink-0 max-w-[45%]">
-                                  {appointmentHeight >= 60 && (
-                                    <div className="grid gap-0.5 text-[8px] font-bold leading-tight opacity-90 pb-0.5">
+                              <div className="flex-1 min-h-0 flex flex-col justify-between mt-1 relative z-10">
+                                <div className="flex-1 flex items-center justify-end w-full px-1">
+                                  <p className={cn(
+                                    "font-black leading-tight text-right line-clamp-3 overflow-hidden",
+                                    appointmentHeight >= 120 ? "text-[16px] xl:text-[18px]" : "text-[12px]"
+                                  )}>
+                                    {getAppointmentName(app)}
+                                  </p>
+                                </div>
+
+                                {appointmentHeight >= 60 && (
+                                  <div className="shrink-0 flex items-end justify-between w-full mt-1 bg-white/40 px-1.5 py-1 rounded-lg border border-slate-200/50">
+                                    <div className="grid gap-0.5 text-[8px] font-bold leading-tight opacity-90">
                                       <p className="truncate" title={getProfessionalName(app)}>Prof. {getProfessionalName(app)}</p>
                                       <p className="truncate" title={getRoomName(app)}>Cons. {getRoomName(app)}</p>
                                     </div>
-                                  )}
-                                </div>
-                                <p className="text-[12px] font-black leading-tight text-right ml-auto pb-0.5 line-clamp-3 overflow-hidden">{getAppointmentName(app)}</p>
+                                  </div>
+                                )}
                               </div>
                             </motion.div>
                           );
