@@ -824,7 +824,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                           return columnAppointments.map((app) => {
                             const pro = professionals.find((p) => p.id === (app.professionalId || app.proId));
                             const room = ROOMS.find((r) => r.id === app.roomId);
-                            const appointmentHeight = Math.max(getHeightFromInterval(app.start, app.end || app.start), 74);
+                            const appointmentHeight = Math.max(getHeightFromInterval(app.start, app.end || app.start), 32);
                             const appLayout = layoutInfo.get(app.id) || { colIndex: 0, maxCols: 1 };
                             
                             const widthPercent = 100 / appLayout.maxCols;
