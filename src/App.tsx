@@ -303,11 +303,11 @@ export default function App() {
             };
             await saveAppointment(appointmentData, modalContext.appointment?.id);
             setAgendaFocusDate(appointmentData.date);
+            setIsModalOpen(false); // Close immediately after save returns
             navigateToTab('agenda', { replace: true });
-            setIsModalOpen(false);
-            pushToast('success', 'Turno guardado', 'Cambios realizados con éxito.');
+            pushToast('success', 'Turno guardado', 'La reserva se realizó correctamente.');
           } catch (error) {
-            pushToast('error', 'Error', 'No se pudo guardar.');
+            pushToast('error', 'Error', 'No se pudo guardar la reserva.');
           } finally {
             setModalAction(null);
           }
@@ -317,9 +317,9 @@ export default function App() {
           try {
             await deleteAppointment(id);
             setIsModalOpen(false);
-            pushToast('success', 'Eliminado', 'Turno borrado.');
+            pushToast('success', 'Turno eliminado', 'La reserva se borró correctamente.');
           } catch (error) {
-            pushToast('error', 'Error', 'No se pudo borrar.');
+            pushToast('error', 'Error', 'No se pudo borrar el turno.');
           } finally {
             setModalAction(null);
           }

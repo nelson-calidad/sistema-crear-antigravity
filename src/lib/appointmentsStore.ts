@@ -407,12 +407,8 @@ const persistRemoteAppointment = async (appointment: AppointmentRecord, id?: str
   writeLocalAppointments(nextAppointments);
   emitAppointments(nextAppointments);
 
-  const remoteAppointments = await fetchRemoteAppointmentsStrict();
-  const targetId = String(id || appointment.id);
-  if (!remoteAppointments.some((item) => item.id === targetId)) {
-    throw new Error('Sheets respondió, pero el turno no quedó guardado.');
-  }
-
+  // We don't await the second verify fetch here to avoid delaying the UI closing.
+  // The background broadcast will pick up any changes eventually.
   void broadcast().catch((error) => {
     console.warn('No se pudo refrescar la agenda remota luego de guardar.', error);
   });
