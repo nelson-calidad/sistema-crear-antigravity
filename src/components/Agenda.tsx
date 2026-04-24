@@ -37,7 +37,7 @@ import { useProfessionals } from '../lib/professionalsStore';
 import { forceRefreshAppointments } from '../lib/appointmentsStore';
 
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
-const HOUR_HEIGHT = 88;
+const HOUR_HEIGHT = 160;
 const DEFAULT_SESSION_DURATION = 45;
 const UNASSIGNED_COLUMN = { id: 'unassigned', name: 'Sin asignar', color: 'bg-slate-400' };
 
@@ -780,12 +780,13 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             </div>
 
             <div ref={dailyTimelineRef} className="flex-1 overflow-y-auto relative custom-scrollbar">
-              <div className="hidden md:flex min-h-[1232px]">
+              <div className="hidden md:flex" style={{ minHeight: `${HOURS.length * HOUR_HEIGHT}px` }}>
                 <div className="w-16 border-r border-slate-100 bg-slate-50/20 sticky left-0 z-20 backdrop-blur-sm">
                   {HOURS.map((hour) => (
-                    <div key={hour} className="relative h-[88px] border-b border-slate-200/60 flex items-start justify-center pt-2">
-                      <span className="text-[10px] font-black text-slate-400">{hour.toString().padStart(2, '0')}:00</span>
-                      <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200/80" />
+                    <div key={hour} className="relative border-b border-slate-200/60 flex flex-col items-center justify-between py-2" style={{ height: `${HOUR_HEIGHT}px` }}>
+                      <span className="text-[10px] font-black text-slate-400 absolute top-2">{hour.toString().padStart(2, '0')}:00</span>
+                      <span className="text-[9px] font-bold text-slate-300 absolute top-[50%] -translate-y-1/2 bg-slate-50/80 px-1 rounded">{hour.toString().padStart(2, '0')}:30</span>
+                      <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200/80 -z-10" />
                     </div>
                   ))}
                 </div>
@@ -804,7 +805,8 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                         {HOURS.map((hour) => (
                           <div
                             key={hour}
-                            className="relative h-[88px] border-b border-slate-200/60 w-full cursor-cell"
+                            className="relative border-b border-slate-200/60 w-full cursor-cell"
+                            style={{ height: `${HOUR_HEIGHT}px` }}
                             onClick={(event) => handleEmptySlotClick(event, hour, col)}
                           >
                             <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200/70" />
