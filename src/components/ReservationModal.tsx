@@ -245,7 +245,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
     }
 
     if (selectedProfessionalBusy || selectedRoomBusy) {
-      alert('Ese colaborador o consultorio ya estÃ¡ ocupado en ese horario. ElegÃ­ otro.');
+      alert('Ese colaborador o consultorio ya está ocupado en ese horario. Elegí otro.');
       return;
     }
 
@@ -271,7 +271,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-2 md:p-4">
+      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 sm:p-3 md:p-4">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -287,15 +287,15 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-lg rounded-t-[1.75rem] md:rounded-3xl overflow-hidden max-h-[calc(100svh-0.75rem)] md:max-h-none border border-slate-200 bg-white text-slate-900 shadow-[0_28px_80px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-white/70 flex flex-col"
+          className="relative w-full max-w-lg md:max-w-2xl rounded-t-[1.25rem] sm:rounded-3xl overflow-hidden h-[100svh] sm:h-auto sm:max-h-[calc(100svh-1.5rem)] border border-slate-200 bg-white text-slate-900 shadow-[0_28px_80px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-white/70 flex flex-col"
         >
-          <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-white via-slate-50 to-white text-slate-900 shrink-0">
+          <div className="p-3 sm:p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-white via-slate-50 to-white text-slate-900 shrink-0">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-600">
                 {isEditing ? 'Editar registro' : 'Nuevo registro'}
               </p>
-              <h2 className="mt-1 text-lg md:text-xl font-black text-slate-900">{modalTitle}</h2>
-              <p className="hidden md:block text-xs text-slate-500 font-medium tracking-tight">
+              <h2 className="mt-0.5 text-base sm:text-lg md:text-xl font-black text-slate-900">{modalTitle}</h2>
+              <p className="hidden sm:block text-xs text-slate-500 font-medium tracking-tight">
                 {modalSubtitle}
               </p>
             </div>
@@ -308,7 +308,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                   }}
                   disabled={isSaving || isDeleting}
                   className="p-2 text-rose-500 hover:bg-rose-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Eliminar ReservaciÃ³n"
+                  title="Eliminar reservación"
                 >
                   {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
                 </button>
@@ -319,11 +319,11 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 p-4 md:p-8 space-y-5 md:space-y-6 overflow-y-auto custom-scrollbar bg-white text-slate-900">
+          <div className="flex-1 min-h-0 p-3 sm:p-4 md:p-5 space-y-3 sm:space-y-4 overflow-y-auto custom-scrollbar bg-white text-slate-900">
             {/* Type Selector */}
             <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-2 overflow-x-auto border border-slate-100">
               {[
-                { id: 'session', label: 'SesiÃ³n', icon: User },
+                { id: 'session', label: 'Sesión', icon: User },
                 { id: 'interview', label: 'Entrevista', icon: FileText },
                 { id: 'block', label: 'Bloqueo', icon: AlertCircle },
               ].map((t) => (
@@ -346,26 +346,26 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
               ))}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Cobertura</label>
               <select
                 value={coverageType}
                 onChange={(e) => setCoverageType(e.target.value as 'obra social' | 'particular')}
-                className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 text-slate-900"
+                className="w-full p-2.5 sm:p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 text-slate-900"
               >
                 <option value="particular">Particular</option>
                 <option value="obra social">Obra social</option>
               </select>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">{professionalLabel}</label>
                 <select 
                   value={selectedProId}
                   onChange={(e) => setSelectedProId(e.target.value)}
                   disabled={kind === 'block'}
-                  className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 disabled:opacity-50 text-slate-900"
+                  className="w-full p-2.5 sm:p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 disabled:opacity-50 text-slate-900"
                 >
                    <option value="">Seleccionar...</option>
                    {activeProfessionals.map(pro => (
@@ -377,7 +377,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                 {selectedProfessionalBusy && (
                   <div className="flex items-center gap-2 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
                     <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    Ese profesional ya estÃ¡ ocupado en este horario.
+                    Ese profesional ya está ocupado en este horario.
                   </div>
                 )}
                 {!selectedProfessionalBusy && selectedDayAppointments.some((appointment) => appointment.professionalId || appointment.proId) && (
@@ -393,12 +393,12 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                   </div>
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Consultorio</label>
                 <select 
                   value={selectedRoomId}
                   onChange={(e) => setSelectedRoomId(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 text-slate-900"
+                  className="w-full p-2.5 sm:p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 text-slate-900"
                 >
                    <option value="">Seleccionar...</option>
                    {ROOMS.map(r => (
@@ -410,7 +410,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                 {selectedRoomBusy && (
                   <div className="flex items-center gap-2 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
                     <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    Ese consultorio ya estÃ¡ ocupado en este horario.
+                    Ese consultorio ya está ocupado en este horario.
                   </div>
                 )}
                 {!selectedRoomBusy && selectedDayAppointments.some((appointment) => appointment.roomId) && (
@@ -428,20 +428,20 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
             </div>
 
             {kind !== 'block' && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">{personLabel}</label>
                 <input 
                   type="text" 
                   value={formData.patient}
                   onChange={(e) => setFormData({...formData, patient: e.target.value})}
                   placeholder={personPlaceholder}
-                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-cyan-100 focus:bg-white transition-all outline-none text-slate-900 placeholder:text-slate-400"
+                  className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-cyan-100 focus:bg-white transition-all outline-none text-slate-900 placeholder:text-slate-400"
                 />
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Fecha</label>
                 <div className="relative">
                   <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -449,20 +449,20 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                     type="date" 
                     value={formData.date}
                     onChange={(e) => setFormData({...formData, date: e.target.value})}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none text-slate-900"
+                    className="w-full pl-10 pr-3 py-2.5 sm:py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none text-slate-900"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Repetir (Como Google)</label>
                 <select 
                   value={recurrence}
                   onChange={(e) => setRecurrence(e.target.value as any)}
-                  className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 text-slate-900"
+                  className="w-full p-2.5 sm:p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 text-slate-900"
                 >
                   <option value="none">No se repite</option>
-                  <option value="daily">Todos los dÃ­as</option>
-                  <option value="weekdays">Cada dÃ­a hÃ¡bil (Lun a Vie)</option>
+                  <option value="daily">Todos los días</option>
+                  <option value="weekdays">Cada día hábil (Lun a Vie)</option>
                   <option value="weekly">Semanalmente (Personalizado)</option>
                 </select>
               </div>
@@ -474,7 +474,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                 animate={{ opacity: 1, y: 0 }}
                 className="p-4 bg-cyan-50 rounded-2xl border border-cyan-100 space-y-3"
               >
-                <p className="text-[10px] font-black text-cyan-700 uppercase tracking-widest leading-none">Seleccionar dÃ­as de repeticiÃ³n</p>
+                <p className="text-[10px] font-black text-cyan-700 uppercase tracking-widest leading-none">Seleccionar días de repetición</p>
                 <div className="flex justify-between">
                   {DAY_LABELS.map((label, i) => (
                     <button
@@ -492,8 +492,8 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
               </motion.div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Hora Inicio</label>
                 <div className="relative">
                   <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -501,11 +501,11 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                     type="time" 
                     value={formData.startTime}
                     onChange={(e) => setFormData({...formData, startTime: e.target.value})}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none text-slate-900"
+                    className="w-full pl-10 pr-3 py-2.5 sm:py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none text-slate-900"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Hora Fin</label>
                 <div className="relative">
                   <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -513,18 +513,18 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                     type="time" 
                     value={formData.endTime}
                     onChange={(e) => setFormData({...formData, endTime: e.target.value})}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none text-slate-900"
+                    className="w-full pl-10 pr-3 py-2.5 sm:py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none text-slate-900"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="shrink-0 p-3 md:p-6 bg-slate-50 border-t border-slate-100 flex flex-col-reverse sm:flex-row gap-3 sm:gap-4 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] md:pb-6">
+          <div className="shrink-0 p-3 sm:p-4 md:p-5 bg-slate-50/95 border-t border-slate-100 flex flex-row gap-2 sm:gap-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur">
             <button 
               onClick={onClose}
               disabled={isSaving || isDeleting}
-              className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl sm:rounded-2xl font-bold text-sm hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
@@ -532,7 +532,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
               onClick={handleSave}
               disabled={selectedProfessionalBusy || selectedRoomBusy || isSaving || isDeleting}
               className={cn(
-                'flex-[2] py-3 rounded-2xl font-bold text-sm transition-colors shadow-lg',
+                'flex-[1.6] py-3 rounded-xl sm:rounded-2xl font-bold text-sm transition-colors shadow-lg',
                 selectedProfessionalBusy || selectedRoomBusy || isSaving || isDeleting
                   ? 'bg-rose-100 text-rose-400 cursor-not-allowed shadow-none'
                   : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200',
