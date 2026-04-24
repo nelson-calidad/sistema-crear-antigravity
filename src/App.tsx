@@ -59,6 +59,29 @@ export default function App() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastTimers = useRef<number[]>([]);
   const syncErrorShown = useRef(false);
+
+  // Theme logic
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return (window.localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    window.localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(current => current === 'light' ? 'dark' : 'light');
+  };
+
   const navigateToTab = (tab: string, options?: { replace?: boolean }) => {
     if (!VALID_TABS.has(tab) || tab === activeTab) {
       setActiveTab(tab);
@@ -78,18 +101,12 @@ export default function App() {
 
   const mobileTabLabel = (() => {
     switch (activeTab) {
-      case 'dashboard':
-        return 'Inicio';
-      case 'professionals':
-        return 'Profesionales';
-      case 'agenda':
-        return 'Agenda';
-      case 'finance':
-        return 'Finanzas';
-      case 'settings':
-        return 'Configuración';
-      default:
-        return activeTab;
+      case 'dashboard': return 'Inicio';
+      case 'professionals': return 'Profesionales';
+      case 'agenda': return 'Agenda';
+      case 'finance': return 'Finanzas';
+      case 'settings': return 'Configuración';
+      default: return activeTab;
     }
   })();
 
@@ -120,16 +137,9 @@ export default function App() {
       },
       (error) => {
         console.error('Sync error with Sheets', error);
-        if (syncErrorShown.current) {
-          return;
-        }
-
+        if (syncErrorShown.current) return;
         syncErrorShown.current = true;
-        pushToast(
-          'error',
-          'No se pudo sincronizar',
-          'Este navegador no pudo leer Sheets. ProbÃ¡ recargar o usar otro navegador.',
-        );
+        pushToast('error', 'No se pudo sincronizar', 'Error al leer Sheets.');
       },
     );
 
@@ -140,7 +150,6 @@ export default function App() {
     };
   }, []);
 
-  // Global Reservation Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContext, setModalContext] = useState<{
     room?: string;
@@ -158,74 +167,18 @@ export default function App() {
   const handleQuickReserve = () => {
     navigateToTab('agenda');
     setMobileSidebarOpen(false);
-    window.requestAnimationFrame(() => {
-      handleOpenModal();
-    });
+    window.requestAnimationFrame(() => handleOpenModal());
   };
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard onQuickReserve={handleQuickReserve} />;
-      case 'professionals':
-        return <ProfessionalsGrid />;
-      case 'agenda':
-        return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;
-      case 'finance':
-        return <Finance />;
-      case 'settings':
-      case 'professionals':
-        return <ProfessionalsGrid />;
-      case 'agenda':
-        return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;
-      case 'finance':
-        return <Finance />;
-      case 'settings':
-        return <Settings />;
-      default:
-        return <Dashboard onQuickReserve={handleQuickReserve} />;
+      case 'dashboard': return <Dashboard onQuickReserve={handleQuickReserve} />;
+      case 'professionals': return <ProfessionalsGrid />;
+      case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;
+      case 'finance': return <Finance />;
+      case 'settings': return <Settings />;
+      default: return <Dashboard onQuickReserve={handleQuickReserve} />;
     }
-  };
-
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      return (window.localStorage.getItem('theme') as 'light' | 'dark') || 'light';
-    }
-    return 'light';
-  });
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    window.localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(current => current === 'light' ? 'dark' : 'light');
-  };
-
-  const getTabFromLocation = () => {
-    if (typeof window === 'undefined') {
-      return 'dashboard';
-    }
-
-    const tab = new URL(window.location.href).searchParams.get(TAB_QUERY_KEY);
-    return tab && VALID_TABS.has(tab) ? tab : 'dashboard';
-  };
-
-  const buildTabUrl = (tab: string) => {
-    const url = new URL(window.location.href);
-    if (tab === 'dashboard') {
-      url.searchParams.delete(TAB_QUERY_KEY);
-    } else {
-      url.searchParams.set(TAB_QUERY_KEY, tab);
-    }
-
-    return `${url.pathname}${url.search}${url.hash}`;
   };
 
   const loadingFallback = (
@@ -252,29 +205,20 @@ export default function App() {
       />
       
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-slate-100 px-3 md:px-8 py-2 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0 shadow-[0_8px_28px_rgba(148,117,96,0.04)]">
+        <header className="bg-white dark:bg-[#0f172a] border-b border-slate-100 dark:border-slate-800 px-3 md:px-8 py-2 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0">
           <div className="flex items-center justify-between gap-2 md:hidden w-full">
             <button
               onClick={() => setMobileSidebarOpen((open) => !open)}
-              className="w-8 h-8 rounded-lg bg-white border border-slate-100 overflow-hidden shadow-sm flex items-center justify-center shrink-0"
-              aria-label="Abrir menú"
+              className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm flex items-center justify-center shrink-0"
             >
-              {mobileSidebarOpen ? <X className="w-4 h-4 text-slate-900" /> : <img src={logoCrear} alt="CREAR" className="w-full h-full object-contain p-0.5" />}
+              {mobileSidebarOpen ? <X className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : <img src={logoCrear} alt="CREAR" className="w-full h-full object-contain p-0.5" />}
             </button>
-            <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-[13px] font-black text-slate-900 truncate leading-none">{mobileTabLabel}</p>
-                <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-slate-400 leading-none mt-0.5">
-                  {getBackendLabel()}
-                </p>
-              </div>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-[8px] font-black uppercase tracking-[0.18em] text-slate-500 shrink-0">
-                Conectado
-              </span>
+            <div className="min-w-0 flex-1 px-1">
+              <p className="text-[13px] font-black text-slate-900 dark:text-slate-100 truncate leading-none">{mobileTabLabel}</p>
             </div>
-            <button className="relative p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200/70 shrink-0">
+            <button className="relative p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 shrink-0">
               <Bell className="w-4.5 h-4.5" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-rose-500 rounded-full border border-white" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-rose-500 rounded-full border border-white dark:border-slate-800" />
             </button>
           </div>
 
@@ -283,24 +227,24 @@ export default function App() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
               <input
                 type="text"
-                placeholder="Buscar pacientes, turnos o profesionales..."
-                className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 focus:bg-white focus:border-cyan-200 focus:ring-0 rounded-xl text-sm transition-all"
+                placeholder="Buscar..."
+                className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-cyan-200 dark:focus:border-cyan-900 rounded-xl text-sm transition-all text-slate-900 dark:text-slate-100"
               />
             </div>
           </div>
 
-          <div className="hidden md:flex items-center justify-between md:justify-end gap-3 md:gap-4">
-            <button className="relative p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200/70">
+          <div className="hidden md:flex items-center justify-end gap-4">
+            <button className="relative p-2 text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-[#0f172a]" />
             </button>
-            <div className="hidden md:block h-8 w-px bg-slate-200 mx-2" />
-            <div className="flex items-center gap-3 pl-2">
+            <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 mx-2" />
+            <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-sm font-bold text-slate-900">{user?.displayName || 'Admin CREAR'}</p>
-                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">{getBackendLabel()} conectado</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{user?.displayName || 'Admin'}</p>
+                <p className="text-[10px] font-medium text-slate-400 uppercase">{getBackendLabel()}</p>
               </div>
-              <button className="w-10 h-10 rounded-xl bg-[#243042] border border-slate-200 flex items-center justify-center text-white font-bold text-xs overflow-hidden shadow-lg shadow-slate-200/40">
+              <button className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
                 {user?.photoURL ? <img src={user.photoURL} alt="avatar" /> : 'AD'}
               </button>
             </div>
@@ -336,14 +280,14 @@ export default function App() {
         initialStartTime={modalContext.startTime}
         onSave={async (data) => {
           if (!user) {
-            pushToast('error', 'SesiÃ³n requerida', 'Inicia sesiÃ³n para guardar cambios en la agenda.');
+            pushToast('error', 'Sesión requerida', 'Inicia sesión para guardar cambios.');
             return;
           }
           setModalAction('save');
           try {
             const patientName = data.patient?.trim();
             const kind = data.kind || data.type || 'session';
-            const professionalId = data.professionalId || data.proId || undefined;
+            const professionalId = data.professionalId || data.proId;
             const appointmentData = {
               ...data,
               kind,
@@ -352,26 +296,18 @@ export default function App() {
               start: data.startTime,
               end: data.endTime,
               patient: patientName || undefined,
-              title: patientName || data.title || (kind === 'block' ? 'Otros' : kind === 'interview' ? 'Entrevista' : 'Nueva Reserva'),
+              title: patientName || data.title || 'Reserva',
               professionalId,
               proId: professionalId,
               createdBy: user.uid
             };
-            const wasEditing = Boolean(modalContext.appointment);
             await saveAppointment(appointmentData, modalContext.appointment?.id);
             setAgendaFocusDate(appointmentData.date);
             navigateToTab('agenda', { replace: true });
             setIsModalOpen(false);
-            pushToast(
-              'success',
-              wasEditing ? 'Turno actualizado' : 'Turno creado',
-              wasEditing
-                ? 'La reserva se guardÃ³ correctamente en CREAR.'
-                : 'La nueva reserva se guardÃ³ correctamente en CREAR.',
-            );
+            pushToast('success', 'Turno guardado', 'Cambios realizados con éxito.');
           } catch (error) {
-            console.error("Error saving appointment", error);
-            pushToast('error', 'No se pudo guardar', 'VerificÃ¡ tu conexiÃ³n o permisos e intentÃ¡ de nuevo.');
+            pushToast('error', 'Error', 'No se pudo guardar.');
           } finally {
             setModalAction(null);
           }
@@ -381,10 +317,9 @@ export default function App() {
           try {
             await deleteAppointment(id);
             setIsModalOpen(false);
-            pushToast('success', 'Turno eliminado', 'La reserva se borrÃ³ correctamente.');
+            pushToast('success', 'Eliminado', 'Turno borrado.');
           } catch (error) {
-            console.error("Error deleting appointment", error);
-            pushToast('error', 'No se pudo borrar', 'IntentÃ¡ de nuevo en unos segundos.');
+            pushToast('error', 'Error', 'No se pudo borrar.');
           } finally {
             setModalAction(null);
           }
@@ -397,25 +332,11 @@ export default function App() {
         <AnimatePresence initial={false}>
           {toasts.map((toast) => {
             const toneStyles = {
-              success: {
-                icon: CheckCircle2,
-                shell: 'bg-emerald-50 border-emerald-200 text-emerald-900',
-                accent: 'bg-emerald-500',
-              },
-              error: {
-                icon: XCircle,
-                shell: 'bg-rose-50 border-rose-200 text-rose-900',
-                accent: 'bg-rose-500',
-              },
-              info: {
-                icon: AlertCircle,
-                shell: 'bg-blue-50 border-blue-200 text-blue-900',
-                accent: 'bg-blue-500',
-              },
+              success: { icon: CheckCircle2, shell: 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100', accent: 'bg-emerald-500' },
+              error: { icon: XCircle, shell: 'bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-100', accent: 'bg-rose-500' },
+              info: { icon: AlertCircle, shell: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100', accent: 'bg-blue-500' },
             }[toast.tone];
-
             const Icon = toneStyles.icon;
-
             return (
               <motion.div
                 key={toast.id}
@@ -426,19 +347,14 @@ export default function App() {
               >
                 <div className={`h-1 w-full ${toneStyles.accent}`} />
                 <div className="flex items-start gap-3 p-4">
-                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white">
+                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-black">{toast.title}</p>
                     <p className="mt-0.5 text-xs font-medium opacity-80">{toast.message}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeToast(toast.id)}
-                    className="rounded-lg p-1 text-current/60 transition-colors hover:bg-white/60 hover:text-current"
-                    aria-label="Cerrar notificaciÃ³n"
-                  >
+                  <button onClick={() => removeToast(toast.id)} className="rounded-lg p-1 text-current/60 hover:bg-white/60 dark:hover:bg-slate-700">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
