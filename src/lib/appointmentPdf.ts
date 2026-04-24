@@ -803,16 +803,16 @@ export const buildWeeklyAvailabilityPdfHtml = (selectedDate: Date, appointments:
               <div class="count">${cell.appointments.length} turno${cell.appointments.length === 1 ? '' : 's'}</div>
               ${cell.free ? '<div class="free-label">Libre</div>' : `
                 <div class="mini-list">
-                  ${cell.appointments.slice(0, 2).map((appointment) => `
+                  ${cell.appointments.map((appointment) => `
                     <div class="week-pill ${appointment.kind || appointment.type}">
                       <div class="pill-top">
                         <span>${escapeHtml(getTypeLabel(appointment.kind || appointment.type))}</span>
                         <span class="time">${escapeHtml(formatTimeOnly(appointment.start))}</span>
                       </div>
                       <div class="professional">${escapeHtml(getProfessionalLabel(appointment, professionals))}</div>
+                      <div style="font-size: 8px; font-weight: 800; margin-top: 1px; color: inherit; opacity: 0.95;" class="truncate">${escapeHtml(getAppointmentName(appointment))}</div>
                     </div>
                   `).join('')}
-                  ${cell.appointments.length > 2 ? `<div class="subtle">+ ${cell.appointments.length - 2} más</div>` : ''}
                 </div>
               `}
             </div>
