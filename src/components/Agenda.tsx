@@ -818,7 +818,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                 }}
                                 className={cn(
                                   'absolute rounded-xl border border-slate-900 dark:border-slate-700 shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-300 dark:ring-blue-500 flex flex-col',
-                                  appointmentHeight < 60 ? 'py-1.5 pr-1.5 pl-3' : 'py-2 pr-2.5 pl-4',
+                                  appointmentHeight < 60 ? 'py-1 pr-1 pl-2' : appointmentHeight < 90 ? 'py-1.5 pr-1.5 pl-3' : 'py-2 pr-2.5 pl-4',
                                   getTypeStyles(app.kind || app.type),
                                 )}
                               >
@@ -838,19 +838,31 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                               <div className="flex-1 min-h-0 flex flex-col justify-between mt-1 relative z-10">
                                 <div className="flex-1 flex items-center justify-end w-full px-1">
                                   <p className={cn(
-                                    "font-black leading-tight text-right line-clamp-3 overflow-hidden",
-                                    appointmentHeight >= 120 ? "text-[16px] xl:text-[18px]" : "text-[12px]"
+                                    "font-black leading-tight text-right line-clamp-2 overflow-hidden",
+                                    appointmentHeight >= 120 ? "text-[16px] xl:text-[18px]" : 
+                                    appointmentHeight < 90 ? "text-[10px]" : "text-[12px]"
                                   )}>
                                     {getAppointmentName(app)}
                                   </p>
                                 </div>
 
                                 {appointmentHeight >= 60 && (
-                                  <div className="shrink-0 flex items-end justify-between w-full mt-1 bg-white/40 px-1.5 py-1 rounded-lg border border-slate-200/50">
-                                    <div className="grid gap-0.5 text-[8px] font-bold leading-tight opacity-90">
-                                      <p className="truncate" title={getProfessionalName(app)}>Prof. {getProfessionalName(app)}</p>
-                                      <p className="truncate" title={getRoomName(app)}>Cons. {getRoomName(app)}</p>
-                                    </div>
+                                  <div className={cn(
+                                    "shrink-0 flex items-center justify-between w-full mt-1 bg-white/40 dark:bg-black/20 px-1.5 py-0.5 rounded-lg border border-slate-200/50 dark:border-slate-800/50",
+                                    appointmentHeight < 90 ? "mt-0.5" : "mt-1 py-1"
+                                  )}>
+                                    {appointmentHeight < 90 ? (
+                                      <div className="flex items-center gap-2 text-[7px] font-bold opacity-90 truncate">
+                                        <span className="truncate">Prof. {getProfessionalName(app)}</span>
+                                        <span className="shrink-0 text-slate-400 dark:text-slate-500">•</span>
+                                        <span className="truncate">C.{getRoomName(app)}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="grid gap-0.5 text-[8px] font-bold leading-tight opacity-90">
+                                        <p className="truncate" title={getProfessionalName(app)}>Prof. {getProfessionalName(app)}</p>
+                                        <p className="truncate" title={getRoomName(app)}>Cons. {getRoomName(app)}</p>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
