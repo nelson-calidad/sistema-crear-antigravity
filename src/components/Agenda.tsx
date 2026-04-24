@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -150,7 +150,8 @@ const overlaps = (startA?: string, endA?: string, startB?: string, endB?: string
     return false;
   }
 
-  return startAMinutes < endBMinutes && startBMinutes < endAMinutes;
+  // Two intervals [A, B) and [C, D) overlap if max(A, C) < min(B, D)
+  return Math.max(startAMinutes, startBMinutes) < Math.min(endAMinutes, endBMinutes);
 };
 
 const sortByStart = (items: AppointmentRecord[]) => [...items].sort((a, b) => parseTimeToMinutes(a.start) - parseTimeToMinutes(b.start));
@@ -168,6 +169,37 @@ const formatTimeOnly = (value?: string) => {
   }
 
   return String(value).slice(0, 5);
+};
+
+const resolveOverlaps = (appointments: AppointmentRecord[]) => {
+  const sorted = [...appointments].sort((a, b) => parseTimeToMinutes(a.start) - parseTimeToMinutes(b.start));
+  const columns: AppointmentRecord[][] = [];
+  const layout = new Map<string, { colIndex: number; maxCols: number }>();
+
+  sorted.forEach((app) => {
+    let placed = false;
+    for (let i = 0; i < columns.length; i++) {
+      const col = columns[i];
+      const lastApp = col[col.length - 1];
+      if (!overlaps(lastApp.start, lastApp.end || lastApp.start, app.start, app.end || app.start)) {
+        col.push(app);
+        placed = true;
+        layout.set(app.id, { colIndex: i, maxCols: 1 });
+        break;
+      }
+    }
+    if (!placed) {
+      columns.push([app]);
+      layout.set(app.id, { colIndex: columns.length - 1, maxCols: 1 });
+    }
+  });
+
+  const totalCols = columns.length;
+  for (const [id, info] of layout.entries()) {
+    layout.set(id, { ...info, maxCols: totalCols });
+  }
+
+  return layout;
 };
 
 const getCoverageLabel = (appointment: AppointmentRecord) => appointment.coverageType || 'particular';
@@ -787,29 +819,38 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                           </div>
                         ) : null}
 
-                        {columnAppointments.map((app) => {
-                          const pro = professionals.find((p) => p.id === (app.professionalId || app.proId));
-                          const room = ROOMS.find((r) => r.id === app.roomId);
-                          const appointmentHeight = Math.max(getHeightFromInterval(app.start, app.end || app.start), 74);
+                        {(() => {
+                          const layoutInfo = resolveOverlaps(columnAppointments);
+                          return columnAppointments.map((app) => {
+                            const pro = professionals.find((p) => p.id === (app.professionalId || app.proId));
+                            const room = ROOMS.find((r) => r.id === app.roomId);
+                            const appointmentHeight = Math.max(getHeightFromInterval(app.start, app.end || app.start), 74);
+                            const appLayout = layoutInfo.get(app.id) || { colIndex: 0, maxCols: 1 };
+                            
+                            const widthPercent = 100 / appLayout.maxCols;
+                            const leftPercent = appLayout.colIndex * widthPercent;
 
-                          return (
-                            <motion.div
-                              key={app.id}
-                              initial={{ opacity: 0, scale: 0.96 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenModal(room?.name, pro?.name, app);
-                              }}
-                              style={{
-                                top: `${getPositionFromTime(app.start)}px`,
-                                minHeight: `${appointmentHeight}px`,
-                              }}
-                              className={cn(
-                                'absolute left-1 right-1 rounded-xl p-2 border shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-100',
-                                getTypeStyles(app.kind || app.type),
-                              )}
-                            >
+                            return (
+                              <motion.div
+                                key={app.id}
+                                initial={{ opacity: 0, scale: 0.96 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenModal(room?.name, pro?.name, app);
+                                }}
+                                style={{
+                                  top: `${getPositionFromTime(app.start)}px`,
+                                  minHeight: `${appointmentHeight}px`,
+                                  width: `calc(${widthPercent}% - 4px)`,
+                                  left: `calc(${leftPercent}% + 2px)`,
+                                  zIndex: 10 + appLayout.colIndex,
+                                }}
+                                className={cn(
+                                  'absolute rounded-xl p-2 border shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-100',
+                                  getTypeStyles(app.kind || app.type),
+                                )}
+                              >
                               <div className="flex items-start justify-between gap-1.5">
                                 <span className="shrink-0 text-[8px] font-black leading-tight px-1.5 py-1 rounded-lg bg-white/85 text-slate-900 border border-white/90">
                                   {formatTimeOnly(app.start)}
@@ -828,7 +869,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                               </div>
                             </motion.div>
                           );
-                        })}
+                        })})()}
                       </div>
                     );
                   })}
