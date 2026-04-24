@@ -865,13 +865,17 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                 </span>
                               </div>
 
-                              <p className="text-[11px] font-black truncate leading-tight mt-1 flex-1">{getAppointmentName(app)}</p>
-                              {appointmentHeight >= 60 && (
-                                <div className="mt-1 grid gap-0.5 text-[8px] font-bold leading-tight opacity-90">
-                                  <p className="truncate">Prof. {getProfessionalName(app)}</p>
-                                  <p className="truncate">Cons. {getRoomName(app)}</p>
+                              <div className="flex-1 min-h-0 flex items-end justify-between gap-2 mt-1">
+                                <div className="shrink-0 max-w-[45%]">
+                                  {appointmentHeight >= 60 && (
+                                    <div className="grid gap-0.5 text-[8px] font-bold leading-tight opacity-90 pb-0.5">
+                                      <p className="truncate" title={getProfessionalName(app)}>Prof. {getProfessionalName(app)}</p>
+                                      <p className="truncate" title={getRoomName(app)}>Cons. {getRoomName(app)}</p>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                                <p className="text-[12px] font-black leading-tight text-right ml-auto pb-0.5 line-clamp-3 overflow-hidden">{getAppointmentName(app)}</p>
+                              </div>
                             </motion.div>
                           );
                         })})()}
