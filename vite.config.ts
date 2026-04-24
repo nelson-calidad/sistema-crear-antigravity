@@ -6,7 +6,7 @@ import {defineConfig, loadEnv} from 'vite';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: mode === 'production' ? './' : '/',
+    base: mode === 'production' ? '/sistema-crear-antigravity/' : '/',
     plugins: [react(), tailwindcss()],
     build: {
       rollupOptions: {

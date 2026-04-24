@@ -47,7 +47,7 @@ export const Settings = () => {
             onClick={() => setActiveSubTab('insurances')}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all",
-              activeSubTab === 'insurances' ? "bg-white text-blue-600 shadow-sm border border-slate-100" : "text-slate-500 hover:bg-slate-100"
+              activeSubTab === 'insurances' ? "bg-white text-cyan-700 shadow-sm border border-slate-100" : "text-slate-500 hover:bg-slate-100"
             )}
           >
             <Building2 className="w-4 h-4" /> Obras Sociales
@@ -56,7 +56,7 @@ export const Settings = () => {
             onClick={() => setActiveSubTab('templates')}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all",
-              activeSubTab === 'templates' ? "bg-white text-blue-600 shadow-sm border border-slate-100" : "text-slate-500 hover:bg-slate-100"
+              activeSubTab === 'templates' ? "bg-white text-cyan-700 shadow-sm border border-slate-100" : "text-slate-500 hover:bg-slate-100"
             )}
           >
             <FileText className="w-4 h-4" /> Planillas y PDFs
@@ -65,7 +65,7 @@ export const Settings = () => {
             onClick={() => setActiveSubTab('notifications')}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all",
-              activeSubTab === 'notifications' ? "bg-white text-blue-600 shadow-sm border border-slate-100" : "text-slate-500 hover:bg-slate-100"
+              activeSubTab === 'notifications' ? "bg-white text-cyan-700 shadow-sm border border-slate-100" : "text-slate-500 hover:bg-slate-100"
             )}
           >
             <Bell className="w-4 h-4" /> Alertas
@@ -74,7 +74,7 @@ export const Settings = () => {
             onClick={() => setActiveSubTab('security')}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all",
-              activeSubTab === 'security' ? "bg-white text-blue-600 shadow-sm border border-slate-100" : "text-slate-500 hover:bg-slate-100"
+              activeSubTab === 'security' ? "bg-white text-cyan-700 shadow-sm border border-slate-100" : "text-slate-500 hover:bg-slate-100"
             )}
           >
             <ShieldCheck className="w-4 h-4" /> Seguridad
@@ -87,8 +87,8 @@ export const Settings = () => {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-bold text-slate-900">Gestión de Obras Sociales</h3>
-                  <button className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs hover:bg-blue-100">
+                  <h3 className="font-semibold text-slate-900">Gestión de Obras Sociales</h3>
+                  <button className="flex items-center gap-2 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-lg font-semibold text-xs hover:bg-cyan-100 transition-colors">
                     <Plus className="w-3.5 h-3.5" /> Agregar OS
                   </button>
                 </div>
@@ -98,16 +98,16 @@ export const Settings = () => {
                     <div key={os.id} className="flex items-center justify-between p-4 border border-slate-50 rounded-xl hover:bg-slate-50/50 transition-colors">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 font-bold">
-                          {os.name[0]}
+                          <Building2 className="w-5 h-5 opacity-50" />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{os.name}</p>
-                          <p className="text-xs text-slate-500">Planes: {os.plans.join(', ')}</p>
+                          <p className="font-semibold text-slate-900">{os.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Planes: {os.plans.join(', ')}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <span className={cn(
-                          "px-2 py-1 rounded-md text-[10px] font-bold",
+                          "px-2 py-1 rounded-md text-[10px] font-semibold",
                           os.status === 'Activo' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
                         )}>
                           {os.status}
@@ -127,31 +127,31 @@ export const Settings = () => {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-bold text-slate-900">Plantillas de Documentación</h3>
-                  <button className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs hover:bg-blue-100">
+                  <h3 className="font-semibold text-slate-900">Plantillas de Documentación</h3>
+                  <button className="flex items-center gap-2 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-lg font-semibold text-xs hover:bg-cyan-100 transition-colors">
                     <Plus className="w-3.5 h-3.5" /> Subir Nueva
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {templates.map(tpl => (
-                    <div key={tpl.id} className="p-4 bg-slate-50 rounded-xl border border-transparent hover:border-blue-100 transition-all flex flex-col justify-between">
+                    <div key={tpl.id} className="p-4 bg-slate-50 rounded-xl border border-transparent hover:border-cyan-100 transition-all flex flex-col justify-between">
                       <div className="flex items-start justify-between mb-4">
                         <div className="p-2 bg-white rounded-lg shadow-sm">
-                          <FileText className="w-6 h-6 text-blue-500" />
+                          <FileText className="w-6 h-6 text-cyan-600" />
                         </div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">{tpl.format}</span>
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{tpl.format}</span>
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-900 text-sm mb-1">{tpl.name}</h4>
-                        <p className="text-[10px] text-slate-500">Última actualización: {tpl.lastUpdate}</p>
+                        <h4 className="font-semibold text-slate-900 text-sm mb-1">{tpl.name}</h4>
+                        <p className="text-[11px] text-slate-500">Última actualización: {tpl.lastUpdate}</p>
                       </div>
                       <div className="mt-4 pt-4 border-t border-slate-200/50 flex gap-2">
                         <button className="flex-1 py-1.5 bg-white text-slate-700 text-[10px] font-bold rounded-md hover:bg-slate-100 flex items-center justify-center gap-2">
-                          <ExternalLink className="w-3 h-3" /> Ver
+                          <ExternalLink className="w-3.5 h-3.5" /> Ver
                         </button>
                         <button className="flex-1 py-1.5 bg-white text-slate-700 text-[10px] font-bold rounded-md hover:bg-slate-100 flex items-center justify-center gap-2">
-                          Editar
+                          Configurar
                         </button>
                       </div>
                     </div>
@@ -164,7 +164,7 @@ export const Settings = () => {
           {activeSubTab === 'notifications' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                <h3 className="font-bold text-slate-900 mb-6">Configuración de Alertas</h3>
+                <h3 className="font-semibold text-slate-900 mb-6">Configuración de Alertas</h3>
                 <div className="space-y-4">
                   {[
                     { label: 'Notificar nuevos turnos por Email', defaultChecked: true },
@@ -176,7 +176,7 @@ export const Settings = () => {
                       <span className="text-sm text-slate-700">{item.label}</span>
                       <div className={cn(
                         "w-10 h-5 rounded-full relative transition-colors cursor-pointer",
-                        item.defaultChecked ? "bg-blue-600" : "bg-slate-200"
+                        item.defaultChecked ? "bg-cyan-600" : "bg-slate-200"
                       )}>
                         <div className={cn(
                           "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
@@ -188,7 +188,7 @@ export const Settings = () => {
                 </div>
                 <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
                    <button className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors">
-                     <Save className="w-4 h-4" /> Guardar Cambios
+                     <Save className="w-4 h-4" /> Aplicar Cambios
                    </button>
                 </div>
               </div>
