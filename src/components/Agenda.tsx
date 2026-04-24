@@ -188,13 +188,23 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   const [professionals] = useProfessionals();
 
   const getCorrespondsToLabel = (appointment: AppointmentRecord) => {
-    const pro = professionals.find((p) => p.id === appointment.professionalId || appointment.proId);
+    const pro = professionals.find((p) => p.id === (appointment.professionalId || appointment.proId));
     const room = ROOMS.find((r) => r.id === appointment.roomId);
 
     if (pro && room) return `${pro.name} · ${room.name}`;
     if (pro) return pro.name;
     if (room) return room.name;
     return 'Sin asignar';
+  };
+
+  const getProfessionalName = (appointment: AppointmentRecord) => {
+    const pro = professionals.find((p) => p.id === (appointment.professionalId || appointment.proId));
+    return pro?.name || 'Sin profesional';
+  };
+
+  const getRoomName = (appointment: AppointmentRecord) => {
+    const room = ROOMS.find((r) => r.id === appointment.roomId);
+    return room?.name || 'Sin consultorio';
   };
 
   useEffect(() => {
@@ -594,7 +604,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                     </div>
                   ) : (
                     visibleAppointments.map((app) => {
-                      const pro = professionals.find((p) => p.id === app.professionalId || app.proId);
+                      const pro = professionals.find((p) => p.id === (app.professionalId || app.proId));
                       const room = ROOMS.find((r) => r.id === app.roomId);
 
                       return (
@@ -610,9 +620,10 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                 {app.start} - {app.end}
                               </p>
                               <p className="font-black text-[17px] truncate leading-tight">{getAppointmentName(app)}</p>
-                              <p className="mt-2 text-[12px] font-semibold uppercase tracking-wide opacity-85 truncate">
-                                {getTypeLabel(app.kind || app.type)} · {getCorrespondsToLabel(app)}
-                              </p>
+                              <div className="mt-2 grid gap-0.5 text-[11px] font-semibold opacity-85">
+                                <p className="truncate">{getTypeLabel(app.kind || app.type)} · Prof. {pro?.name || 'Sin profesional'}</p>
+                                <p className="truncate">Consultorio {room?.name || 'Sin asignar'}</p>
+                              </div>
                             </div>
                             <span className="text-[10px] font-black uppercase opacity-75 shrink-0">
                               {getCoverageLabel(app)}
@@ -658,6 +669,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                           <>
                             {room.appointments.map((app) => {
                               const pro = professionals.find((p) => p.id === app.professionalId || p.id === app.proId);
+                              const appointmentRoom = ROOMS.find((r) => r.id === app.roomId);
                               const kind = app.kind || app.type;
                               return (
                                 <button
@@ -681,8 +693,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                         <p className="font-black text-[9px] truncate leading-tight">{getAppointmentName(app)}</p>
                                       </div>
                                       <p className="mt-0.5 text-[7px] font-semibold uppercase tracking-wide opacity-80 truncate">
-                                        {getTypeLabel(kind)}
+                                        {getTypeLabel(kind)} · {pro?.name || 'Sin profesional'}
                                       </p>
+                                      <p className="text-[7px] font-bold opacity-75 truncate">{appointmentRoom?.name || room.name}</p>
                                     </div>
                                   </div>
                                 </button>
@@ -775,8 +788,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                         ) : null}
 
                         {columnAppointments.map((app) => {
-                  const pro = professionals.find((p) => p.id === app.professionalId || app.proId);
+                          const pro = professionals.find((p) => p.id === (app.professionalId || app.proId));
                           const room = ROOMS.find((r) => r.id === app.roomId);
+                          const appointmentHeight = Math.max(getHeightFromInterval(app.start, app.end || app.start), 74);
 
                           return (
                             <motion.div
@@ -789,26 +803,29 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                               }}
                               style={{
                                 top: `${getPositionFromTime(app.start)}px`,
-                                height: `${getHeightFromInterval(app.start, app.end || app.start)}px`,
+                                minHeight: `${appointmentHeight}px`,
                               }}
                               className={cn(
-                                'absolute left-1 right-1 rounded-2xl p-2.5 border shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-100',
+                                'absolute left-1 right-1 rounded-xl p-2 border shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-100',
                                 getTypeStyles(app.kind || app.type),
                               )}
                             >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-[8px] font-black tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full bg-white/80 text-slate-900 border border-white/80">
-                                  {formatTimeOnly(app.start)} - {formatTimeOnly(app.end)}
+                              <div className="flex items-start justify-between gap-1.5">
+                                <span className="shrink-0 text-[8px] font-black leading-tight px-1.5 py-1 rounded-lg bg-white/85 text-slate-900 border border-white/90">
+                                  {formatTimeOnly(app.start)}
+                                  <span className="block text-[7px] opacity-70">{formatTimeOnly(app.end)}</span>
                                 </span>
-                                <span className="text-[8px] font-black tracking-widest uppercase opacity-75">
-                                  {getCoverageLabel(app)}
+                                <span className="min-w-0 text-right text-[7px] font-black tracking-[0.08em] uppercase opacity-75 leading-tight">
+                                  {getTypeLabel(app.kind || app.type)}
+                                  <span className="block truncate">{getCoverageLabel(app)}</span>
                                 </span>
                               </div>
 
-                              <p className="text-[12px] font-bold truncate leading-tight mt-1">{getAppointmentName(app)}</p>
-                              <p className="text-[10px] font-medium truncate opacity-85 mt-0.5">
-                                {getTypeLabel(app.kind || app.type)} · {getCorrespondsToLabel(app)}
-                              </p>
+                              <p className="text-[11px] font-black truncate leading-tight mt-1">{getAppointmentName(app)}</p>
+                              <div className="mt-1 grid gap-0.5 text-[8px] font-bold leading-tight opacity-90">
+                                <p className="truncate">Prof. {getProfessionalName(app)}</p>
+                                <p className="truncate">Cons. {getRoomName(app)}</p>
+                              </div>
                             </motion.div>
                           );
                         })}
@@ -874,7 +891,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
                     <div className="space-y-1">
                       {dayAppointments.slice(0, 2).map((app) => {
-                        const pro = professionals.find((p) => p.id === app.professionalId || app.proId);
+                        const pro = professionals.find((p) => p.id === (app.professionalId || app.proId));
                         const room = ROOMS.find((r) => r.id === app.roomId);
                         return (
                           <div
