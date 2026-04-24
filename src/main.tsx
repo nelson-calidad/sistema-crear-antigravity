@@ -1,8 +1,12 @@
-import { Component, type ReactNode, StrictMode } from 'react';
+import * as React from 'react';
+import { type ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 
-class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+class AppErrorBoundary extends React.Component<{ children: ReactNode }, { hasError: boolean }> {
+  declare props: { children: ReactNode };
+  state: { hasError: boolean };
+
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false };

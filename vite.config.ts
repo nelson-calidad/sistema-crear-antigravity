@@ -6,7 +6,7 @@ import {defineConfig, loadEnv} from 'vite';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: mode === 'production' ? '/sistema-crear/' : '/',
+    base: mode === 'production' ? './' : '/',
     plugins: [react(), tailwindcss()],
     build: {
       rollupOptions: {

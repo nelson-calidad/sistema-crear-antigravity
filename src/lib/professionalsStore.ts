@@ -28,7 +28,7 @@ const listeners = new Set<(professionals: ProfessionalRecord[]) => void>();
 let remotePollHandle: number | undefined;
 let visibilityListenerAttached = false;
 let visibilityChangeHandler: (() => void) | undefined;
-let cachedProfessionals = createDefaultProfessionals();
+let cachedProfessionals: ProfessionalRecord[] = [];
 
 const slugify = (value: string) =>
   value
@@ -74,6 +74,7 @@ const createId = () => {
 
 const enrichProfessional = (professional: typeof DEFAULT_PROFESSIONALS[number]): ProfessionalRecord => ({
   ...professional,
+  status: professional.status === 'En Pausa' ? 'En Pausa' : 'Activo',
   email: `${professional.name.toLowerCase()}@lab.com`,
   phone: '+54 11 2345-6789',
   retention: '20%',
@@ -88,6 +89,8 @@ const enrichProfessional = (professional: typeof DEFAULT_PROFESSIONALS[number]):
 function createDefaultProfessionals(): ProfessionalRecord[] {
   return DEFAULT_PROFESSIONALS.map(enrichProfessional);
 }
+
+cachedProfessionals = createDefaultProfessionals();
 
 const normalizeProfessional = (
   professional: Partial<ProfessionalRecord> & { id: string },
@@ -334,7 +337,7 @@ const persistLocalProfessional = async (professional: ProfessionalRecord, id?: s
     ? current.map((item) => (item.id === id ? { ...item, ...normalized } : item))
     : [...current, normalized];
 
-  const final = next.map((item) => ({
+  const final: ProfessionalRecord[] = next.map((item) => ({
     ...item,
     id: String(item.id),
     status: item.status === 'En Pausa' ? 'En Pausa' : 'Activo',

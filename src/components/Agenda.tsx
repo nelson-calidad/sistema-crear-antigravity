@@ -140,6 +140,19 @@ const formatMinutesToTime = (minutes: number) => {
   return `${hours.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
 };
 
+const overlaps = (startA?: string, endA?: string, startB?: string, endB?: string) => {
+  const startAMinutes = parseTimeToMinutes(startA);
+  const endAMinutes = parseTimeToMinutes(endA);
+  const startBMinutes = parseTimeToMinutes(startB);
+  const endBMinutes = parseTimeToMinutes(endB);
+
+  if ([startAMinutes, endAMinutes, startBMinutes, endBMinutes].some((value) => !Number.isFinite(value))) {
+    return false;
+  }
+
+  return startAMinutes < endBMinutes && startBMinutes < endAMinutes;
+};
+
 const sortByStart = (items: AppointmentRecord[]) => [...items].sort((a, b) => parseTimeToMinutes(a.start) - parseTimeToMinutes(b.start));
 
 const formatTimeOnly = (value?: string) => {
