@@ -64,7 +64,7 @@ const getAppointmentName = (appointment: AppointmentRecord) => {
 
 const getTypeLabel = (kind?: string) => {
   if (kind === 'interview') return 'Entrevista';
-  if (kind === 'block') return 'Bloqueo';
+  if (kind === 'block') return 'Otros';
   return 'Sesion';
 };
 
@@ -118,7 +118,7 @@ const getStats = (appointments: AppointmentRecord[]) => {
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     },
-    { Sesion: 0, Entrevista: 0, Bloqueo: 0 } as Record<string, number>,
+    { Sesion: 0, Entrevista: 0, Otros: 0 } as Record<string, number>,
   );
 
   return { coverage, types };
@@ -635,7 +635,7 @@ export const buildDailyPdfHtml = (selectedDate: Date, appointments: AppointmentR
         <div class="card"><div class="label">Total</div><div class="value">${sorted.length}</div></div>
         <div class="card"><div class="label">Particular</div><div class="value">${coverage.particular || 0}</div></div>
         <div class="card"><div class="label">Obra social</div><div class="value">${coverage['obra social'] || 0}</div></div>
-        <div class="card"><div class="label">Tipos</div><div class="value">${types.Sesion || 0}/${types.Entrevista || 0}/${types.Bloqueo || 0}</div></div>
+        <div class="card"><div class="label">Tipos</div><div class="value">${types.Sesion || 0}/${types.Entrevista || 0}/${types.Otros || 0}</div></div>
       </div>
       <div class="section">
         <div class="section-header">
@@ -739,7 +739,7 @@ export const buildMonthlyPdfHtml = (selectedDate: Date, appointments: Appointmen
         <div class="card"><div class="label">Total</div><div class="value">${monthAppointments.length}</div></div>
         <div class="card"><div class="label">Particular</div><div class="value">${coverage.particular || 0}</div></div>
         <div class="card"><div class="label">Obra social</div><div class="value">${coverage['obra social'] || 0}</div></div>
-        <div class="card"><div class="label">Tipos</div><div class="value">${types.Sesion || 0}/${types.Entrevista || 0}/${types.Bloqueo || 0}</div></div>
+        <div class="card"><div class="label">Tipos</div><div class="value">${types.Sesion || 0}/${types.Entrevista || 0}/${types.Otros || 0}</div></div>
       </div>
       <div class="section">
         <div class="section-header">
@@ -758,7 +758,7 @@ export const buildMonthlyPdfHtml = (selectedDate: Date, appointments: Appointmen
           <tbody>
             <tr><td>Sesión</td><td>${types.Sesion || 0}</td><td>${coverage.particular || 0}</td><td>${coverage['obra social'] || 0}</td></tr>
             <tr><td>Entrevista</td><td>${types.Entrevista || 0}</td><td colspan="2">Ver detalle diario</td></tr>
-            <tr><td>Bloqueo</td><td>${types.Bloqueo || 0}</td><td colspan="2">Ver detalle diario</td></tr>
+            <tr><td>Otros</td><td>${types.Otros || 0}</td><td colspan="2">Ver detalle diario</td></tr>
           </tbody>
         </table>
       </div>
@@ -863,7 +863,7 @@ export const buildWeeklyAvailabilityPdfHtml = (selectedDate: Date, appointments:
               <th>Total</th>
               <th>Sesiones</th>
               <th>Entrevistas</th>
-              <th>Bloqueos</th>
+              <th>Otros</th>
             </tr>
           </thead>
           <tbody>
@@ -872,7 +872,7 @@ export const buildWeeklyAvailabilityPdfHtml = (selectedDate: Date, appointments:
               <td>${weekAppointments.length}</td>
               <td>${types.Sesion || 0}</td>
               <td>${types.Entrevista || 0}</td>
-              <td>${types.Bloqueo || 0}</td>
+              <td>${types.Otros || 0}</td>
             </tr>
             <tr>
               <td>Consultorios</td>

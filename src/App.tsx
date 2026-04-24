@@ -302,7 +302,7 @@ export default function App() {
               start: data.startTime,
               end: data.endTime,
               patient: patientName || undefined,
-              title: patientName || data.title || (kind === 'block' ? 'Bloqueo' : kind === 'interview' ? 'Entrevista' : 'Nueva Reserva'),
+              title: patientName || data.title || (kind === 'block' ? 'Otros' : kind === 'interview' ? 'Entrevista' : 'Nueva Reserva'),
               professionalId,
               proId: professionalId,
               createdBy: user.uid

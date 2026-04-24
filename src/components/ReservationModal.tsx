@@ -222,10 +222,10 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
 
   const selectedProfessionalBusy = selectedProId ? isProfessionalBusy(selectedProId) : false;
   const selectedRoomBusy = selectedRoomId ? isRoomBusy(selectedRoomId) : false;
-  const kindLabel = kind === 'interview' ? 'entrevista' : kind === 'block' ? 'bloqueo' : 'sesión';
+  const kindLabel = kind === 'interview' ? 'entrevista' : kind === 'block' ? 'otros' : 'sesión';
   const modalTitle = isEditing ? `Editar ${kindLabel}` : `Crear ${kindLabel}`;
   const modalSubtitle = kind === 'block'
-    ? 'Completa los detalles para bloquear el espacio.'
+    ? 'Completa los detalles para registrar otros usos del espacio.'
     : kind === 'interview'
       ? 'Completa los detalles para registrar la entrevista.'
       : 'Completa los detalles para registrar la sesión.';
@@ -235,7 +235,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
       ? 'Paciente / Responsable'
       : 'Paciente';
   const personPlaceholder = kind === 'block'
-    ? 'Motivo del bloqueo...'
+    ? 'Motivo o detalle...'
     : 'Nombre del paciente...';
   const professionalLabel = kind === 'block' ? 'Profesional afectado (opcional)' : 'Profesional corresponsal';
 
@@ -325,7 +325,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
               {[
                 { id: 'session', label: 'Sesión', icon: User },
                 { id: 'interview', label: 'Entrevista', icon: FileText },
-                { id: 'block', label: 'Bloqueo', icon: AlertCircle },
+                { id: 'block', label: 'Otros', icon: AlertCircle },
               ].map((t) => (
                 <button
                   key={t.id}

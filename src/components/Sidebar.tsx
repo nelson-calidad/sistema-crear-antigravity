@@ -97,12 +97,12 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }: 
           'transition-transform duration-200 md:transition-none',
         )}
       >
-        <div className="p-6 flex items-center mb-4">
+        <div className="px-4 pt-5 pb-4 flex items-center mb-2">
           <div className={cn(
             'overflow-hidden bg-white border border-[#e8dfd6] shadow-md shadow-slate-200/40 ring-1 ring-white/60',
-            isCollapsed ? 'w-14 h-14 rounded-2xl' : 'w-20 h-20 rounded-[1.4rem]'
+            isCollapsed ? 'w-14 h-14 rounded-2xl' : 'w-full h-20 rounded-[1.4rem]'
           )}>
-            <img src={logoCrear} alt="Logo CREAR" className="w-full h-full object-cover" />
+            <img src={logoCrear} alt="Logo CREAR" className={cn('w-full h-full', isCollapsed ? 'object-cover' : 'object-contain p-2')} />
           </div>
         </div>
 
