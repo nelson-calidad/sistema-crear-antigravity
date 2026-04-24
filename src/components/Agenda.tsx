@@ -841,13 +841,14 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                 }}
                                 style={{
                                   top: `${getPositionFromTime(app.start)}px`,
-                                  minHeight: `${appointmentHeight}px`,
+                                  height: `${appointmentHeight}px`,
                                   width: `calc(${widthPercent}% - 4px)`,
                                   left: `calc(${leftPercent}% + 2px)`,
                                   zIndex: 10 + appLayout.colIndex,
                                 }}
                                 className={cn(
-                                  'absolute rounded-xl p-2 border shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-100',
+                                  'absolute rounded-xl border shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-100 flex flex-col',
+                                  appointmentHeight < 60 ? 'p-1.5' : 'p-2',
                                   getTypeStyles(app.kind || app.type),
                                 )}
                               >
@@ -862,11 +863,13 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                 </span>
                               </div>
 
-                              <p className="text-[11px] font-black truncate leading-tight mt-1">{getAppointmentName(app)}</p>
-                              <div className="mt-1 grid gap-0.5 text-[8px] font-bold leading-tight opacity-90">
-                                <p className="truncate">Prof. {getProfessionalName(app)}</p>
-                                <p className="truncate">Cons. {getRoomName(app)}</p>
-                              </div>
+                              <p className="text-[11px] font-black truncate leading-tight mt-1 flex-1">{getAppointmentName(app)}</p>
+                              {appointmentHeight >= 60 && (
+                                <div className="mt-1 grid gap-0.5 text-[8px] font-bold leading-tight opacity-90">
+                                  <p className="truncate">Prof. {getProfessionalName(app)}</p>
+                                  <p className="truncate">Cons. {getRoomName(app)}</p>
+                                </div>
+                              )}
                             </motion.div>
                           );
                         })})()}
