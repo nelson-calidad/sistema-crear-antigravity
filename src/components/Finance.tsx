@@ -28,31 +28,31 @@ export const Finance = () => {
     <div className="space-y-8 h-full">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Finanzas</h1>
-          <p className="text-slate-500">Control de flujo de caja, gastos y liquidaciones de profesionales.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100">Finanzas</h1>
+          <p className="text-slate-500 dark:text-slate-400">Control de flujo de caja, gastos y liquidaciones de profesionales.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">
+          <button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
             <Download className="w-4 h-4" /> Exportar Reporte
           </button>
-          <button className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
+          <button className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-bold text-sm hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-lg shadow-blue-200 dark:shadow-none">
             <Plus className="w-4 h-4" /> Nuevo Movimiento
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-slate-50 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h3 className="font-bold text-lg text-slate-900">Últimas Transacciones</h3>
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-slate-50 dark:border-slate-800 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">Últimas Transacciones</h3>
             <div className="flex gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder="Filtrar..."
-                  className="pl-9 pr-4 py-1.5 bg-slate-50 border-none text-xs rounded-lg w-40 focus:ring-1 focus:ring-blue-100"
+                  className="pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-slate-800 border-none text-xs rounded-lg w-40 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900 text-slate-900 dark:text-slate-100"
                 />
               </div>
             </div>
@@ -60,7 +60,7 @@ export const Finance = () => {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-slate-50/50 text-[10px] uppercase tracking-wider font-bold text-slate-400 border-b border-slate-100">
+              <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
                 <tr>
                   <th className="px-6 py-4">Fecha</th>
                   <th className="px-6 py-4">Descripción</th>
@@ -69,17 +69,17 @@ export const Finance = () => {
                   <th className="px-6 py-4 text-center">Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                 {transactions.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="flex items-center text-xs font-medium text-slate-600">
+                      <div className="flex items-center text-xs font-medium text-slate-600 dark:text-slate-400">
                         <Calendar className="w-3 h-3 mr-2 opacity-40" />
                         {t.date}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-slate-900">{t.description}</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{t.description}</p>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center text-xs">
@@ -98,7 +98,7 @@ export const Finance = () => {
                         <span
                           className={cn(
                             'px-2 py-1 rounded-md text-[10px] font-bold',
-                            t.status === 'Completado' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600',
+                            t.status === 'Completado' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
                           )}
                         >
                           {t.status}
@@ -110,13 +110,13 @@ export const Finance = () => {
               </tbody>
             </table>
           </div>
-          <div className="p-4 bg-slate-50/50 border-t border-slate-50 text-center">
-            <button className="text-xs font-bold text-blue-600 hover:text-blue-700">Ver todas las transacciones</button>
+          <div className="p-4 bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-50 dark:border-slate-800 text-center">
+            <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">Ver todas las transacciones</button>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl shadow-slate-200">
+          <div className="bg-slate-900 dark:bg-[#0f172a] rounded-2xl p-6 text-white shadow-xl shadow-slate-200 dark:shadow-none border border-transparent dark:border-slate-800">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold text-lg">Resumen de Abril</h3>
               <CreditCard className="w-5 h-5 text-white/40" />
@@ -153,19 +153,19 @@ export const Finance = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-            <h3 className="font-bold text-slate-800 mb-6">Distribución de Gastos</h3>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6">Distribución de Gastos</h3>
             <div className="space-y-4">
               {categoryData.map((item) => {
                 const width = Math.max(12, (item.value / maxCategoryValue) * 100);
 
                 return (
                   <div key={item.name} className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
                       <span>{item.name}</span>
                       <span>{item.value.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}</span>
                     </div>
-                    <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                       <div className={cn('h-full rounded-full', item.color)} style={{ width: `${width}%` }} />
                     </div>
                   </div>

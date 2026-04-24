@@ -20,19 +20,19 @@ const StatCard = ({ title, value, change, icon: Icon, color, trend }: any) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+    className="bg-white dark:bg-[#0f172a] p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow"
   >
     <div className="flex items-start justify-between">
       <div>
-        <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
-        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{value}</h3>
-        <div className={cn('flex items-center mt-2 text-xs font-semibold', trend === 'up' ? 'text-emerald-600' : 'text-rose-600')}>
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">{title}</p>
+        <h3 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{value}</h3>
+        <div className={cn('flex items-center mt-2 text-xs font-semibold', trend === 'up' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')}>
           {trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
           {change}
-          <span className="text-slate-400 font-normal ml-1">vs mes pasado</span>
+          <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">vs mes pasado</span>
         </div>
       </div>
-      <div className={cn('p-3 rounded-xl bg-slate-50 text-slate-700 border border-slate-100')}>
+      <div className={cn('p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-700')}>
         <Icon className="w-6 h-6" />
       </div>
     </div>
@@ -52,14 +52,14 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <header>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Resumen Administrativo</h1>
-          <p className="text-slate-500 font-medium">Estado de CREAR al {todayLabel}</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100">Resumen Administrativo</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Estado de CREAR al {todayLabel}</p>
         </header>
         <button
           onClick={onQuickReserve}
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-bold text-sm hover:bg-slate-800 dark:hover:bg-white transition-all shadow-sm"
         >
-          <Zap className="w-4 h-4 text-amber-400" /> Reserva rápida
+          <Zap className="w-4 h-4 text-amber-400 dark:text-amber-500" /> Reserva rápida
         </button>
       </div>
 
@@ -72,15 +72,15 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="bg-white dark:bg-[#0f172a] p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-8">
-              <h3 className="font-bold text-slate-800 text-lg">Flujo de Caja Anual</h3>
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 text-lg">Flujo de Caja Anual</h3>
               <div className="flex flex-wrap gap-4">
-                <div className="flex items-center text-xs font-medium text-slate-500">
-                  <div className="w-2 h-2 rounded-full bg-slate-800 mr-2" /> Ingresos
+                <div className="flex items-center text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <div className="w-2 h-2 rounded-full bg-slate-800 dark:bg-slate-400 mr-2" /> Ingresos
                 </div>
-                <div className="flex items-center text-xs font-medium text-slate-500">
-                  <div className="w-2 h-2 rounded-full bg-slate-200 mr-2" /> Gastos
+                <div className="flex items-center text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <div className="w-2 h-2 rounded-full bg-slate-200 dark:bg-slate-700 mr-2" /> Gastos
                 </div>
               </div>
             </div>
@@ -95,17 +95,17 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
                     <div key={item.name} className="flex h-full flex-col items-center justify-end gap-2">
                       <div className="flex w-full flex-1 items-end gap-2">
                         <div
-                          className="flex-1 rounded-t-xl bg-slate-800"
+                          className="flex-1 rounded-t-xl bg-slate-800 dark:bg-slate-400"
                           style={{ height: `${incomeHeight}%` }}
                           title={`Ingresos ${item.name}`}
                         />
                         <div
-                          className="flex-1 rounded-t-xl bg-slate-200 shadow-sm"
+                          className="flex-1 rounded-t-xl bg-slate-200 dark:bg-slate-700 shadow-sm dark:shadow-none"
                           style={{ height: `${expenseHeight}%` }}
                           title={`Gastos ${item.name}`}
                         />
                       </div>
-                      <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{item.name}</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">{item.name}</span>
                     </div>
                   );
                 })}
@@ -123,35 +123,35 @@ export const Dashboard = ({ onQuickReserve }: { onQuickReserve?: () => void }) =
                 key={room.id}
                 className={cn(
                   'p-4 rounded-2xl border transition-all',
-                  room.status === 'occupied' ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 shadow-sm',
+                  room.status === 'occupied' ? 'bg-white dark:bg-[#0f172a] border-slate-200 dark:border-slate-800' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 shadow-sm',
                 )}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <DoorOpen className={cn('w-4 h-4', room.status === 'occupied' ? 'text-slate-400' : 'text-emerald-500')} />
-                    <span className="font-bold text-slate-900">{room.id}</span>
+                    <DoorOpen className={cn('w-4 h-4', room.status === 'occupied' ? 'text-slate-400 dark:text-slate-500' : 'text-emerald-500 dark:text-emerald-400')} />
+                    <span className="font-bold text-slate-900 dark:text-slate-100">{room.id}</span>
                   </div>
                   <div
                     className={cn(
                       'w-2 h-2 rounded-full',
-                      room.status === 'occupied' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500',
+                      room.status === 'occupied' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500 dark:bg-emerald-400',
                     )}
                   />
                 </div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">{room.until}</p>
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-2">{room.until}</p>
                 {room.status === 'occupied' ? (
                   <div className="space-y-1">
-                    <div className="flex items-center text-xs font-bold text-slate-700">
-                      <Stethoscope className="w-3 h-3 mr-1 text-blue-500" /> {room.pro}
+                    <div className="flex items-center text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <Stethoscope className="w-3 h-3 mr-1 text-blue-500 dark:text-blue-400" /> {room.pro}
                     </div>
-                    <div className="flex items-center text-[10px] font-medium text-slate-500">
+                    <div className="flex items-center text-[10px] font-medium text-slate-500 dark:text-slate-400">
                       <Clock className="w-3 h-3 mr-1" /> Hasta {room.end}
                     </div>
                   </div>
                 ) : (
                   <button
                     onClick={() => onQuickReserve?.()}
-                    className="w-full py-2 bg-white text-emerald-600 text-[10px] font-bold rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                    className="w-full py-2 bg-white dark:bg-[#0f172a] text-emerald-600 dark:text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
                   >
                     Reservar ahora
                   </button>

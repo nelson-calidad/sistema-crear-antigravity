@@ -111,8 +111,8 @@ export const ProfessionalsGrid = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Gestión Humana</h1>
-          <p className="text-slate-500">Administra el equipo de profesionales y sus configuraciones.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100">Gestión Humana</h1>
+          <p className="text-slate-500 dark:text-slate-400">Administra el equipo de profesionales y sus configuraciones.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <button
@@ -122,13 +122,13 @@ export const ProfessionalsGrid = () => {
                 window.alert('No se pudo restaurar la base. Reintentá en unos segundos.');
               });
             }}
-            className="inline-flex items-center justify-center px-5 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors shadow-sm"
+            className="inline-flex items-center justify-center px-5 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
           >
             Restaurar base
           </button>
           <button
             onClick={openCreator}
-            className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+            className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-bold text-sm hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-lg shadow-blue-200 dark:shadow-none"
           >
             Nuevo Profesional
           </button>
@@ -142,45 +142,45 @@ export const ProfessionalsGrid = () => {
             type="button"
             whileHover={{ y: -5 }}
             onClick={() => openEditor(pro)}
-            className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-left"
+            className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden text-left"
           >
             <div className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-center">
                   <img src={pro.image} alt={pro.name} className="w-14 h-14 rounded-xl object-cover" />
                   <div className="ml-4">
-                    <h3 className="font-bold text-slate-900 text-lg">{pro.name}</h3>
-                    <p className="text-blue-600 text-sm font-medium">{pro.specialty}</p>
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 text-lg">{pro.name}</h3>
+                    <p className="text-blue-600 dark:text-blue-400 text-sm font-medium">{pro.specialty}</p>
                   </div>
                 </div>
-                <div className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
+                <div className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
                   <MoreHorizontal className="w-5 h-5" />
                 </div>
               </div>
 
               <div className="mt-8 space-y-3">
-                <div className="flex items-center text-slate-500 text-sm">
-                  <Mail className="w-4 h-4 mr-3 text-slate-400" />
+                <div className="flex items-center text-slate-500 dark:text-slate-400 text-sm">
+                  <Mail className="w-4 h-4 mr-3 text-slate-400 dark:text-slate-500" />
                   {pro.email}
                 </div>
-                <div className="flex items-center text-slate-500 text-sm">
-                  <Phone className="w-4 h-4 mr-3 text-slate-400" />
+                <div className="flex items-center text-slate-500 dark:text-slate-400 text-sm">
+                  <Phone className="w-4 h-4 mr-3 text-slate-400 dark:text-slate-500" />
                   {pro.phone}
                 </div>
-                <div className="flex items-center text-slate-500 text-sm">
-                  <Clock className="w-4 h-4 mr-3 text-slate-400" />
+                <div className="flex items-center text-slate-500 dark:text-slate-400 text-sm">
+                  <Clock className="w-4 h-4 mr-3 text-slate-400 dark:text-slate-500" />
                   {pro.hours}
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-slate-50 flex items-center justify-between">
-                <div className="flex items-center bg-slate-50 px-3 py-1.5 rounded-lg">
-                  <DollarSign className="w-4 h-4 text-emerald-600 mr-1" />
-                  <span className="text-slate-900 font-bold text-sm">{pro.retention} Retención</span>
+              <div className="mt-6 pt-6 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
+                <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg">
+                  <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mr-1" />
+                  <span className="text-slate-900 dark:text-slate-200 font-bold text-sm">{pro.retention} Retención</span>
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    pro.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                    pro.status === 'Activo' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   {pro.status}
@@ -204,81 +204,81 @@ export const ProfessionalsGrid = () => {
               initial={{ opacity: 0, y: 20, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.98 }}
-              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[92vh]"
+              className="relative w-full max-w-2xl bg-white dark:bg-[#0f172a] rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] border border-transparent dark:border-slate-800"
             >
-              <div className="p-5 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+              <div className="p-5 md:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-900/50">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
                     {editorMode === 'create' ? 'Crear colaborador' : 'Editar colaborador'}
                   </p>
-                  <h2 className="text-xl font-black text-slate-900">
+                  <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">
                     {editorMode === 'create' ? 'Nuevo colaborador' : editingProfessional?.name}
                   </h2>
                 </div>
-                <button onClick={closeEditor} className="p-2 rounded-full hover:bg-white transition-colors">
-                  <X className="w-5 h-5 text-slate-400" />
+                <button onClick={closeEditor} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                  <X className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                 </button>
               </div>
 
               <div className="p-5 md:p-6 overflow-y-auto custom-scrollbar max-h-[calc(92vh-140px)] space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="space-y-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Nombre</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Nombre</span>
                     <input
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none font-bold text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 outline-none font-bold text-sm dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                     />
                   </label>
                   <label className="space-y-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Especialidad</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Especialidad</span>
                     <input
                       value={form.specialty}
                       onChange={(e) => setForm({ ...form, specialty: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none font-bold text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 outline-none font-bold text-sm dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                     />
                   </label>
                   <label className="space-y-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Email</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Email</span>
                     <input
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none font-bold text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 outline-none font-bold text-sm dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                     />
                   </label>
                   <label className="space-y-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Telefono</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Telefono</span>
                     <input
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none font-bold text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 outline-none font-bold text-sm dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                     />
                   </label>
                   <label className="space-y-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Horario</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Horario</span>
                     <input
                       value={form.hours}
                       onChange={(e) => setForm({ ...form, hours: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none font-bold text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 outline-none font-bold text-sm dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                     />
                   </label>
                   <label className="space-y-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Retencion</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Retencion</span>
                     <input
                       value={form.retention}
                       onChange={(e) => setForm({ ...form, retention: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none font-bold text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 outline-none font-bold text-sm dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                     />
                   </label>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="space-y-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Estado</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Estado</span>
                     <select
                       value={form.status}
                       onChange={(e) => setForm({ ...form, status: e.target.value as ProfessionalRecord['status'] })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none font-bold text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 outline-none font-bold text-sm dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="Activo">Activo</option>
                       <option value="En Pausa">En Pausa</option>
@@ -294,8 +294,8 @@ export const ProfessionalsGrid = () => {
                           type="button"
                           onClick={() => setForm({ ...form, color: option.value })}
                           className={cn(
-                            'inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-black',
-                            form.color === option.value ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700',
+                            'inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-black transition-colors',
+                            form.color === option.value ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-50 dark:bg-slate-50 dark:text-slate-900' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-[#0f172a] dark:text-slate-300',
                           )}
                         >
                           <span className={cn('w-3 h-3 rounded-full', option.value)} />
@@ -306,12 +306,12 @@ export const ProfessionalsGrid = () => {
                   </label>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-3">
                     <div className={cn('w-12 h-12 rounded-2xl', form.color)} />
                     <div>
-                      <p className="text-sm font-black text-slate-900">{form.name || 'Sin nombre'}</p>
-                      <p className="text-xs text-slate-500">{form.specialty || 'Sin especialidad'}</p>
+                      <p className="text-sm font-black text-slate-900 dark:text-slate-100">{form.name || 'Sin nombre'}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{form.specialty || 'Sin especialidad'}</p>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -319,7 +319,7 @@ export const ProfessionalsGrid = () => {
                       <button
                         type="button"
                         onClick={handleDelete}
-                        className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-rose-200 text-rose-600 bg-white font-bold text-sm hover:bg-rose-50 transition-colors"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 bg-white dark:bg-slate-900 font-bold text-sm hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
                       >
                         Eliminar
                       </button>

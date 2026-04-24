@@ -39,7 +39,7 @@ import { forceRefreshAppointments } from '../lib/appointmentsStore';
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
 const HOUR_HEIGHT = 160;
 const DEFAULT_SESSION_DURATION = 45;
-const UNASSIGNED_COLUMN = { id: 'unassigned', name: 'Sin asignar', color: 'bg-slate-400' };
+const UNASSIGNED_COLUMN = { id: 'unassigned', name: 'Sin asignar', color: 'bg-slate-400 dark:bg-slate-600' };
 
 type AgendaProps = {
   onOpenModal: (
@@ -106,15 +106,15 @@ const getTypeLabel = (kind?: string) => {
 };
 
 const getTypeStyles = (kind?: string) => {
-  if (kind === 'interview') return 'bg-amber-100 text-amber-950 border-amber-200';
-  if (kind === 'block') return 'bg-violet-100 text-violet-950 border-violet-200';
-  return 'bg-sky-100 text-sky-950 border-sky-200';
+  if (kind === 'interview') return 'bg-amber-100 text-amber-950 border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800';
+  if (kind === 'block') return 'bg-violet-100 text-violet-950 border-violet-200 dark:bg-violet-950/40 dark:text-violet-200 dark:border-violet-800';
+  return 'bg-sky-100 text-sky-950 border-sky-200 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800';
 };
 
 const getKindBadgeStyles = (kind?: string) => {
-  if (kind === 'interview') return 'bg-amber-50 text-amber-800 border-amber-200';
-  if (kind === 'block') return 'bg-violet-50 text-violet-800 border-violet-200';
-  return 'bg-sky-50 text-sky-800 border-sky-200';
+  if (kind === 'interview') return 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50';
+  if (kind === 'block') return 'bg-violet-50 text-violet-800 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800/50';
+  return 'bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800/50';
 };
 
 const parseTimeToMinutes = (value?: string) => {
@@ -470,19 +470,19 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
           {/* Título y Filtros Principales */}
           <div className="flex flex-wrap items-center gap-2 lg:gap-3">
-            <div className="hidden md:flex items-center gap-2 text-slate-800">
-              <div className="p-1.5 rounded-lg bg-white border border-slate-200 shadow-sm shrink-0">
-                <CalendarIcon className="w-4 h-4 text-blue-600" />
+            <div className="hidden md:flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <div className="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
+                <CalendarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <h1 className="text-lg font-black tracking-tight shrink-0">Agenda</h1>
             </div>
 
-            <div className="flex bg-slate-100/80 p-0.5 rounded-lg gap-0.5 border border-slate-200/70 shrink-0">
+            <div className="flex bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-lg gap-0.5 border border-slate-200/70 dark:border-slate-700/50 shrink-0">
               <button
                 onClick={() => setTimeMode('daily')}
                 className={cn(
                   'px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-all',
-                  timeMode === 'daily' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                  timeMode === 'daily' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
                 )}
               >
                 Día
@@ -491,7 +491,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 onClick={() => setTimeMode('monthly')}
                 className={cn(
                   'px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-all',
-                  timeMode === 'monthly' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                  timeMode === 'monthly' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
                 )}
               >
                 Mes
@@ -500,24 +500,24 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
             {timeMode === 'daily' && (
               <>
-                <div className="flex bg-white/80 rounded-lg border border-slate-200 p-0.5 shadow-sm shrink-0">
-                  <button onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="p-1 hover:bg-slate-50 rounded-md">
-                    <ChevronLeft className="w-4 h-4 text-slate-500" />
+                <div className="flex bg-white/80 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 shadow-sm shrink-0">
+                  <button onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md">
+                    <ChevronLeft className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
-                  <div className="px-2 py-1 font-bold text-slate-700 text-center min-w-[120px] text-[10px]">
+                  <div className="px-2 py-1 font-bold text-slate-700 dark:text-slate-200 text-center min-w-[120px] text-[10px]">
                     {titleCase(formatDateEs(selectedDate, 'EEEE, d MMMM'))}
                   </div>
-                  <button onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="p-1 hover:bg-slate-50 rounded-md">
-                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  <button onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md">
+                    <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
                 </div>
 
-                <div className="bg-slate-100/80 p-0.5 rounded-lg flex gap-0.5 border border-slate-200/70 shrink-0">
+                <div className="bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-lg flex gap-0.5 border border-slate-200/70 dark:border-slate-700/50 shrink-0">
                   <button
                     onClick={() => setViewMode('professionals')}
                     className={cn(
                       'px-2 py-1 rounded-md text-[9px] font-bold transition-all flex items-center gap-1',
-                      viewMode === 'professionals' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500',
+                      viewMode === 'professionals' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400',
                     )}
                   >
                     <Users className="w-3 h-3" /> Prof.
@@ -526,7 +526,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                     onClick={() => setViewMode('rooms')}
                     className={cn(
                       'px-2 py-1 rounded-md text-[9px] font-bold transition-all flex items-center gap-1',
-                      viewMode === 'rooms' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500',
+                      viewMode === 'rooms' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400',
                     )}
                   >
                     <MapPin className="w-3 h-3" /> Cons.
@@ -540,25 +540,25 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           <div className="flex flex-wrap items-center gap-1.5 justify-end">
             <button
               onClick={() => onOpenModal()}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold text-[10px] hover:bg-blue-700 transition-colors shadow-sm shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-bold text-[10px] hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-sm shrink-0"
             >
               <Plus className="w-3.5 h-3.5" /> Nuevo
             </button>
-            <div className="flex bg-white/80 rounded-lg border border-slate-200 p-0.5 shadow-sm">
-              <button onClick={handleDailyPdf} title="PDF Diario" className="p-1.5 hover:bg-slate-50 rounded-md text-slate-600">
+            <div className="flex bg-white/80 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 shadow-sm">
+              <button onClick={handleDailyPdf} title="PDF Diario" className="p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md text-slate-600 dark:text-slate-400">
                 <Printer className="w-3.5 h-3.5" />
               </button>
-              <button onClick={handleWeeklyPdf} title="PDF Semanal" className="p-1.5 hover:bg-slate-50 rounded-md text-slate-600">
+              <button onClick={handleWeeklyPdf} title="PDF Semanal" className="p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md text-slate-600 dark:text-slate-400">
                 <CalendarIcon className="w-3.5 h-3.5" />
               </button>
-              <button onClick={handleMonthlyPdf} title="PDF Mensual" className="p-1.5 hover:bg-slate-50 rounded-md text-slate-600">
+              <button onClick={handleMonthlyPdf} title="PDF Mensual" className="p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md text-slate-600 dark:text-slate-400">
                 <CalendarIcon className="w-3.5 h-3.5 opacity-60" />
               </button>
             </div>
             <button
               onClick={() => forceRefreshAppointments().catch(() => {})}
               title="Refrescar"
-              className="p-1.5 bg-white/80 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors shadow-sm shrink-0"
+              className="p-1.5 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm shrink-0"
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
@@ -567,9 +567,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
         {/* Barra de Estadísticas Ultraslim */}
         <div className="hidden md:flex flex-wrap items-center gap-2 text-[9px] font-bold uppercase tracking-wider">
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-lg shadow-sm">
-            <span className="text-slate-400">Turnos</span>
-            <span className="text-slate-900">{appointmentKindSummary.total}</span>
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
+            <span className="text-slate-400 dark:text-slate-500">Turnos</span>
+            <span className="text-slate-900 dark:text-slate-100">{appointmentKindSummary.total}</span>
           </div>
           <div className={cn('flex items-center gap-1.5 px-2 py-1 border rounded-lg shadow-sm', getKindBadgeStyles('session'))}>
             <span className="opacity-80">Sesiones</span>
@@ -583,24 +583,24 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
             <span className="opacity-80">Otros</span>
             <span>{appointmentKindSummary.block}</span>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-lg shadow-sm ml-auto">
-            <span className="text-slate-400">{resourceAvailability.label}</span>
-            <span className="text-slate-900">{resourceAvailability.free}/{resourceAvailability.total}</span>
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm ml-auto">
+            <span className="text-slate-400 dark:text-slate-500">{resourceAvailability.label}</span>
+            <span className="text-slate-900 dark:text-slate-100">{resourceAvailability.free}/{resourceAvailability.total}</span>
             <span className="text-[7px] text-slate-400">({resourceAvailability.busy} ocp)</span>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden bg-white/80 rounded-3xl border border-slate-100 shadow-sm flex flex-col min-h-0 backdrop-blur-sm">
+      <div className="flex-1 overflow-hidden bg-white/80 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col min-h-0 backdrop-blur-sm">
         {timeMode === 'daily' ? (
           <>
             <div className="md:hidden p-2 pb-2 space-y-2 overflow-y-auto custom-scrollbar">
               {viewMode === 'professionals' ? (
                 <>
                   {visibleAppointments.length === 0 ? (
-                    <div className="p-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50 text-center">
-                      <p className="text-sm font-bold text-slate-700">No hay turnos para este día</p>
-                      <p className="text-xs text-slate-500 mt-1">Creá un bloque nuevo para empezar.</p>
+                    <div className="p-4 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-center">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No hay turnos para este día</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Creá un bloque nuevo para empezar.</p>
                     </div>
                   ) : (
                     visibleAppointments.map((app) => {
@@ -612,7 +612,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                           key={app.id}
                           type="button"
                           onClick={() => onOpenModal(room?.name, pro?.name, app)}
-                          className={cn('w-full text-left rounded-[1.9rem] p-4.5 md:p-4 border shadow-md backdrop-blur-sm min-h-[118px]', getTypeStyles(app.kind || app.type))}
+                          className={cn('w-full text-left rounded-[1.9rem] p-4.5 md:p-4 border shadow-md dark:shadow-none backdrop-blur-sm min-h-[118px]', getTypeStyles(app.kind || app.type))}
                         >
                           <div className="flex items-start justify-between gap-3.5">
                             <div className="min-w-0 flex-1">
@@ -636,33 +636,33 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 </>
               ) : (
                 <div className="grid grid-cols-3 gap-1.5">
-                  {mobileRoomColumns.map((room) => (
-                    <div
-                      key={room.id}
-                      className="rounded-2xl border border-slate-100 bg-white/95 shadow-sm p-1 min-h-[172px] flex flex-col"
-                    >
+                   {mobileRoomColumns.map((room) => (
+                     <div
+                       key={room.id}
+                       className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/90 shadow-sm p-1 min-h-[172px] flex flex-col"
+                     >
                       <div className="flex items-center justify-between gap-1 mb-0.5">
                         <div className="flex items-center gap-1 min-w-0">
                           <div className={cn('w-5 h-5 rounded-lg flex items-center justify-center text-white font-black text-[8px]', room.colorClass)}>
                             {room.name[0]}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[8px] font-black text-slate-900 truncate leading-tight">{room.name}</p>
+                            <p className="text-[8px] font-black text-slate-900 dark:text-slate-100 truncate leading-tight">{room.name}</p>
                           </div>
                         </div>
-                        <span className="text-[7px] font-black uppercase tracking-[0.08em] text-cyan-700 bg-cyan-50 border border-cyan-100 px-1 py-0.5 rounded-full shrink-0">
+                        <span className="text-[7px] font-black uppercase tracking-[0.08em] text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-100 dark:border-cyan-900/50 px-1 py-0.5 rounded-full shrink-0">
                           {room.totalAppointments}
                         </span>
                       </div>
 
                       <div className="flex-1 space-y-[3px]">
                         {room.appointments.length === 0 ? (
-                          <div className="h-full min-h-[128px] rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-1 py-1 text-center flex items-center justify-center">
+                          <div className="h-full min-h-[128px] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 px-1 py-1 text-center flex items-center justify-center">
                             <div>
-                              <div className="mx-auto mb-1 h-6 w-6 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-500 text-[10px] font-black">
+                              <div className="mx-auto mb-1 h-6 w-6 rounded-full bg-slate-200/80 dark:bg-slate-800/80 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[10px] font-black">
                                 0
                               </div>
-                              <p className="text-[8px] font-bold text-slate-700">Libre</p>
+                              <p className="text-[8px] font-bold text-slate-700 dark:text-slate-400">Libre</p>
                             </div>
                           </div>
                         ) : (
@@ -715,12 +715,12 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               )}
             </div>
 
-            <div className="hidden md:flex border-b border-slate-100 bg-slate-50/40">
-              <div className="w-16 border-r border-slate-100 flex items-center justify-center bg-slate-100/50">
-                <Clock className="w-4 h-4 text-slate-400" />
+            <div className="hidden md:flex border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40">
+              <div className="w-16 border-r border-slate-100 dark:border-slate-800 flex items-center justify-center bg-slate-100/50 dark:bg-slate-800/50">
+                <Clock className="w-4 h-4 text-slate-400 dark:text-slate-500" />
               </div>
               <div
-                className={cn('flex-1 grid divide-x divide-slate-100', viewMode === 'professionals' ? 'grid-cols-7' : 'grid-cols-4')}
+                className={cn('flex-1 grid divide-x divide-slate-100 dark:divide-slate-800', viewMode === 'professionals' ? 'grid-cols-7' : 'grid-cols-4')}
               >
                 {columns.map((col) => (
                   <div key={col.id} className="py-3 px-2 text-center">
@@ -734,13 +734,13 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                         {col.name[0]}
                       </div>
                     ) : (
-                        <div className="w-9 h-9 rounded-xl mx-auto mb-1.5 flex items-center justify-center bg-white text-slate-900 border border-slate-200 font-bold shadow-sm text-xs">
+                        <div className="w-9 h-9 rounded-xl mx-auto mb-1.5 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 font-bold shadow-sm text-xs">
                           {col.name === 'Sin asignar' ? '—' : col.name}
                         </div>
                       )}
-                    <p className="text-[10px] font-bold text-slate-900 uppercase tracking-wider leading-tight">{col.name}</p>
+                    <p className="text-[10px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider leading-tight">{col.name}</p>
                     {viewMode === 'rooms' && col.id !== 'unassigned' && (
-                      <p className="text-[9px] text-slate-400 uppercase font-medium mt-0.5">Capacidad 1</p>
+                      <p className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-medium mt-0.5">Capacidad 1</p>
                     )}
                   </div>
                 ))}
@@ -749,18 +749,18 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
             <div ref={dailyTimelineRef} className="flex-1 overflow-y-auto relative custom-scrollbar">
               <div className="hidden md:flex" style={{ minHeight: `${HOURS.length * HOUR_HEIGHT}px` }}>
-                <div className="w-16 border-r border-slate-100 bg-slate-50/20 sticky left-0 z-20 backdrop-blur-sm">
+                <div className="w-16 border-r border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/20 sticky left-0 z-20 backdrop-blur-sm">
                   {HOURS.map((hour) => (
-                    <div key={hour} className="relative border-b border-slate-200/60 flex flex-col items-center justify-between py-2" style={{ height: `${HOUR_HEIGHT}px` }}>
-                      <span className="text-[10px] font-black text-slate-400 absolute top-2">{hour.toString().padStart(2, '0')}:00</span>
-                      <span className="text-[9px] font-bold text-slate-300 absolute top-[50%] -translate-y-1/2 bg-slate-50/80 px-1 rounded">{hour.toString().padStart(2, '0')}:30</span>
-                      <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200/80 -z-10" />
+                    <div key={hour} className="relative border-b border-slate-200/60 dark:border-slate-800/60 flex flex-col items-center justify-between py-2" style={{ height: `${HOUR_HEIGHT}px` }}>
+                      <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 absolute top-2">{hour.toString().padStart(2, '0')}:00</span>
+                      <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 absolute top-[50%] -translate-y-1/2 bg-slate-50/80 dark:bg-slate-900/80 px-1 rounded">{hour.toString().padStart(2, '0')}:30</span>
+                      <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200/80 dark:border-slate-800/50 -z-10" />
                     </div>
                   ))}
                 </div>
 
                 <div
-                  className={cn('flex-1 grid divide-x divide-slate-100 relative', viewMode === 'professionals' ? 'grid-cols-7' : 'grid-cols-4')}
+                  className={cn('flex-1 grid divide-x divide-slate-100 dark:divide-slate-800 relative', viewMode === 'professionals' ? 'grid-cols-7' : 'grid-cols-4')}
                 >
                   {columns.map((col) => {
                     const columnAppointments = getAppointmentsForColumn(col.id);
@@ -768,22 +768,22 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                     return (
                       <div
                         key={col.id}
-                        className="relative h-full cursor-cell transition-colors hover:bg-slate-50/50"
+                        className="relative h-full cursor-cell transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/20"
                       >
                         {HOURS.map((hour) => (
                           <div
                             key={hour}
-                            className="relative border-b border-slate-200/60 w-full cursor-cell"
+                            className="relative border-b border-slate-200/60 dark:border-slate-800/60 w-full cursor-cell"
                             style={{ height: `${HOUR_HEIGHT}px` }}
                             onClick={(event) => handleEmptySlotClick(event, hour, col)}
                           >
-                            <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200/70" />
+                            <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200/70 dark:border-slate-800/50" />
                           </div>
                         ))}
 
                         {columnAppointments.length === 0 ? (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="px-3 py-2 rounded-xl border border-dashed border-slate-200 bg-white/80 text-[10px] font-bold text-slate-400">
+                            <div className="px-3 py-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 text-[10px] font-bold text-slate-400 dark:text-slate-500">
                               Sin turnos
                             </div>
                           </div>
@@ -817,19 +817,19 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                   zIndex: 10 + appLayout.colIndex,
                                 }}
                                 className={cn(
-                                  'absolute rounded-xl border border-slate-900 shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-300 flex flex-col',
+                                  'absolute rounded-xl border border-slate-900 dark:border-slate-700 shadow-sm group cursor-pointer overflow-hidden transition-all hover:ring-2 ring-blue-300 dark:ring-blue-500 flex flex-col',
                                   appointmentHeight < 60 ? 'py-1.5 pr-1.5 pl-3' : 'py-2 pr-2.5 pl-4',
                                   getTypeStyles(app.kind || app.type),
                                 )}
                               >
-                              <div className={cn('absolute left-0 top-0 bottom-0 w-2 border-r border-slate-900/10', pro?.color || 'bg-slate-400')} />
+                              <div className={cn('absolute left-0 top-0 bottom-0 w-2 border-r border-slate-900/10 dark:border-white/10', pro?.color || 'bg-slate-400')} />
 
                               <div className="flex items-start justify-between gap-1.5 relative z-10">
-                                <span className="shrink-0 text-[8px] font-black leading-tight px-1.5 py-1 rounded-lg bg-white/85 text-slate-900 border border-slate-200 shadow-sm">
+                                <span className="shrink-0 text-[8px] font-black leading-tight px-1.5 py-1 rounded-lg bg-white/85 dark:bg-slate-950/80 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-sm">
                                   {formatTimeOnly(app.start)}
                                   <span className="block text-[7px] opacity-70">{formatTimeOnly(app.end)}</span>
                                 </span>
-                                <span className="min-w-0 text-right text-[7px] font-black tracking-[0.08em] uppercase opacity-80 leading-tight bg-white/40 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50">
+                                <span className="min-w-0 text-right text-[7px] font-black tracking-[0.08em] uppercase opacity-80 leading-tight bg-white/40 dark:bg-black/20 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50 dark:border-slate-800/50">
                                   {getTypeLabel(app.kind || app.type)}
                                   <span className="block truncate">{getCoverageLabel(app)}</span>
                                 </span>
@@ -866,11 +866,11 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           </>
         ) : (
           <div className="flex-1 p-2 md:p-6 overflow-y-auto custom-scrollbar">
-            <div className="grid grid-cols-7 gap-px bg-slate-100 border border-slate-100 rounded-2xl md:rounded-3xl overflow-hidden">
+           <div className="grid grid-cols-7 gap-px bg-slate-100 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl md:rounded-3xl overflow-hidden">
               {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day) => (
                 <div
                   key={day}
-                  className="bg-slate-50 py-1 px-1 text-center text-[7px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.12em]"
+                  className="bg-slate-50 dark:bg-slate-900/50 py-1 px-1 text-center text-[7px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em]"
                 >
                   {day}
                 </div>
@@ -888,10 +888,10 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 );
 
                 return (
-                  <div
+                   <div
                     key={day.toISOString()}
                     className={cn(
-                      'min-h-[76px] md:min-h-[140px] bg-white/85 p-1 md:p-2 border-slate-50 transition-colors hover:bg-slate-50/60 cursor-pointer backdrop-blur-sm',
+                      'min-h-[76px] md:min-h-[140px] bg-white/85 dark:bg-[#0f172a]/95 p-1 md:p-2 border-slate-50 dark:border-slate-800 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 cursor-pointer backdrop-blur-sm',
                       !isSameMonth(day, selectedDate) && 'opacity-30',
                     )}
                     onClick={() => {
@@ -904,14 +904,14 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                         className={cn(
                           'text-[10px] md:text-xs font-bold',
                           isSameDay(day, new Date())
-                            ? 'w-5 h-5 md:w-6 md:h-6 flex items-center justify-center bg-blue-600 text-white rounded-full'
-                            : 'text-slate-400',
+                            ? 'w-5 h-5 md:w-6 md:h-6 flex items-center justify-center bg-blue-600 dark:bg-blue-500 text-white rounded-full'
+                            : 'text-slate-400 dark:text-slate-500',
                         )}
                       >
                         {format(day, 'd')}
                       </span>
                       {dayAppointments.length > 0 && (
-                        <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                        <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400">
                           {dayAppointments.length}
                         </span>
                       )}
@@ -941,8 +941,8 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                         );
                       })}
 
-                      {dayAppointments.length > 2 && (
-                        <div className="text-[8px] text-slate-400 font-bold pl-1">+ {dayAppointments.length - 2} más</div>
+                       {dayAppointments.length > 2 && (
+                        <div className="text-[8px] text-slate-400 dark:text-slate-500 font-bold pl-1">+ {dayAppointments.length - 2} más</div>
                       )}
                     </div>
                   </div>

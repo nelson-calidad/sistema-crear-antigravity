@@ -174,23 +174,71 @@ export default function App() {
       case 'finance':
         return <Finance />;
       case 'settings':
+      case 'professionals':
+        return <ProfessionalsGrid />;
+      case 'agenda':
+        return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;
+      case 'finance':
+        return <Finance />;
+      case 'settings':
         return <Settings />;
       default:
         return <Dashboard onQuickReserve={handleQuickReserve} />;
     }
   };
 
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return (window.localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    window.localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(current => current === 'light' ? 'dark' : 'light');
+  };
+
+  const getTabFromLocation = () => {
+    if (typeof window === 'undefined') {
+      return 'dashboard';
+    }
+
+    const tab = new URL(window.location.href).searchParams.get(TAB_QUERY_KEY);
+    return tab && VALID_TABS.has(tab) ? tab : 'dashboard';
+  };
+
+  const buildTabUrl = (tab: string) => {
+    const url = new URL(window.location.href);
+    if (tab === 'dashboard') {
+      url.searchParams.delete(TAB_QUERY_KEY);
+    } else {
+      url.searchParams.set(TAB_QUERY_KEY, tab);
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  };
+
   const loadingFallback = (
-    <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/70 p-8 text-center">
+    <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 p-8 text-center">
       <div>
-        <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-400">CREAR</p>
-        <p className="mt-2 text-sm font-bold text-slate-700">Cargando vista...</p>
+        <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">CREAR</p>
+        <p className="mt-2 text-sm font-bold text-slate-700 dark:text-slate-300">Cargando vista...</p>
       </div>
     </div>
   );
 
   return (
-    <div className="flex h-[100dvh] bg-slate-50 font-sans text-slate-900 antialiased overflow-hidden">
+    <div className="flex h-[100dvh] font-sans antialiased overflow-hidden bg-slate-50 dark:bg-[#090b11] text-slate-900 dark:text-slate-100 transition-colors duration-200">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(tab) => {
@@ -199,6 +247,8 @@ export default function App() {
         }}
         mobileOpen={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
       
       <main className="flex-1 flex flex-col min-w-0">
