@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  X, 
+  X as CloseIcon, 
   Calendar as CalendarIcon, 
   Clock, 
   User, 
@@ -314,7 +314,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                 </button>
               )}
               <button onClick={onClose} disabled={isSaving || isDeleting} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors group disabled:opacity-50 disabled:cursor-not-allowed">
-                <X className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-slate-900 dark:group-hover:text-slate-100" />
+                <CloseIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-slate-900 dark:group-hover:text-slate-100" />
               </button>
             </div>
           </div>

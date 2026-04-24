@@ -5,7 +5,7 @@
 
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { Bell, Search, User, X, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { Bell, Search, User, X as CloseIcon, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ReservationModal } from './components/ReservationModal';
 import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
@@ -211,7 +211,7 @@ export default function App() {
               onClick={() => setMobileSidebarOpen((open) => !open)}
               className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm flex items-center justify-center shrink-0"
             >
-              {mobileSidebarOpen ? <X className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : <img src={logoCrear} alt="CREAR" className="w-full h-full object-contain p-0.5" />}
+              {mobileSidebarOpen ? <CloseIcon className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : <img src={logoCrear} alt="CREAR" className="w-full h-full object-contain p-0.5" />}
             </button>
             <div className="min-w-0 flex-1 px-1">
               <p className="text-[13px] font-black text-slate-900 dark:text-slate-100 truncate leading-none">{mobileTabLabel}</p>
@@ -355,7 +355,7 @@ export default function App() {
                     <p className="mt-0.5 text-xs font-medium opacity-80">{toast.message}</p>
                   </div>
                   <button onClick={() => removeToast(toast.id)} className="rounded-lg p-1 text-current/60 hover:bg-white/60 dark:hover:bg-slate-700">
-                    <X className="h-4 w-4" />
+                    <CloseIcon className="h-4 w-4" />
                   </button>
                 </div>
               </motion.div>
