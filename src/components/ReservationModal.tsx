@@ -237,15 +237,20 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
   const personPlaceholder = kind === 'block'
     ? 'Motivo o detalle...'
     : 'Nombre del paciente...';
-  const professionalLabel = kind === 'block' ? 'Profesional afectado (opcional)' : 'Profesional corresponsal';
+  const professionalLabel = kind === 'block' ? 'Profesional' : 'Profesional corresponsal';
+
+  const isFormValid = useMemo(() => {
+    return (
+      selectedProId !== '' &&
+      selectedRoomId !== '' &&
+      formData.patient.trim() !== '' &&
+      !selectedProfessionalBusy &&
+      !selectedRoomBusy
+    );
+  }, [selectedProId, selectedRoomId, formData.patient, selectedProfessionalBusy, selectedRoomBusy]);
 
   const handleSave = () => {
-    if (isSaving || isDeleting) {
-      return;
-    }
-
-    if (selectedProfessionalBusy || selectedRoomBusy) {
-      alert('Ese colaborador o consultorio ya está ocupado en ese horario. Elegí otro.');
+    if (isSaving || isDeleting || !isFormValid) {
       return;
     }
 
@@ -360,7 +365,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">{professionalLabel}</label>
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">{professionalLabel} <span className="text-rose-500">*</span></label>
                 <select 
                   value={selectedProId}
                   onChange={(e) => setSelectedProId(e.target.value)}
@@ -394,7 +399,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                 )}
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Consultorio</label>
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Consultorio <span className="text-rose-500">*</span></label>
                 <select 
                   value={selectedRoomId}
                   onChange={(e) => setSelectedRoomId(e.target.value)}
@@ -429,7 +434,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
 
             {kind !== 'block' && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">{personLabel}</label>
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">{personLabel} <span className="text-rose-500">*</span></label>
                 <input 
                   type="text" 
                   value={formData.patient}
@@ -530,11 +535,11 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
             </button>
             <button
               onClick={handleSave}
-              disabled={selectedProfessionalBusy || selectedRoomBusy || isSaving || isDeleting}
+              disabled={!isFormValid || isSaving || isDeleting}
               className={cn(
                 'flex-[1.6] py-3 rounded-xl sm:rounded-2xl font-bold text-sm transition-colors shadow-lg',
-                selectedProfessionalBusy || selectedRoomBusy || isSaving || isDeleting
-                  ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-400 dark:text-rose-500 cursor-not-allowed shadow-none'
+                !isFormValid || isSaving || isDeleting
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none border border-slate-200 dark:border-slate-700'
                   : 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white shadow-slate-200 dark:shadow-none',
               )}
             >
