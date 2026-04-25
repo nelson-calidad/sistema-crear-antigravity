@@ -578,7 +578,50 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+            {recurrence === 'weekly' && (
+              <div className="space-y-2 mt-2">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Días de la semana <span className="text-rose-500">*</span></label>
+                <div className="flex flex-wrap gap-2">
+                  {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day, idx) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleDay(idx)}
+                      className={cn(
+                        'px-3 py-1.5 rounded-lg text-xs font-bold transition-all border',
+                        selectedDays.includes(idx)
+                          ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-700'
+                      )}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+                {selectedDays.length === 0 && (
+                  <p className="text-[10px] text-rose-500 font-bold pl-1">Seleccioná al menos un día.</p>
+                )}
+              </div>
+            )}
+
+            {recurrence !== 'none' && (
+              <div className="space-y-1.5 mt-3">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Repetir hasta (Opcional)</label>
+                <div className="relative">
+                  <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                  <input 
+                    type="date" 
+                    value={untilDate}
+                    onChange={(e) => setUntilDate(e.target.value)}
+                    min={formData.date}
+                    className="w-full pl-10 pr-3 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none text-slate-900 dark:text-slate-100 color-scheme-light dark:color-scheme-dark"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 pl-1">Si lo dejás vacío, se repetirá para siempre.</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mt-3">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Obra Social</label>
                 <select 

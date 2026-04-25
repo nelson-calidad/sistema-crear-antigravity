@@ -66,6 +66,9 @@ export function isAppointmentActiveOnDate(appointment: AppointmentRecord, target
     }
   }
 
+  // ALWAYS show on the exact start date, regardless of recurrence rule!
+  if (isSameDay(s, d)) return true;
+
   const rec = appointment.recurrence || 'none';
 
   if (rec === 'none') {
