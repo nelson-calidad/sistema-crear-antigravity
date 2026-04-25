@@ -212,18 +212,24 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'professionals' | 'rooms'>('professionals');
   const [timeMode, setTimeMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  
+  const [filterProId, setFilterProId] = useState<string>('all');
+
+  const filteredAppointments = useMemo(() => {
+    if (filterProId === 'all') return appointments;
+    return appointments.filter(app => (app.professionalId || app.proId) === filterProId);
+  }, [appointments, filterProId]);
+
   const weeklyAppointmentsByDay = useMemo(() => {
     if (timeMode !== 'weekly') return new Map<string, AppointmentRecord[]>();
     const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
     const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
     const map = new Map<string, AppointmentRecord[]>();
     days.forEach(day => {
-       const apps = sortByStart(appointments.filter(app => isAppointmentActiveOnDate(app, day)));
+       const apps = sortByStart(filteredAppointments.filter(app => isAppointmentActiveOnDate(app, day)));
        map.set(format(day, 'yyyy-MM-dd'), apps);
     });
     return map;
-  }, [appointments, selectedDate, timeMode]);
+  }, [filteredAppointments, selectedDate, timeMode]);
   const hasSyncedInitialDateRef = useRef(false);
   const dailyTimelineRef = useRef<HTMLDivElement | null>(null);
   const [professionals] = useProfessionals();
@@ -280,9 +286,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
   const selectedDateAppointments = useMemo(() => {
     return sortByStart(
-      appointments.filter((appointment) => isAppointmentActiveOnDate(appointment, selectedDate)),
+      filteredAppointments.filter((appointment) => isAppointmentActiveOnDate(appointment, selectedDate)),
     );
-  }, [appointments, selectedDate]);
+  }, [filteredAppointments, selectedDate]);
 
   const appointmentKindSummary = useMemo(() => {
     const summary = selectedDateAppointments.reduce(
@@ -331,7 +337,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   }, [professionals.length, selectedDateAppointments, viewMode]);
 
   const currentMonthAppointments = useMemo(() => {
-    return appointments.filter((appointment) => {
+    return filteredAppointments.filter((appointment) => {
       // Para el mes, expandimos todos los días del mes y vemos si el turno cae en alguno
       const daysInMonth = eachDayOfInterval({
         start: startOfMonth(selectedDate),
@@ -339,7 +345,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
       });
       return daysInMonth.some((day) => isAppointmentActiveOnDate(appointment, day));
     });
-  }, [appointments, selectedDate]);
+  }, [filteredAppointments, selectedDate]);
 
   const columns: CalendarColumn[] = useMemo(() => {
     if (timeMode === 'weekly') {
@@ -402,18 +408,21 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   };
 
   const handleDailyPdf = () => {
-    const html = buildDailyPdfHtml(selectedDate, appointments);
-    openPrintableReport(`Agenda diaria - ${formatDateEs(selectedDate, 'dd-MM-yyyy')}`, html);
+    const proName = filterProId !== 'all' ? professionals.find(p => p.id === filterProId)?.name : '';
+    const html = buildDailyPdfHtml(selectedDate, filteredAppointments);
+    openPrintableReport(`Agenda diaria ${proName ? `- ${proName} ` : ''}- ${formatDateEs(selectedDate, 'dd-MM-yyyy')}`, html);
   };
 
   const handleMonthlyPdf = () => {
-    const html = buildMonthlyPdfHtml(selectedDate, appointments);
-    openPrintableReport(`Agenda mensual - ${formatDateEs(selectedDate, 'MMMM yyyy')}`, html);
+    const proName = filterProId !== 'all' ? professionals.find(p => p.id === filterProId)?.name : '';
+    const html = buildMonthlyPdfHtml(selectedDate, filteredAppointments);
+    openPrintableReport(`Agenda mensual ${proName ? `- ${proName} ` : ''}- ${formatDateEs(selectedDate, 'MMMM yyyy')}`, html);
   };
 
   const handleWeeklyPdf = () => {
-    const html = buildWeeklyAvailabilityPdfHtml(selectedDate, appointments);
-    openPrintableReport(`Disponibilidad semanal - ${formatDateEs(selectedDate, 'dd-MM-yyyy')}`, html);
+    const proName = filterProId !== 'all' ? professionals.find(p => p.id === filterProId)?.name : '';
+    const html = buildWeeklyAvailabilityPdfHtml(selectedDate, filteredAppointments);
+    openPrintableReport(`Disponibilidad semanal ${proName ? `- ${proName} ` : ''}- ${formatDateEs(selectedDate, 'dd-MM-yyyy')}`, html);
   };
 
   const resolveNextAvailableStart = (columnAppointments: AppointmentRecord[], requestedStart: number) => {
@@ -494,6 +503,23 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 <CalendarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <h1 className="text-lg font-black tracking-tight shrink-0">Agenda</h1>
+            </div>
+
+            {/* Selector de Profesional (Filtro Global) */}
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 shadow-sm">
+              <div className="pl-2 pr-1">
+                <User className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <select 
+                value={filterProId}
+                onChange={(e) => setFilterProId(e.target.value)}
+                className="bg-transparent border-none text-[10px] font-bold text-slate-700 dark:text-slate-200 focus:ring-0 outline-none pr-7 py-1"
+              >
+                <option value="all" className="bg-white dark:bg-slate-800">Todos los Prof.</option>
+                {professionals.map(p => (
+                  <option key={p.id} value={p.id} className="bg-white dark:bg-slate-800">{p.name}</p>
+                ))}
+              </select>
             </div>
 
             <div className="flex bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-lg gap-0.5 border border-slate-200/70 dark:border-slate-700/50 shrink-0">
