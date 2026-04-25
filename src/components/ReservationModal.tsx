@@ -20,6 +20,7 @@ import { cn, isAppointmentActiveOnDate, parseDay } from '../lib/utils';
 import { ROOMS } from '../constants';
 import { AppointmentRecord } from '../types';
 import { useProfessionals } from '../lib/professionalsStore';
+import { usePatients } from '../lib/patientsStore';
 
 interface ReservationModalProps {
   isOpen: boolean;
@@ -88,6 +89,8 @@ const addMinutesToTime = (time: string, minutes: number) => {
 export const ReservationModal = ({ isOpen, onClose, room, professional, appointments = [], initialData, initialDate, initialStartTime, onSave, onDelete, isSaving = false, isDeleting = false }: ReservationModalProps) => {
   // ✅ All hooks must be declared before any early return
   const [professionals] = useProfessionals();
+  const patients = usePatients();
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [kind, setKind] = useState<'session' | 'interview' | 'block'>('session');
   const [coverageType, setCoverageType] = useState<'obra social' | 'particular'>('particular');
   const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'weekdays'>('none');
@@ -107,6 +110,19 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
   });
 
   const DAY_LABELS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+
+  const filteredPatients = useMemo(() => {
+    if (!formData.patient || formData.patient.length < 2) return [];
+    const lower = formData.patient.toLowerCase();
+    return patients.filter(p => p.name.toLowerCase().includes(lower) || (p.dni && p.dni.includes(lower)));
+  }, [formData.patient, patients]);
+
+  const handleSelectPatient = (p: any) => {
+    setFormData(prev => ({ ...prev, patient: p.name }));
+    if (p.phone) setPatientPhone(p.phone);
+    if (p.healthInsurance) setCoverageType('obra social');
+    setShowSuggestions(false);
+  };
 
   // Dynamic End Time logic
   useEffect(() => {
@@ -469,9 +485,38 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                   <input 
                     placeholder="Nombre del paciente..."
                     value={formData.patient}
-                    onChange={(e) => setFormData({...formData, patient: e.target.value})}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    onChange={(e) => {
+                      setFormData({...formData, patient: e.target.value});
+                      setShowSuggestions(true);
+                    }}
                     className="w-full pl-10 pr-3 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600"
                   />
+                  <AnimatePresence>
+                    {showSuggestions && filteredPatients.length > 0 && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto"
+                      >
+                        {filteredPatients.map(p => (
+                          <div 
+                            key={p.id}
+                            onClick={() => handleSelectPatient(p)}
+                            className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                          >
+                            <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{p.name}</p>
+                            <p className="text-[10px] text-slate-500 flex gap-2 mt-0.5">
+                              {p.dni && <span>DNI: {p.dni}</span>}
+                              {p.healthInsurance && <span>OS: {p.healthInsurance}</span>}
+                            </p>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
               <div className="space-y-1.5">
