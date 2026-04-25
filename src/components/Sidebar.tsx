@@ -11,6 +11,7 @@ import {
   Wallet,
   Settings,
   LogOut,
+  ChevronLeft,
   ChevronRight,
   Sun,
   Moon,
