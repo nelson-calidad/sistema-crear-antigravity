@@ -5,7 +5,7 @@
 
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { Bell, Search, User, X as CloseIcon, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { Bell, Search, User, X as CloseIcon, Check, Info, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ReservationModal } from './components/ReservationModal';
 import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
@@ -343,9 +343,9 @@ export default function App() {
         <AnimatePresence initial={false}>
           {toasts.map((toast) => {
             const toneStyles = {
-              success: { icon: CheckCircle2, shell: 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100', accent: 'bg-emerald-500' },
-              error: { icon: XCircle, shell: 'bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-100', accent: 'bg-rose-500' },
-              info: { icon: AlertCircle, shell: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100', accent: 'bg-blue-500' },
+              success: { icon: Check, shell: 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100', accent: 'bg-emerald-500' },
+              error: { icon: AlertCircle, shell: 'bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-100', accent: 'bg-rose-500' },
+              info: { icon: Info, shell: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100', accent: 'bg-blue-500' },
             }[toast.tone];
             const Icon = toneStyles.icon;
             return (
