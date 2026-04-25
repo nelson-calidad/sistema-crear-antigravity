@@ -57,6 +57,7 @@ type CalendarColumn = {
   id: string;
   name: string;
   color?: string;
+  date?: Date;
 };
 
 // Removed local parseDay as it's now in utils
@@ -210,7 +211,19 @@ const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice
 export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'professionals' | 'rooms'>('professionals');
-  const [timeMode, setTimeMode] = useState<'daily' | 'monthly'>('daily');
+  const [timeMode, setTimeMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  
+  const weeklyAppointmentsByDay = useMemo(() => {
+    if (timeMode !== 'weekly') return new Map<string, AppointmentRecord[]>();
+    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    const map = new Map<string, AppointmentRecord[]>();
+    days.forEach(day => {
+       const apps = sortByStart(appointments.filter(app => isAppointmentActiveOnDate(app, day)));
+       map.set(format(day, 'yyyy-MM-dd'), apps);
+    });
+    return map;
+  }, [appointments, selectedDate, timeMode]);
   const hasSyncedInitialDateRef = useRef(false);
   const dailyTimelineRef = useRef<HTMLDivElement | null>(null);
   const [professionals] = useProfessionals();
@@ -329,13 +342,23 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   }, [appointments, selectedDate]);
 
   const columns: CalendarColumn[] = useMemo(() => {
+    if (timeMode === 'weekly') {
+      const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+      return days.map(day => ({
+        id: format(day, 'yyyy-MM-dd'),
+        name: format(day, 'EEEE', { locale: es }).substring(0, 3),
+        date: day
+      }));
+    }
+
     const base = viewMode === 'professionals'
       ? professionals.map((pro) => ({ id: pro.id, name: pro.name, color: pro.color }))
       : ROOMS.map((room) => ({ id: room.id, name: room.name }));
 
     const hasUnassigned = selectedDateAppointments.some((app) => !hasAssignment(app));
     return hasUnassigned ? [...base, UNASSIGNED_COLUMN] : base;
-  }, [selectedDateAppointments, viewMode]);
+  }, [selectedDateAppointments, viewMode, timeMode, selectedDate]);
 
   const mobileRoomColumns = useMemo(() => {
     const roomPalette = ['bg-cyan-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500', 'bg-rose-500', 'bg-sky-500'];
@@ -357,6 +380,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
   const visibleAppointments = sortByStart(selectedDateAppointments);
   const getAppointmentsForColumn = (columnId: string) => {
+    if (timeMode === 'weekly') {
+      return weeklyAppointmentsByDay.get(columnId) || [];
+    }
     return visibleAppointments.filter((appointment) => matchesColumn(appointment, columnId));
   };
 
@@ -428,11 +454,11 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
     const requestedStart = hour * 60 + (clickOffset >= rect.height / 2 ? 30 : 0);
     const columnAppointments = getAppointmentsForColumn(col.id);
     const resolvedStart = resolveNextAvailableStart(columnAppointments, requestedStart);
-    const appointmentDate = format(selectedDate, 'yyyy-MM-dd');
+    const appointmentDate = timeMode === 'weekly' ? col.id : format(selectedDate, 'yyyy-MM-dd');
 
     onOpenModal(
-      viewMode === 'rooms' ? (col.id === 'unassigned' ? undefined : col.name) : undefined,
-      viewMode === 'professionals' ? (col.id === 'unassigned' ? undefined : col.name) : undefined,
+      timeMode === 'weekly' ? undefined : (viewMode === 'rooms' ? (col.id === 'unassigned' ? undefined : col.name) : undefined),
+      timeMode === 'weekly' ? undefined : (viewMode === 'professionals' ? (col.id === 'unassigned' ? undefined : col.name) : undefined),
       undefined,
       {
         date: appointmentDate,
@@ -485,6 +511,15 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 Día
               </button>
               <button
+                onClick={() => setTimeMode('weekly')}
+                className={cn(
+                  'px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-all',
+                  timeMode === 'weekly' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
+                )}
+              >
+                Semana
+              </button>
+              <button
                 onClick={() => setTimeMode('monthly')}
                 className={cn(
                   'px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-all',
@@ -495,16 +530,19 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               </button>
             </div>
 
-            {timeMode === 'daily' && (
+            {(timeMode === 'daily' || timeMode === 'weekly') && (
               <>
                 <div className="flex bg-white/80 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 shadow-sm shrink-0">
-                  <button onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md">
+                  <button onClick={() => setSelectedDate(subDays(selectedDate, timeMode === 'weekly' ? 7 : 1))} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md">
                     <ChevronLeft className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
                   <div className="px-2 py-1 font-bold text-slate-700 dark:text-slate-200 text-center min-w-[120px] text-[10px]">
-                    {titleCase(formatDateEs(selectedDate, 'EEEE, d MMMM'))}
+                    {timeMode === 'weekly'
+                      ? `${formatDateEs(startOfWeek(selectedDate, {weekStartsOn: 1}), 'd MMM')} - ${formatDateEs(endOfWeek(selectedDate, {weekStartsOn: 1}), 'd MMM yyyy')}`
+                      : titleCase(formatDateEs(selectedDate, 'EEEE, d MMMM'))
+                    }
                   </div>
-                  <button onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md">
+                  <button onClick={() => setSelectedDate(addDays(selectedDate, timeMode === 'weekly' ? 7 : 1))} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md">
                     <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
                 </div>
@@ -589,7 +627,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
       </div>
 
       <div className="flex-1 overflow-hidden bg-white/80 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col min-h-0 backdrop-blur-sm">
-        {timeMode === 'daily' ? (
+        {(timeMode === 'daily' || timeMode === 'weekly') ? (
           <>
             <div className="md:hidden p-2 pb-2 space-y-2 overflow-y-auto custom-scrollbar">
               {viewMode === 'professionals' ? (
@@ -721,7 +759,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 <Clock className="w-4 h-4 text-slate-400 dark:text-slate-500" />
               </div>
               <div
-                className={cn('flex-1 grid divide-x divide-slate-100 dark:divide-slate-800', viewMode === 'professionals' ? 'grid-cols-7' : 'grid-cols-4')}
+                className={cn('flex-1 grid divide-x divide-slate-100 dark:divide-slate-800', (viewMode === 'professionals' && timeMode === 'daily') || timeMode === 'weekly' ? 'grid-cols-7' : 'grid-cols-4')}
               >
                 {columns.map((col) => (
                   <div key={col.id} className="py-3 px-2 text-center">
@@ -735,8 +773,8 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                         {col.name[0]}
                       </div>
                     ) : (
-                        <div className="w-9 h-9 rounded-xl mx-auto mb-1.5 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 font-bold shadow-sm text-xs">
-                          {col.name === 'Sin asignar' ? '—' : col.name}
+                        <div className={cn("w-9 h-9 rounded-xl mx-auto mb-1.5 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 font-bold shadow-sm", timeMode === 'weekly' ? 'text-lg' : 'text-xs')}>
+                          {timeMode === 'weekly' ? (col.date ? format(col.date, 'd') : '—') : (col.name === 'Sin asignar' ? '—' : col.name)}
                         </div>
                       )}
                     <p className="text-[10px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider leading-tight">{col.name}</p>
@@ -761,7 +799,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 </div>
 
                 <div
-                  className={cn('flex-1 grid divide-x divide-slate-100 dark:divide-slate-800 relative', viewMode === 'professionals' ? 'grid-cols-7' : 'grid-cols-4')}
+                  className={cn('flex-1 grid divide-x divide-slate-100 dark:divide-slate-800 relative', (viewMode === 'professionals' && timeMode === 'daily') || timeMode === 'weekly' ? 'grid-cols-7' : 'grid-cols-4')}
                 >
                   {columns.map((col) => {
                     const columnAppointments = getAppointmentsForColumn(col.id);
