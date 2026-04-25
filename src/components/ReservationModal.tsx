@@ -86,121 +86,111 @@ const addMinutesToTime = (time: string, minutes: number) => {
 };
 
 export const ReservationModal = ({ isOpen, onClose, room, professional, appointments = [], initialData, initialDate, initialStartTime, onSave, onDelete, isSaving = false, isDeleting = false }: ReservationModalProps) => {
+  // ✅ All hooks must be declared before any early return
   const [professionals] = useProfessionals();
-  const [kind, setKind] = useState<'session' | 'interview' | 'block'>(initialData?.kind || initialData?.type || 'session');
-  const [coverageType, setCoverageType] = useState<'obra social' | 'particular'>(initialData?.coverageType || 'particular');
+  const [kind, setKind] = useState<'session' | 'interview' | 'block'>('session');
+  const [coverageType, setCoverageType] = useState<'obra social' | 'particular'>('particular');
   const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'weekdays'>('none');
-  const [selectedDays, setSelectedDays] = useState<number[]>([]); // 0-6 for Sun-Sat
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [untilDate, setUntilDate] = useState<string>('');
   const [deleteChoiceOpen, setDeleteChoiceOpen] = useState(false);
   const [status, setStatus] = useState<AppointmentRecord['status']>('scheduled');
   const [patientPhone, setPatientPhone] = useState('');
-
-  // States for selection
   const [selectedProId, setSelectedProId] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState('');
-
   const [formData, setFormData] = useState({
-    patient: initialData?.title || '',
-    date: initialData?.date || initialDate || new Date().toISOString().split('T')[0],
-    startTime: initialData?.start || initialStartTime || '08:00',
-    endTime: initialData?.end || addMinutesToTime(initialData?.start || initialStartTime || '08:00', getDurationMinutes(initialData?.kind || initialData?.type || 'session')),
-    notes: initialData?.notes || ''
+    patient: '',
+    date: new Date().toISOString().split('T')[0],
+    startTime: '08:00',
+    endTime: '08:45',
+    notes: ''
   });
 
   const DAY_LABELS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
   // Dynamic End Time logic
   useEffect(() => {
-    if (!initialData && formData.startTime) { // Only auto-change for NEW reservations
+    if (!initialData && formData.startTime) {
       setFormData(prev => ({ ...prev, endTime: addMinutesToTime(prev.startTime, getDurationMinutes(kind)) }));
     }
   }, [kind, initialData, formData.startTime]);
 
-  // Filter ONLY active professionals as requested
   const activeProfessionals = professionals.filter((p) => p.status === 'Activo');
-
   const isEditing = !!initialData;
 
   const selectedDayAppointments = useMemo(() => {
     const targetDate = parseDay(formData.date);
     if (!targetDate) return [];
-
     return appointments.filter((appointment) => {
-      if (initialData && appointment.id === initialData.id) {
-        return false;
-      }
-
+      if (initialData && appointment.id === initialData.id) return false;
       return isAppointmentActiveOnDate(appointment, targetDate);
     });
   }, [appointments, formData.date, initialData]);
 
   const occupiedProfessionalIds = useMemo(() => {
     return selectedDayAppointments
-      .filter((appointment) => (appointment.professionalId || appointment.proId) && overlaps(formData.startTime, formData.endTime, appointment.start, appointment.end))
-      .map((appointment) => (appointment.professionalId || appointment.proId) as string);
+      .filter((a) => (a.professionalId || a.proId) && overlaps(formData.startTime, formData.endTime, a.start, a.end))
+      .map((a) => (a.professionalId || a.proId) as string);
   }, [selectedDayAppointments, formData.endTime, formData.startTime]);
 
   const occupiedRoomIds = useMemo(() => {
     return selectedDayAppointments
-      .filter((appointment) => appointment.roomId && overlaps(formData.startTime, formData.endTime, appointment.start, appointment.end))
-      .map((appointment) => appointment.roomId as string);
+      .filter((a) => a.roomId && overlaps(formData.startTime, formData.endTime, a.start, a.end))
+      .map((a) => a.roomId as string);
   }, [selectedDayAppointments, formData.endTime, formData.startTime]);
 
-  // Update selection/form if initialData or props change
+  // Populate form when modal opens or data changes
   useEffect(() => {
-    if (isOpen) {
-      setDeleteChoiceOpen(false);
-      if (initialData) {
-        setKind(initialData.kind || initialData.type || 'session');
-        setCoverageType(initialData.coverageType || 'particular');
-        setSelectedProId(initialData.proId || '');
-        setSelectedRoomId(initialData.roomId || '');
-        setRecurrence(initialData.recurrence || 'none');
-        setSelectedDays(initialData.selectedDays || []);
-        setUntilDate(initialData.untilDate || '');
-        setStatus(initialData.status || 'scheduled');
-        setPatientPhone(initialData.patientPhone || '');
-        setFormData({
-          patient: initialData.patient || initialData.title || '',
-          date: initialData.date || new Date().toISOString().split('T')[0],
-          startTime: initialData.start,
-          endTime: initialData.end || '09:00',
-          notes: initialData.notes || ''
-        });
+    if (!isOpen) return;
+    setDeleteChoiceOpen(false);
+    if (initialData) {
+      setKind(initialData.kind || initialData.type || 'session');
+      setCoverageType(initialData.coverageType || 'particular');
+      setSelectedProId(initialData.proId || initialData.professionalId || '');
+      setSelectedRoomId(initialData.roomId || '');
+      setRecurrence(initialData.recurrence || 'none');
+      setSelectedDays(initialData.selectedDays || []);
+      setUntilDate(initialData.untilDate || '');
+      setStatus(initialData.status || 'scheduled');
+      setPatientPhone(initialData.patientPhone || '');
+      setFormData({
+        patient: initialData.patient || initialData.title || '',
+        date: initialData.date || new Date().toISOString().split('T')[0],
+        startTime: initialData.start || '08:00',
+        endTime: initialData.end || '09:00',
+        notes: initialData.notes || ''
+      });
+    } else {
+      setKind('session');
+      setRecurrence('none');
+      setSelectedDays([]);
+      setUntilDate('');
+      setStatus('scheduled');
+      setPatientPhone('');
+      setCoverageType('particular');
+      setFormData({
+        patient: '',
+        date: initialDate || new Date().toISOString().split('T')[0],
+        startTime: initialStartTime || '08:00',
+        endTime: addMinutesToTime(initialStartTime || '08:00', getDurationMinutes('session')),
+        notes: ''
+      });
+      if (professional) {
+        const pro = professionals.find((p) => p.name === professional);
+        setSelectedProId(pro ? pro.id : '');
       } else {
-        // Reset/New
-        setKind('session');
-        setRecurrence('none');
-        setSelectedDays([]);
-        setUntilDate('');
-        setStatus('scheduled');
-        setPatientPhone('');
-        setFormData(prev => ({
-          ...prev,
-          patient: '',
-          date: initialDate || new Date().toISOString().split('T')[0],
-          startTime: initialStartTime || '08:00',
-          endTime: addMinutesToTime(initialStartTime || '08:00', getDurationMinutes('session')),
-          notes: ''
-        }));
-        setCoverageType('particular');
-        if (professional) {
-          const pro = professionals.find((p) => p.name === professional);
-          if (pro) setSelectedProId(pro.id);
-        } else {
-          setSelectedProId('');
-        }
-        if (room) {
-          const r = ROOMS.find(rm => rm.name === room);
-          if (r) setSelectedRoomId(r.id);
-        } else {
-          setSelectedRoomId('');
-        }
+        setSelectedProId('');
+      }
+      if (room) {
+        const r = ROOMS.find(rm => rm.name === room);
+        setSelectedRoomId(r ? r.id : '');
+      } else {
+        setSelectedRoomId('');
       }
     }
   }, [isOpen, initialData, initialDate, initialStartTime, professional, room, professionals]);
 
+  // ✅ Early return AFTER all hooks
   if (!isOpen) return null;
 
   const isProfessionalBusy = (proId: string) => occupiedProfessionalIds.includes(proId);
