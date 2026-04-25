@@ -517,7 +517,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               >
                 <option value="all" className="bg-white dark:bg-slate-800">Todos los Prof.</option>
                 {professionals.map(p => (
-                  <option key={p.id} value={p.id} className="bg-white dark:bg-slate-800">{p.name}</p>
+                  <option key={p.id} value={p.id} className="bg-white dark:bg-slate-800">{p.name}</option>
                 ))}
               </select>
             </div>
