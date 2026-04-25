@@ -245,7 +245,6 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
       kind,
       type: kind,
       coverageType,
-      status: initialData?.status || 'scheduled',
       professionalId: selectedProId || undefined,
       proId: selectedProId,
       roomId: selectedRoomId,
