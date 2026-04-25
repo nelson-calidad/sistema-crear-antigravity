@@ -718,7 +718,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                    {mobileRoomColumns.map((room) => (
                      <div
                        key={room.id}
-                       className="snap-center min-w-[88%] rounded-[2.5rem] border border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/90 shadow-xl dark:shadow-none p-5 min-h-[420px] flex flex-col"
+                       className="snap-center min-w-[88%] rounded-[2.5rem] border border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/90 shadow-xl dark:shadow-none p-5 min-h-[540px] flex flex-col"
                      >
                       <div className="flex items-center justify-between gap-2 mb-4">
                         <div className="flex items-center gap-3 min-w-0">
@@ -735,9 +735,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                         </span>
                       </div>
 
-                      <div className="flex-1 space-y-2.5 overflow-y-auto custom-scrollbar pr-1">
+                      <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar pr-1">
                         {room.appointments.length === 0 ? (
-                          <div className="h-full min-h-[260px] rounded-[2rem] border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 px-6 py-6 text-center flex items-center justify-center">
+                          <div className="h-full min-h-[320px] rounded-[2rem] border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 px-6 py-6 text-center flex items-center justify-center">
                             <div>
                               <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-slate-200/80 dark:bg-slate-800/80 flex items-center justify-center text-slate-500 dark:text-slate-400 text-sm font-black">
                                 0
@@ -756,23 +756,23 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                   type="button"
                                   onClick={() => onOpenModal(room.name, pro?.name, app)}
                                   className={cn(
-                                    'w-full text-left rounded-[1.8rem] px-5 py-5 border shadow-sm backdrop-blur-sm min-h-[85px] flex items-center gap-4 transition-transform active:scale-[0.98]',
+                                    'w-full text-left rounded-[1.6rem] px-4 py-3.5 border shadow-sm backdrop-blur-sm min-h-[72px] flex items-center gap-3.5 transition-transform active:scale-[0.98]',
                                     getTypeStyles(kind),
                                   )}
                                 >
-                                  <div className="shrink-0 w-14 text-[11px] font-black leading-tight text-center border-r border-current/20 pr-4">
+                                  <div className="shrink-0 w-12 text-[10px] font-black leading-tight text-center border-r border-current/20 pr-3.5">
                                     <div className="opacity-90">{app.start}</div>
-                                    <div className="text-[9px] opacity-50 py-0.5">a</div>
+                                    <div className="text-[8px] opacity-50">a</div>
                                     <div className="opacity-90">{app.end}</div>
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <p className="font-black text-[15px] truncate leading-tight mb-1">{getAppointmentName(app)}</p>
-                                    <div className="flex items-center gap-2 opacity-80">
-                                      <p className="text-[10px] font-bold truncate">Prof. {pro?.name || 'Sin asignar'}</p>
-                                      {app.recurrence && app.recurrence !== 'none' && <Repeat className="w-3 h-3" />}
+                                    <p className="font-black text-[14px] truncate leading-tight mb-0.5">{getAppointmentName(app)}</p>
+                                    <div className="flex items-center gap-1.5 opacity-80">
+                                      <p className="text-[9px] font-bold truncate">Prof. {pro?.name || 'Sin asignar'}</p>
+                                      {app.recurrence && app.recurrence !== 'none' && <Repeat className="w-2.5 h-2.5" />}
                                     </div>
                                   </div>
-                                  <div className={cn("w-3 h-3 rounded-full shrink-0 ml-auto", getStatusColor(app.status))} />
+                                  <div className={cn("w-2.5 h-2.5 rounded-full shrink-0 ml-auto", getStatusColor(app.status))} />
                                 </button>
                               );
                             })}
