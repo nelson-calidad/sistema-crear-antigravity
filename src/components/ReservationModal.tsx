@@ -190,8 +190,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
     }
   }, [isOpen, initialData, initialDate, initialStartTime, professional, room, professionals]);
 
-  // ✅ Early return AFTER all hooks
-  if (!isOpen) return null;
+  // ✅ Removed early return from here to avoid hook order violation
 
   const isProfessionalBusy = (proId: string) => occupiedProfessionalIds.includes(proId);
   const isRoomBusy = (roomId: string) => occupiedRoomIds.includes(roomId);
@@ -252,6 +251,9 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
       prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]
     );
   };
+
+  // ✅ Early return AFTER all hooks, including useMemo
+  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
