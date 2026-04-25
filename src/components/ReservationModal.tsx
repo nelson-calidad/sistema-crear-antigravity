@@ -12,7 +12,10 @@ import {
   Loader2,
   Phone,
   MessageCircle,
-  Users
+  Users,
+  User,
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, isAppointmentActiveOnDate, parseDay } from '../lib/utils';
