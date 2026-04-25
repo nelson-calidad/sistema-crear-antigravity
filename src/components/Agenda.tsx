@@ -28,6 +28,7 @@ import {
   Printer,
   RefreshCw,
   Repeat,
+  User,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, isAppointmentActiveOnDate, parseDay } from '../lib/utils';
