@@ -32,11 +32,11 @@ const TAB_QUERY_KEY = 'tab';
 
 const getTabFromLocation = () => {
   if (typeof window === 'undefined') {
-    return 'dashboard';
+    return 'agenda';
   }
 
   const tab = new URL(window.location.href).searchParams.get(TAB_QUERY_KEY);
-  return tab && VALID_TABS.has(tab) ? tab : 'dashboard';
+  return tab && VALID_TABS.has(tab) ? tab : 'agenda';
 };
 
 const buildTabUrl = (tab: string) => {
@@ -188,7 +188,7 @@ export default function App() {
       );
       case 'finance': return <Finance />;
       case 'settings': return <Settings />;
-      default: return <Dashboard onQuickReserve={handleQuickReserve} />;
+      default: return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;
     }
   };
 
