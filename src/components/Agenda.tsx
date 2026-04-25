@@ -547,30 +547,44 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                   </button>
                 </div>
 
-                <div className="md:hidden flex-1 overflow-x-auto custom-scrollbar-hide flex gap-2 pb-1">
-                  {Array.from({ length: 11 }).map((_, i) => {
-                    const d = addDays(subDays(selectedDate, 5), i);
-                    const isSelected = isSameDay(d, selectedDate);
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => setSelectedDate(d)}
-                        className={cn(
-                          "flex flex-col items-center justify-center min-w-[44px] h-[56px] rounded-2xl transition-all border",
-                          isSelected 
-                            ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-200 dark:shadow-none" 
-                            : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                        )}
-                      >
-                        <span className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-blue-100" : "text-slate-400")}>
-                          {formatDateEs(d, 'EEE')}
-                        </span>
-                        <span className="text-[15px] font-black leading-none mt-1">
-                          {formatDateEs(d, 'd')}
-                        </span>
-                      </button>
-                    );
-                  })}
+                <div className="md:hidden flex flex-col gap-1.5 px-0.5">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      {formatDateEs(selectedDate, 'MMMM yyyy')}
+                    </span>
+                    <div className="flex gap-1">
+                       <button onClick={() => setSelectedDate(subDays(selectedDate, 7))} className="p-1 text-slate-400"><ChevronLeft className="w-3 h-3"/></button>
+                       <button onClick={() => setSelectedDate(addDays(selectedDate, 7))} className="p-1 text-slate-400"><ChevronRight className="w-3 h-3"/></button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto custom-scrollbar-hide flex gap-1.5 pb-0.5">
+                    {Array.from({ length: 7 }).map((_, i) => {
+                      const d = addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), i);
+                      const isSelected = isSameDay(d, selectedDate);
+                      const isToday = isSameDay(d, new Date());
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setSelectedDate(d)}
+                          className={cn(
+                            "flex flex-col items-center justify-center min-w-[42px] flex-1 h-[48px] rounded-xl transition-all border",
+                            isSelected 
+                              ? "bg-blue-600 border-blue-500 text-white shadow-sm" 
+                              : isToday 
+                                ? "bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/40 text-blue-600 dark:text-blue-400"
+                                : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400"
+                          )}
+                        >
+                          <span className={cn("text-[8px] font-black uppercase tracking-tighter", isSelected ? "text-blue-100" : "text-slate-400")}>
+                            {formatDateEs(d, 'EEE')}
+                          </span>
+                          <span className="text-[14px] font-black leading-none mt-0.5">
+                            {formatDateEs(d, 'd')}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-lg flex gap-0.5 border border-slate-200/70 dark:border-slate-700/50 shrink-0">
