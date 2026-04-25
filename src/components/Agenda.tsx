@@ -532,7 +532,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
             {(timeMode === 'daily' || timeMode === 'weekly') && (
               <>
-                <div className="flex bg-white/80 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 shadow-sm shrink-0">
+                <div className="hidden md:flex bg-white/80 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 shadow-sm shrink-0">
                   <button onClick={() => setSelectedDate(subDays(selectedDate, timeMode === 'weekly' ? 7 : 1))} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md">
                     <ChevronLeft className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
@@ -545,6 +545,32 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                   <button onClick={() => setSelectedDate(addDays(selectedDate, timeMode === 'weekly' ? 7 : 1))} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md">
                     <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
+                </div>
+
+                <div className="md:hidden flex-1 overflow-x-auto custom-scrollbar-hide flex gap-2 pb-1">
+                  {Array.from({ length: 11 }).map((_, i) => {
+                    const d = addDays(subDays(selectedDate, 5), i);
+                    const isSelected = isSameDay(d, selectedDate);
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedDate(d)}
+                        className={cn(
+                          "flex flex-col items-center justify-center min-w-[44px] h-[56px] rounded-2xl transition-all border",
+                          isSelected 
+                            ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-200 dark:shadow-none" 
+                            : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                        )}
+                      >
+                        <span className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-blue-100" : "text-slate-400")}>
+                          {formatDateEs(d, 'EEE')}
+                        </span>
+                        <span className="text-[15px] font-black leading-none mt-1">
+                          {formatDateEs(d, 'd')}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-lg flex gap-0.5 border border-slate-200/70 dark:border-slate-700/50 shrink-0">
@@ -1011,6 +1037,14 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
           </div>
         )}
       </div>
+
+      {/* Floating Action Button (FAB) Mobile */}
+      <button
+        onClick={() => onOpenModal()}
+        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-blue-300 dark:shadow-none z-40 active:scale-90 transition-transform"
+      >
+        <Plus className="w-7 h-7" />
+      </button>
     </div>
   );
 };
