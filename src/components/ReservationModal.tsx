@@ -4,6 +4,8 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { 
   X as CloseIcon, 
   Calendar as CalendarIcon, 
@@ -271,6 +273,27 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
     );
   };
 
+  const getWhatsAppHref = () => {
+    if (!patientPhone) return '';
+    const phone = patientPhone.replace(/\D/g, '');
+    let text = '';
+    
+    if (formData.patient && formData.date && formData.startTime && selectedProId) {
+      const proName = professionals.find(p => p.id === selectedProId)?.name || '';
+      try {
+        const dateObj = parseDay(formData.date);
+        const formattedDate = dateObj ? format(dateObj, "EEEE d 'de' MMMM", { locale: es }) : formData.date;
+        text = `Hola ${formData.patient}! Nos comunicamos de CREAR para recordarte tu turno del día ${formattedDate} a las ${formData.startTime} con el/la profesional ${proName}. ¡Te esperamos!`;
+      } catch (e) {
+        text = `Hola ${formData.patient}! Te escribimos de CREAR para recordarte tu turno.`;
+      }
+    } else {
+      text = 'Hola! Te escribimos de CREAR para recordarte tu turno.';
+    }
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  };
+
   // ✅ Early return AFTER all hooks, including useMemo
   if (!isOpen) return null;
 
@@ -536,11 +559,11 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                   </div>
                   {patientPhone && (
                     <a 
-                      href={`https://wa.me/${patientPhone.replace(/\D/g, '')}`} 
+                      href={getWhatsAppHref()} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="p-2.5 sm:p-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-none"
-                      title="Enviar WhatsApp"
+                      title="Enviar Recordatorio por WhatsApp"
                     >
                       <MessageCircle className="w-5 h-5" />
                     </a>
