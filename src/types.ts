@@ -5,7 +5,7 @@
 
 export type Role = 'admin' | 'professional' | 'secretary';
 export type AppointmentKind = 'session' | 'interview' | 'block';
-export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
+export type AppointmentStatus = 'scheduled' | 'confirmed' | 'waiting' | 'in-session' | 'completed' | 'cancelled';
 export type AppointmentType = AppointmentKind;
 
 export interface UserProfile {
@@ -29,10 +29,19 @@ export interface Professional {
 export interface Patient {
   id: string;
   name: string;
-  dni: string;
-  healthInsurance: string;
-  phone: string;
+  dni?: string;
+  healthInsurance?: string;
+  plan?: string;
+  phone?: string;
+  email?: string;
+  birthDate?: string;
+  notes?: string;
+  status?: 'active' | 'inactive';
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export type PatientRecord = Patient;
 
 export interface Appointment {
   id: string;
@@ -79,12 +88,15 @@ export interface AppointmentRecord {
   proId?: string;
   roomId?: string;
   patient?: string;
+  patientPhone?: string;
   notes?: string;
   date: string;
   start: string;
   end: string;
   recurrence?: 'none' | 'daily' | 'weekly' | 'weekdays';
   selectedDays?: number[];
+  untilDate?: string;
+  excludedDates?: string[];
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;

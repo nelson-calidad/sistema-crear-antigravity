@@ -11,10 +11,10 @@ import {
   Wallet,
   Settings,
   LogOut,
-  ChevronLeft,
   ChevronRight,
   Sun,
   Moon,
+  MessageCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -77,6 +77,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'professionals', label: 'Gestión Humana', icon: Users },
     { id: 'agenda', label: 'Operaciones', icon: Calendar },
+    { id: 'patients', label: 'Pacientes', icon: MessageCircle },
     { id: 'finance', label: 'Finanzas', icon: Wallet },
     { id: 'settings', label: 'Configuración', icon: Settings },
   ];

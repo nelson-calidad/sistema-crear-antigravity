@@ -14,6 +14,7 @@ import logoCrear from './assets/logo-crear.png';
 const Dashboard = lazy(() => import('./components/Dashboard').then((module) => ({ default: module.Dashboard })));
 const ProfessionalsGrid = lazy(() => import('./components/ProfessionalsGrid').then((module) => ({ default: module.ProfessionalsGrid })));
 const Agenda = lazy(() => import('./components/Agenda').then((module) => ({ default: module.Agenda })));
+const PatientsList = lazy(() => import('./components/PatientsList').then((module) => ({ default: module.PatientsList })));
 const Finance = lazy(() => import('./components/Finance').then((module) => ({ default: module.Finance })));
 const Settings = lazy(() => import('./components/Settings').then((module) => ({ default: module.Settings })));
 
@@ -26,7 +27,7 @@ type ToastItem = {
   message: string;
 };
 
-const VALID_TABS = new Set(['dashboard', 'professionals', 'agenda', 'finance', 'settings']);
+const VALID_TABS = new Set(['dashboard', 'professionals', 'agenda', 'patients', 'finance', 'settings']);
 const TAB_QUERY_KEY = 'tab';
 
 const getTabFromLocation = () => {
@@ -104,6 +105,7 @@ export default function App() {
       case 'dashboard': return 'Inicio';
       case 'professionals': return 'Profesionales';
       case 'agenda': return 'Agenda';
+      case 'patients': return 'Pacientes';
       case 'finance': return 'Finanzas';
       case 'settings': return 'Configuración';
       default: return activeTab;
@@ -175,6 +177,15 @@ export default function App() {
       case 'dashboard': return <Dashboard onQuickReserve={handleQuickReserve} />;
       case 'professionals': return <ProfessionalsGrid />;
       case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;
+      case 'patients': return (
+        <PatientsList 
+          appointments={appointments} 
+          onOpenAgendaWithDate={(date) => {
+            setAgendaFocusDate(date);
+            navigateToTab('agenda');
+          }} 
+        />
+      );
       case 'finance': return <Finance />;
       case 'settings': return <Settings />;
       default: return <Dashboard onQuickReserve={handleQuickReserve} />;

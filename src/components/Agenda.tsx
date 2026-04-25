@@ -27,9 +27,10 @@ import {
   MapPin,
   Printer,
   RefreshCw,
+  Repeat,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, isAppointmentActiveOnDate, parseDay } from '../lib/utils';
 import { AppointmentRecord } from '../types';
 import { ROOMS } from '../constants';
 import { buildDailyPdfHtml, buildMonthlyPdfHtml, buildWeeklyAvailabilityPdfHtml, openPrintableReport } from '../lib/appointmentPdf';
@@ -58,34 +59,7 @@ type CalendarColumn = {
   color?: string;
 };
 
-const parseDay = (value?: string | Date | null) => {
-  if (!value) return null;
-
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-
-  const raw = String(value).trim();
-  if (!raw) return null;
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    const parsed = new Date(`${raw}T00:00:00`);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
-    const [day, month, year] = raw.split('/').map(Number);
-    const parsed = new Date(year, month - 1, day);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  const parsed = new Date(raw);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed;
-  }
-
-  return null;
-};
+// Removed local parseDay as it's now in utils
 
 const getAppointmentName = (appointment: AppointmentRecord) => {
   const raw = appointment.patient?.trim() || appointment.title?.trim() || '';
@@ -155,6 +129,28 @@ const overlaps = (startA?: string, endA?: string, startB?: string, endB?: string
 };
 
 const sortByStart = (items: AppointmentRecord[]) => [...items].sort((a, b) => parseTimeToMinutes(a.start) - parseTimeToMinutes(b.start));
+
+const getStatusColor = (status?: string) => {
+  switch (status) {
+    case 'confirmed': return 'bg-blue-400';
+    case 'waiting': return 'bg-amber-400';
+    case 'in-session': return 'bg-emerald-400';
+    case 'completed': return 'bg-slate-400';
+    case 'cancelled': return 'bg-rose-400';
+    default: return 'bg-slate-200 dark:bg-slate-700';
+  }
+};
+
+const getStatusLabel = (status?: string) => {
+  switch (status) {
+    case 'confirmed': return 'Confirmado';
+    case 'waiting': return 'En espera';
+    case 'in-session': return 'En sesión';
+    case 'completed': return 'Finalizado';
+    case 'cancelled': return 'Ausente';
+    default: return 'Agendado';
+  }
+};
 
 const formatTimeOnly = (value?: string) => {
   if (!value) return '--:--';
@@ -271,10 +267,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
   const selectedDateAppointments = useMemo(() => {
     return sortByStart(
-      appointments.filter((appointment) => {
-        const appointmentDate = parseDay(appointment.date);
-        return appointmentDate ? isSameDay(appointmentDate, selectedDate) : false;
-      }),
+      appointments.filter((appointment) => isAppointmentActiveOnDate(appointment, selectedDate)),
     );
   }, [appointments, selectedDate]);
 
@@ -326,8 +319,12 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
   const currentMonthAppointments = useMemo(() => {
     return appointments.filter((appointment) => {
-      const appointmentDate = parseDay(appointment.date);
-      return appointmentDate ? isSameMonth(appointmentDate, selectedDate) : false;
+      // Para el mes, expandimos todos los días del mes y vemos si el turno cae en alguno
+      const daysInMonth = eachDayOfInterval({
+        start: startOfMonth(selectedDate),
+        end: endOfMonth(selectedDate),
+      });
+      return daysInMonth.some((day) => isAppointmentActiveOnDate(appointment, day));
     });
   }, [appointments, selectedDate]);
 
@@ -625,9 +622,13 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                 <p className="truncate">Consultorio {room?.name || 'Sin asignar'}</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-black uppercase opacity-75 shrink-0">
-                              {getCoverageLabel(app)}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <div className={cn("w-2 h-2 rounded-full shrink-0", getStatusColor(app.status))} />
+                              <span className="text-[10px] font-black uppercase opacity-75 shrink-0 flex items-center gap-1">
+                                {app.recurrence && app.recurrence !== 'none' && <Repeat className="w-2.5 h-2.5" />}
+                                {getCoverageLabel(app)}
+                              </span>
+                            </div>
                           </div>
                         </button>
                       );
@@ -825,13 +826,17 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                               <div className={cn('absolute left-0 top-0 bottom-0 w-2 border-r border-slate-900/10 dark:border-white/10', pro?.color || 'bg-slate-400')} />
 
                               <div className="flex items-start justify-between gap-1.5 relative z-10">
-                                <span className="shrink-0 text-[8px] font-black leading-tight px-1.5 py-1 rounded-lg bg-white/85 dark:bg-slate-950/80 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                  {formatTimeOnly(app.start)}
-                                  <span className="block text-[7px] opacity-70">{formatTimeOnly(app.end)}</span>
-                                </span>
-                                <span className="min-w-0 text-right text-[7px] font-black tracking-[0.08em] uppercase opacity-80 leading-tight bg-white/40 dark:bg-black/20 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50 dark:border-slate-800/50">
-                                  {getTypeLabel(app.kind || app.type)}
-                                  <span className="block truncate">{getCoverageLabel(app)}</span>
+                                <span className="shrink-0 text-[8px] font-black leading-tight px-1.5 py-1 rounded-lg bg-white/85 dark:bg-slate-950/80 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center gap-1">
+                                   <div className={cn("w-1.5 h-1.5 rounded-full", getStatusColor(app.status), app.status === 'waiting' && 'animate-pulse')} />
+                                   <div className="text-center">
+                                     {formatTimeOnly(app.start)}
+                                     <span className="block text-[7px] opacity-70">{formatTimeOnly(app.end)}</span>
+                                   </div>
+                                 </span>
+                                <span className="min-w-0 text-right text-[7px] font-black tracking-[0.08em] uppercase opacity-80 leading-tight bg-white/40 dark:bg-black/20 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50 dark:border-slate-800/50 flex items-center gap-1">
+                                  {app.recurrence && app.recurrence !== 'none' && <Repeat className="w-2 h-2" />}
+                                  <span>{getTypeLabel(app.kind || app.type)}</span>
+                                  <span className="block truncate opacity-70 ml-auto">{getCoverageLabel(app)}</span>
                                 </span>
                               </div>
 
@@ -941,9 +946,13 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                               getTypeStyles(app.kind || app.type),
                             )}
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="truncate">{formatTimeOnly(app.start)} {getAppointmentName(app)}</span>
-                              <span className="shrink-0 opacity-70">{getCoverageLabel(app)}</span>
+                            <div className="flex items-center justify-between gap-1 overflow-hidden">
+                              <div className="flex items-center gap-1 min-w-0">
+                                <div className={cn("w-1 h-1 rounded-full shrink-0", getStatusColor(app.status))} />
+                                {app.recurrence && app.recurrence !== 'none' && <Repeat className="w-1.5 h-1.5 shrink-0" />}
+                                <span className="truncate">{formatTimeOnly(app.start)} {getAppointmentName(app)}</span>
+                              </div>
+                              <span className="shrink-0 opacity-70 text-[6px]">{getCoverageLabel(app)}</span>
                             </div>
                             <div className="mt-0.5 flex items-center justify-between gap-2 text-[7px] font-bold uppercase opacity-70">
                               <span className="truncate">{getTypeLabel(app.kind || app.type)}</span>

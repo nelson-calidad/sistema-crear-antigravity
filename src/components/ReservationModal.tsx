@@ -8,15 +8,14 @@ import {
   X as CloseIcon, 
   Calendar as CalendarIcon, 
   Clock, 
-  User, 
-  DoorOpen, 
-  FileText, 
-  AlertCircle,
   Trash2,
-  Loader2
+  Loader2,
+  Phone,
+  MessageCircle,
+  Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, isAppointmentActiveOnDate, parseDay } from '../lib/utils';
 
 import { ROOMS } from '../constants';
 import { AppointmentRecord } from '../types';
@@ -37,30 +36,7 @@ interface ReservationModalProps {
   isDeleting?: boolean;
 }
 
-const parseDay = (value?: string | Date | null) => {
-  if (!value) return null;
-
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-
-  const raw = String(value).trim();
-  if (!raw) return null;
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    const parsed = new Date(`${raw}T00:00:00`);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
-    const [day, month, year] = raw.split('/').map(Number);
-    const parsed = new Date(year, month - 1, day);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
+// Removed local parseDay as it's now in utils
 
 const overlaps = (startA: string, endA: string, startB: string, endB: string) => {
   if (!startA || !endA || !startB || !endB) {
@@ -115,6 +91,10 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
   const [coverageType, setCoverageType] = useState<'obra social' | 'particular'>(initialData?.coverageType || 'particular');
   const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'weekdays'>('none');
   const [selectedDays, setSelectedDays] = useState<number[]>([]); // 0-6 for Sun-Sat
+  const [untilDate, setUntilDate] = useState<string>('');
+  const [deleteChoiceOpen, setDeleteChoiceOpen] = useState(false);
+  const [status, setStatus] = useState<AppointmentRecord['status']>('scheduled');
+  const [patientPhone, setPatientPhone] = useState('');
 
   // States for selection
   const [selectedProId, setSelectedProId] = useState('');
@@ -151,10 +131,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
         return false;
       }
 
-      const appointmentDate = parseDay(appointment.date);
-      if (!appointmentDate) return false;
-
-      return appointmentDate.toDateString() === targetDate.toDateString();
+      return isAppointmentActiveOnDate(appointment, targetDate);
     });
   }, [appointments, formData.date, initialData]);
 
@@ -173,11 +150,17 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
   // Update selection/form if initialData or props change
   useEffect(() => {
     if (isOpen) {
+      setDeleteChoiceOpen(false);
       if (initialData) {
         setKind(initialData.kind || initialData.type || 'session');
         setCoverageType(initialData.coverageType || 'particular');
         setSelectedProId(initialData.proId || '');
         setSelectedRoomId(initialData.roomId || '');
+        setRecurrence(initialData.recurrence || 'none');
+        setSelectedDays(initialData.selectedDays || []);
+        setUntilDate(initialData.untilDate || '');
+        setStatus(initialData.status || 'scheduled');
+        setPatientPhone(initialData.patientPhone || '');
         setFormData({
           patient: initialData.patient || initialData.title || '',
           date: initialData.date || new Date().toISOString().split('T')[0],
@@ -190,6 +173,9 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
         setKind('session');
         setRecurrence('none');
         setSelectedDays([]);
+        setUntilDate('');
+        setStatus('scheduled');
+        setPatientPhone('');
         setFormData(prev => ({
           ...prev,
           patient: '',
@@ -264,7 +250,11 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
       proId: selectedProId,
       roomId: selectedRoomId,
       recurrence,
-      selectedDays: recurrence === 'weekly' ? selectedDays : []
+      selectedDays: recurrence === 'weekly' ? selectedDays : [],
+      untilDate: recurrence !== 'none' ? untilDate : undefined,
+      excludedDates: initialData?.excludedDates || [],
+      status,
+      patientPhone
     });
   };
 
@@ -306,17 +296,64 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
             </div>
             <div className="flex items-center gap-2">
               {isEditing && onDelete && (
-                <button 
-                  onClick={() => {
-                    if (isSaving || isDeleting) return;
-                    onDelete(initialData.id);
-                  }}
-                  disabled={isSaving || isDeleting}
-                  className="p-2 text-rose-500 hover:bg-rose-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Eliminar reservación"
-                >
-                  {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
-                </button>
+                <div className="relative">
+                  <button 
+                    onClick={() => {
+                      if (isSaving || isDeleting) return;
+                      if (recurrence === 'none') {
+                        onDelete(initialData.id);
+                      } else {
+                        setDeleteChoiceOpen(!deleteChoiceOpen);
+                      }
+                    }}
+                    disabled={isSaving || isDeleting}
+                    className={cn(
+                      "p-2 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                      deleteChoiceOpen ? "bg-rose-500 text-white" : "text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                    )}
+                    title="Eliminar reservación"
+                  >
+                    {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                  </button>
+
+                  <AnimatePresence>
+                    {deleteChoiceOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                        className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 p-2 overflow-hidden ring-1 ring-black/5"
+                      >
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 py-2">Opciones de borrado</p>
+                        <button
+                          onClick={() => {
+                            const dateStr = formData.date;
+                            const currentExcluded = initialData?.excludedDates || [];
+                            onSave({
+                              ...initialData,
+                              excludedDates: [...currentExcluded, dateStr]
+                            });
+                            setDeleteChoiceOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors group"
+                        >
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white">Solo esta fecha</p>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500">Cancela el turno para el {formData.date}</p>
+                        </button>
+                        <button
+                          onClick={() => {
+                            onDelete(initialData.id);
+                            setDeleteChoiceOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors group"
+                        >
+                          <p className="text-xs font-bold text-rose-600 dark:text-rose-400 group-hover:text-rose-700">Toda la serie</p>
+                          <p className="text-[10px] text-rose-400/80">Elimina el registro permanente</p>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               )}
               <button onClick={onClose} disabled={isSaving || isDeleting} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors group disabled:opacity-50 disabled:cursor-not-allowed">
                 <CloseIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-slate-900 dark:group-hover:text-slate-100" />
@@ -433,21 +470,50 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
             </div>
 
             {kind !== 'block' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">{personLabel} <span className="text-rose-500">*</span></label>
-                <input 
-                  type="text" 
-                  value={formData.patient}
-                  onChange={(e) => setFormData({...formData, patient: e.target.value})}
-                  placeholder={personPlaceholder}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold focus:ring-2 focus:ring-cyan-100 dark:focus:ring-cyan-900 focus:bg-white dark:focus:bg-slate-900 transition-all outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Paciente / Título</label>
+                <div className="relative">
+                  <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                  <input 
+                    placeholder="Nombre del paciente..."
+                    value={formData.patient}
+                    onChange={(e) => setFormData({...formData, patient: e.target.value})}
+                    className="w-full pl-10 pr-3 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                  />
+                </div>
               </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Teléfono (WhatsApp)</label>
+                <div className="relative flex gap-2">
+                  <div className="relative flex-1">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                    <input 
+                      placeholder="Ej: 1122334455"
+                      value={patientPhone}
+                      onChange={(e) => setPatientPhone(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  {patientPhone && (
+                    <a 
+                      href={`https://wa.me/${patientPhone.replace(/\D/g, '')}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="p-2.5 sm:p-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-none"
+                      title="Enviar WhatsApp"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Fecha</label>
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Fecha Inicio</label>
                 <div className="relative">
                   <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <input 
@@ -459,7 +525,7 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Repetir (Como Google)</label>
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Repetición</label>
                 <select 
                   value={recurrence}
                   onChange={(e) => setRecurrence(e.target.value as any)}
@@ -472,6 +538,54 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                 </select>
               </div>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Obra Social</label>
+                <select 
+                  value={coverageType}
+                  onChange={(e) => setCoverageType(e.target.value as any)}
+                  className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 text-slate-900 dark:text-slate-100"
+                >
+                  <option value="particular">Particular</option>
+                  <option value="obra social">Obra Social</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Estado Asistencia</label>
+                <select 
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as any)}
+                  className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 text-slate-900 dark:text-slate-100"
+                >
+                  <option value="scheduled">Agendado</option>
+                  <option value="confirmed">Confirmado</option>
+                  <option value="waiting">En Espera</option>
+                  <option value="in-session">En Sesión</option>
+                  <option value="completed">Finalizado</option>
+                  <option value="cancelled">Ausente / Cancelado</option>
+                </select>
+              </div>
+            </div>
+
+            {recurrence !== 'none' && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="space-y-1.5"
+              >
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Repetir hasta (Opcional)</label>
+                <div className="relative">
+                  <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                  <input 
+                    type="date" 
+                    value={untilDate}
+                    onChange={(e) => setUntilDate(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none text-slate-900 dark:text-slate-100 color-scheme-light dark:color-scheme-dark"
+                  />
+                </div>
+              </motion.div>
+            )}
 
             {recurrence === 'weekly' && (
               <motion.div 
