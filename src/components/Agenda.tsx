@@ -362,20 +362,16 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
   const mobileRoomColumns = useMemo(() => {
     const roomPalette = ['bg-cyan-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500', 'bg-rose-500', 'bg-sky-500'];
-    const previewLimit = 2;
 
-    return ROOMS.map((room, index) => ({
-      ...room,
-      colorClass: roomPalette[index % roomPalette.length],
-      ...(() => {
-        const roomAppointments = sortByStart(selectedDateAppointments.filter((appointment) => appointment.roomId === room.id));
-        return {
-          totalAppointments: roomAppointments.length,
-          appointments: roomAppointments.slice(0, previewLimit),
-          overflowCount: Math.max(roomAppointments.length - previewLimit, 0),
-        };
-      })(),
-    }));
+    return ROOMS.map((room, index) => {
+      const roomAppointments = sortByStart(selectedDateAppointments.filter((appointment) => appointment.roomId === room.id));
+      return {
+        ...room,
+        colorClass: roomPalette[index % roomPalette.length],
+        totalAppointments: roomAppointments.length,
+        appointments: roomAppointments,
+      };
+    });
   }, [selectedDateAppointments]);
 
   const visibleAppointments = sortByStart(selectedDateAppointments);
