@@ -662,7 +662,13 @@ function activitySheet_(spreadsheet, name, headers) {
 function activityHeaderMap_(sheet) { const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(activityText_); const map = {}; headers.forEach((header, index) => { if (header) map[header] = index; }); return { headers: headers, map: map }; }
 function activityRecords_(sheet) { if (sheet.getLastRow() <= 1) return []; const data = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getValues(); const headers = data[0].map(activityText_); return data.slice(1).filter((row) => row.some((value) => value !== '')).map((row) => { const record = {}; headers.forEach((header, index) => { record[header] = row[index]; }); return record; }); }
 function activityAppend_(sheet, record) { const headerData = activityHeaderMap_(sheet); sheet.appendRow(headerData.headers.map((header) => record[header] === undefined ? '' : record[header])); }
-function activityFindRow_(sheet, idHeader, id) { const records = activityRecords_(sheet); const found = records.findIndex((record) => activityText_(record[idHeader]) === activityText_(id)); return found < 0 ? -1 : found + 2; }
+function activityFindRow_(sheet, idHeader, id) {
+  const headerData = activityHeaderMap_(sheet); const column = headerData.map[idHeader];
+  if (column === undefined || sheet.getLastRow() <= 1) return -1;
+  const values = sheet.getRange(2, column + 1, sheet.getLastRow() - 1, 1).getValues();
+  const found = values.findIndex((row) => activityText_(row[0]) === activityText_(id));
+  return found < 0 ? -1 : found + 2;
+}
 function activityReadRow_(sheet, row) { const headerData = activityHeaderMap_(sheet); const values = sheet.getRange(row, 1, 1, headerData.headers.length).getValues()[0]; const record = {}; headerData.headers.forEach((header, index) => { record[header] = values[index]; }); return record; }
 function activityWriteRow_(sheet, row, record) { const headerData = activityHeaderMap_(sheet); sheet.getRange(row, 1, 1, headerData.headers.length).setValues([headerData.headers.map((header) => record[header] === undefined ? '' : record[header])]); }
 function activityConfig_(sheet) { const config = {}; activityRecords_(sheet).forEach((record) => { config[activityText_(record.CLAVE)] = activityText_(record.VALOR); }); return config; }
@@ -749,10 +755,165 @@ function activityUpdate_(body) { const lock = LockService.getScriptLock(); lock.
 function activityReorder_(body) { const lock = LockService.getScriptLock(); lock.waitLock(10000); try { const sheets = activitySheetsUnlocked_(); const orders = Array.isArray(body.orders) ? body.orders : []; const user = activityText_(body.user || 'Admin CREAR'); orders.forEach((order) => { const row = activityFindRow_(sheets.activities, 'ID_ACTIVIDAD', order.id); if (row < 2) return; const record = activityReadRow_(sheets.activities, row); const previous = record.ORDEN_TABLERO; record.ORDEN_TABLERO = activityNumber_(order.boardOrder); record.MODIFICADA_POR = user; record.FECHA_MODIFICACION = activityNow_(); activityWriteRow_(sheets.activities, row, record); if (activityText_(previous) !== activityText_(record.ORDEN_TABLERO)) activityLog_(sheets, record.ID_ACTIVIDAD, user, 'Cambio de orden', 'ORDEN_TABLERO', previous, record.ORDEN_TABLERO, 'Reordenamiento en tablero'); }); return activitySuccess_({ updated: orders.length }, 'Orden actualizado.'); } finally { lock.releaseLock(); } }
 function handleActivitiesPost_(body) { try { const action = activityText_(body.action || ''); if (action === 'setup') return crearHojasActividades(); activitySheets_(); if (action === 'createPeriod') return activityCreatePeriod_(body); if (action === 'updatePeriod') return activityUpdatePeriod_(body); if (action === 'deletePeriod') return activityDeletePeriod_(body); if (action === 'createActivity') return activityCreate_(body); if (action === 'updateActivity') return activityUpdate_(body); if (action === 'reorderActivities') return activityReorder_(body); return activityError_('La operación solicitada no está disponible.'); } catch (error) { Logger.log(error && error.stack ? error.stack : error); return activityError_(error && error.message ? error.message : 'No se pudo guardar la información.'); } }
 
+// Versión liviana: solo se leen las tres hojas que usa el tablero.
+const RESPONSIBILITIES_SHEETS_ = { founders: 'FUNDADORAS', periods: 'PERIODOS_ACTIVIDADES', activities: 'ACTIVIDADES' };
+const RESPONSIBILITIES_HEADERS_ = {
+  founders: ['ID_FUNDADORA', 'NOMBRE_MOSTRAR', 'ORDEN', 'ACTIVA'],
+  periods: ['ID_PERIODO', 'NOMBRE', 'ESTADO'],
+  activities: ['ID_ACTIVIDAD', 'ID_PERIODO', 'ACTIVIDAD', 'ID_RESPONSABLE', 'FECHA_INICIO', 'FECHA_VENCIMIENTO', 'ESTADO', 'ORDEN_TABLERO', 'FECHA_FINALIZACION'],
+};
+
+function activityMinimalSheet_(spreadsheet, key) {
+  return activitySheet_(spreadsheet, RESPONSIBILITIES_SHEETS_[key], RESPONSIBILITIES_HEADERS_[key]);
+}
+function activitySheetsUnlocked_() {
+  const spreadsheet = getActivitiesSpreadsheet_();
+  return {
+    founders: spreadsheet.getSheetByName(RESPONSIBILITIES_SHEETS_.founders),
+    periods: spreadsheet.getSheetByName(RESPONSIBILITIES_SHEETS_.periods),
+    activities: spreadsheet.getSheetByName(RESPONSIBILITIES_SHEETS_.activities),
+  };
+}
+function crearHojasActividades() {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const spreadsheet = getActivitiesSpreadsheet_();
+    Object.keys(RESPONSIBILITIES_SHEETS_).forEach((key) => activityMinimalSheet_(spreadsheet, key));
+    return activitySuccess_({ sheets: Object.keys(RESPONSIBILITIES_SHEETS_).map((key) => RESPONSIBILITIES_SHEETS_[key]) }, 'Hojas de responsabilidades listas.');
+  } finally { lock.releaseLock(); }
+}
+function activitySheets_() {
+  const sheets = activitySheetsUnlocked_();
+  if (sheets.founders && sheets.periods && sheets.activities) return sheets;
+  crearHojasActividades();
+  return activitySheetsUnlocked_();
+}
+function activitySimpleRecord_(input, current, founders, periods, isNew) {
+  const source = input || {}; const record = {};
+  record.ID_ACTIVIDAD = current ? activityText_(current.ID_ACTIVIDAD) : '';
+  record.ID_PERIODO = activityText_(source.periodId === undefined ? current && current.ID_PERIODO : source.periodId);
+  record.ACTIVIDAD = activityText_(source.title === undefined ? current && current.ACTIVIDAD : source.title).trim();
+  record.ID_RESPONSABLE = activityText_(source.responsibleId === undefined ? current && current.ID_RESPONSABLE : source.responsibleId);
+  record.FECHA_INICIO = activityDate_(source.startDate === undefined ? current && current.FECHA_INICIO : source.startDate);
+  record.FECHA_VENCIMIENTO = activityDate_(source.dueDate === undefined ? current && current.FECHA_VENCIMIENTO : source.dueDate);
+  record.ESTADO = activityText_(source.status === undefined ? current && current.ESTADO : source.status) || (record.ID_RESPONSABLE ? 'Pendiente' : 'Sin asignar');
+  record.ORDEN_TABLERO = activityNumber_(source.boardOrder === undefined ? current && current.ORDEN_TABLERO : source.boardOrder, Date.now());
+  record.FECHA_FINALIZACION = record.ESTADO === 'Completada' ? activityDate_(source.finishedAt || (current && current.FECHA_FINALIZACION)) || activityNow_() : '';
+  if (!record.ACTIVIDAD) throw new Error('El nombre de la actividad es obligatorio.');
+  if (!record.ID_PERIODO || !periods.some((period) => activityText_(period.ID_PERIODO) === record.ID_PERIODO)) throw new Error('El período seleccionado no existe.');
+  if (record.FECHA_INICIO && record.FECHA_VENCIMIENTO && record.FECHA_VENCIMIENTO < record.FECHA_INICIO) throw new Error('La fecha límite no puede ser anterior a la de inicio.');
+  if (record.ID_RESPONSABLE && !founders.some((founder) => activityText_(founder.ID_FUNDADORA) === record.ID_RESPONSABLE && activityYes_(founder.ACTIVA))) throw new Error('La responsable seleccionada no existe o no está activa.');
+  return record;
+}
+function activityCreatePeriod_(body) {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sheets = activitySheetsUnlocked_(); const input = body.period || {}; const name = activityText_(input.name).trim();
+    if (!name) throw new Error('El nombre del período es obligatorio.');
+    const id = activityNextId_('ACTIVITIES_PERIOD_SEQUENCE', 'PER-', 4, sheets.periods, 'ID_PERIODO');
+    const records = activityRecords_(sheets.periods);
+    records.forEach((period) => { if (activityText_(period.ESTADO) === 'Activo') { period.ESTADO = 'En revisión'; activityWriteRow_(sheets.periods, activityFindRow_(sheets.periods, 'ID_PERIODO', period.ID_PERIODO), period); } });
+    const record = { ID_PERIODO: id, NOMBRE: name, ESTADO: 'Activo' };
+    activityAppend_(sheets.periods, record);
+    return activitySuccess_(activityPublicPeriod_(record), 'Período creado.');
+  } finally { lock.releaseLock(); }
+}
+function activityDeletePeriod_(body) {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sheets = activitySheetsUnlocked_(); const id = activityText_(body.periodId);
+    const row = activityFindRow_(sheets.periods, 'ID_PERIODO', id);
+    if (row < 2) throw new Error('No se encontró el período a eliminar.');
+    if (activityRecords_(sheets.activities).some((activity) => activityText_(activity.ID_PERIODO) === id)) throw new Error('No se puede eliminar un período que tiene actividades. Reasigná o eliminá sus actividades primero.');
+    sheets.periods.deleteRow(row);
+    return activitySuccess_({ id: id }, 'Período eliminado.');
+  } finally { lock.releaseLock(); }
+}
+function activityCreate_(body) {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sheets = activitySheetsUnlocked_(); const record = activitySimpleRecord_(body.activity, null, activityRecords_(sheets.founders), activityRecords_(sheets.periods), true);
+    record.ID_ACTIVIDAD = activityNextId_('ACTIVITIES_SEQUENCE', 'ACT-', 6, sheets.activities, 'ID_ACTIVIDAD');
+    activityAppend_(sheets.activities, record);
+    return activitySuccess_(activityPublic_(record), 'Actividad creada.');
+  } finally { lock.releaseLock(); }
+}
+function activityUpdate_(body) {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sheets = activitySheetsUnlocked_(); const id = activityText_(body.activity && body.activity.id);
+    const row = activityFindRow_(sheets.activities, 'ID_ACTIVIDAD', id);
+    if (row < 2) throw new Error('No se encontró la actividad a actualizar.');
+    const next = activitySimpleRecord_(body.activity, activityReadRow_(sheets.activities, row), activityRecords_(sheets.founders), activityRecords_(sheets.periods), false);
+    activityWriteRow_(sheets.activities, row, next);
+    return activitySuccess_(activityPublic_(next), 'Actividad actualizada.');
+  } finally { lock.releaseLock(); }
+}
+function activityReorder_(body) {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sheets = activitySheetsUnlocked_(); const orders = Array.isArray(body.orders) ? body.orders : [];
+    orders.forEach((order) => { const row = activityFindRow_(sheets.activities, 'ID_ACTIVIDAD', order.id); if (row < 2) return; const record = activityReadRow_(sheets.activities, row); record.ORDEN_TABLERO = activityNumber_(order.boardOrder); activityWriteRow_(sheets.activities, row, record); });
+    return activitySuccess_({ updated: orders.length }, 'Orden actualizado.');
+  } finally { lock.releaseLock(); }
+}
+function handleActivitiesGet_(event) {
+  try {
+    const sheets = activitySheets_(); const params = event && event.parameter ? event.parameter : {};
+    if (activityText_(params.idActivity)) return activitySuccess_({ history: [] });
+    return activitySuccess_({
+      founders: activityRecords_(sheets.founders).map(activityPublicFounder_).sort((a, b) => a.order - b.order),
+      periods: activityRecords_(sheets.periods).map(activityPublicPeriod_),
+      activities: activityRecords_(sheets.activities).map(activityPublic_),
+      config: {},
+    });
+  } catch (error) { Logger.log(error && error.stack ? error.stack : error); return activityError_('No se pudieron cargar las responsabilidades.'); }
+}
+function handleActivitiesPost_(body) {
+  try {
+    const action = activityText_(body.action || '');
+    if (action === 'setup') return crearHojasActividades();
+    activitySheets_();
+    if (action === 'createPeriod') return activityCreatePeriod_(body);
+    if (action === 'updatePeriod') return activityUpdatePeriod_(body);
+    if (action === 'deletePeriod') return activityDeletePeriod_(body);
+    if (action === 'createActivity') return activityCreate_(body);
+    if (action === 'updateActivity') return activityUpdate_(body);
+    if (action === 'reorderActivities') return activityReorder_(body);
+    return activityError_('La operación solicitada no está disponible.');
+  } catch (error) { Logger.log(error && error.stack ? error.stack : error); return activityError_(error && error.message ? error.message : 'No se pudo guardar la información.'); }
+}
+
+// Ejecutar una única vez, manualmente, desde Apps Script. Conserva solo los datos que usa la app.
+function simplificarHojasResponsabilidades() {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const spreadsheet = getActivitiesSpreadsheet_();
+    const oldFounders = spreadsheet.getSheetByName(RESPONSIBILITIES_SHEETS_.founders);
+    const oldPeriods = spreadsheet.getSheetByName(RESPONSIBILITIES_SHEETS_.periods);
+    const oldActivities = spreadsheet.getSheetByName(RESPONSIBILITIES_SHEETS_.activities);
+    const founders = oldFounders ? activityRecords_(oldFounders).map((row) => ({ ID_FUNDADORA: activityText_(row.ID_FUNDADORA), NOMBRE_MOSTRAR: activityText_(row.NOMBRE_MOSTRAR || row.NOMBRE), ORDEN: activityNumber_(row.ORDEN, 999), ACTIVA: row.ACTIVA === '' || row.ACTIVA === undefined ? 'Sí' : row.ACTIVA })).filter((row) => row.ID_FUNDADORA) : [];
+    const periods = oldPeriods ? activityRecords_(oldPeriods).map((row) => ({ ID_PERIODO: activityText_(row.ID_PERIODO), NOMBRE: activityText_(row.NOMBRE), ESTADO: activityText_(row.ESTADO || 'Activo') })).filter((row) => row.ID_PERIODO) : [];
+    const activities = oldActivities ? activityRecords_(oldActivities).map((row) => ({ ID_ACTIVIDAD: activityText_(row.ID_ACTIVIDAD), ID_PERIODO: activityText_(row.ID_PERIODO), ACTIVIDAD: activityText_(row.ACTIVIDAD), ID_RESPONSABLE: activityText_(row.ID_RESPONSABLE), FECHA_INICIO: activityDate_(row.FECHA_INICIO), FECHA_VENCIMIENTO: activityDate_(row.FECHA_VENCIMIENTO), ESTADO: activityText_(row.ESTADO || 'Pendiente'), ORDEN_TABLERO: activityNumber_(row.ORDEN_TABLERO, Date.now()), FECHA_FINALIZACION: activityDate_(row.FECHA_FINALIZACION) })).filter((row) => row.ID_ACTIVIDAD) : [];
+    const rewrite = (key, rows) => {
+      const sheet = spreadsheet.getSheetByName(RESPONSIBILITIES_SHEETS_[key]) || spreadsheet.insertSheet(RESPONSIBILITIES_SHEETS_[key]);
+      const headers = RESPONSIBILITIES_HEADERS_[key]; sheet.clear();
+      if (sheet.getMaxColumns() > headers.length) sheet.deleteColumns(headers.length + 1, sheet.getMaxColumns() - headers.length);
+      if (sheet.getMaxColumns() < headers.length) sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      if (rows.length) sheet.getRange(2, 1, rows.length, headers.length).setValues(rows.map((row) => headers.map((header) => row[header] === undefined ? '' : row[header])));
+      sheet.setFrozenRows(1);
+    };
+    rewrite('founders', founders); rewrite('periods', periods); rewrite('activities', activities);
+    ['HISTORIAL_ACTIVIDADES', 'CONFIG_ACTIVIDADES'].forEach((name) => { const sheet = spreadsheet.getSheetByName(name); if (sheet) spreadsheet.deleteSheet(sheet); });
+    return activitySuccess_({ founders: founders.length, periods: periods.length, activities: activities.length }, 'Hojas simplificadas.');
+  } finally { lock.releaseLock(); }
+}
+
 // Funciones públicas para ejecutar desde Apps Script o reutilizar en futuros módulos.
 function obtenerFundadoras() { const sheets = activitySheets_(); return activityRecords_(sheets.founders).map(activityPublicFounder_).filter((founder) => founder.active).sort((a, b) => a.order - b.order); }
 function obtenerPeriodos() { const sheets = activitySheets_(); return activityRecords_(sheets.periods).map(activityPublicPeriod_); }
 function obtenerActividades() { const sheets = activitySheets_(); return activityRecords_(sheets.activities).map(activityPublic_); }
-function obtenerHistorialActividad(idActividad) { const sheets = activitySheets_(); return activityRecords_(sheets.history).filter((record) => activityText_(record.ID_ACTIVIDAD) === activityText_(idActividad)); }
-function obtenerConfiguracionActividades() { const sheets = activitySheets_(); return activityConfig_(sheets.config); }
+function obtenerHistorialActividad() { return []; }
+function obtenerConfiguracionActividades() { return {}; }
 function obtenerResumenActividades(idPeriodo) { const activities = obtenerActividades().filter((activity) => !idPeriodo || activity.periodId === idPeriodo); const founders = obtenerFundadoras(); return founders.map((founder) => { const assigned = activities.filter((activity) => activity.responsibleId === founder.id && activity.active && activity.status !== 'Cancelada'); return { founderId: founder.id, founder: founder.displayName, assigned: assigned.length, completed: assigned.filter((activity) => activity.status === 'Completada').length, pending: assigned.filter((activity) => !['Completada', 'Cancelada'].includes(activity.status)).length }; }); }
