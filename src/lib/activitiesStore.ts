@@ -1,4 +1,4 @@
-﻿import type { ActivityHistoryRecord, ActivityPeriod, ActivityRecord, FounderRecord } from '../types';
+import type { ActivityHistoryRecord, ActivityPeriod, ActivityRecord, FounderRecord } from '../types';
 
 const BACKEND_MODE = import.meta.env.VITE_BACKEND_MODE ?? 'sheet';
 const DEFAULT_SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx5kIMawhlVzjOKGh_s2vNAyogd5x8QwtqoTE9fjBUFN_pin5r23mVQq993Xt4y01ZU/exec';
@@ -48,7 +48,6 @@ const normalizePeriod = (raw: Record<string, unknown>): ActivityPeriod => ({
   description: stringValue(raw.description ?? raw.DESCRIPCION) || undefined,
   startDate: stringValue(raw.startDate ?? raw.FECHA_INICIO) || undefined,
   endDate: stringValue(raw.endDate ?? raw.FECHA_FIN) || undefined,
-  targetPoints: toNumber(raw.targetPoints ?? raw.TOTAL_PUNTOS_OBJETIVO, 100),
   status: (stringValue(raw.status ?? raw.ESTADO) || 'Borrador') as ActivityPeriod['status'],
   closedAt: stringValue(raw.closedAt ?? raw.FECHA_CIERRE) || undefined,
   closedBy: stringValue(raw.closedBy ?? raw.CERRADO_POR) || undefined,
@@ -68,13 +67,9 @@ const normalizeActivity = (raw: Record<string, unknown>): ActivityRecord => ({
   collaboratorIds: parseIds(raw.collaboratorIds ?? raw.COLABORADORAS),
   startDate: stringValue(raw.startDate ?? raw.FECHA_INICIO) || undefined,
   dueDate: stringValue(raw.dueDate ?? raw.FECHA_VENCIMIENTO) || undefined,
-  points: toNumber(raw.points ?? raw.PUNTOS),
   priority: (stringValue(raw.priority ?? raw.PRIORIDAD) || 'Media') as ActivityRecord['priority'],
   status: (stringValue(raw.status ?? raw.ESTADO) || 'Sin asignar') as ActivityRecord['status'],
   progress: toNumber(raw.progress ?? raw.PORCENTAJE_AVANCE),
-  complianceFactor: toNumber(raw.complianceFactor ?? raw.FACTOR_CUMPLIMIENTO),
-  pointsObtained: toNumber(raw.pointsObtained ?? raw.PUNTOS_OBTENIDOS),
-  evidence: stringValue(raw.evidence ?? raw.EVIDENCIA) || undefined,
   notes: stringValue(raw.notes ?? raw.OBSERVACIONES) || undefined,
   boardOrder: toNumber(raw.boardOrder ?? raw.ORDEN_TABLERO, 999999),
   createdBy: stringValue(raw.createdBy ?? raw.CREADA_POR) || undefined,
