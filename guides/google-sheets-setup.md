@@ -46,6 +46,6 @@ El archivo `apps-script/Code.gs` también contiene el módulo de Responsabilidad
 3. En `FUNDADORAS`, cargá las cuatro fundadoras con `ID_FUNDADORA` únicos (por ejemplo `FUN-0001`), `NOMBRE_MOSTRAR`, `ORDEN` del 1 al 4 y `ACTIVA` = `Sí`.
 4. Desde la aplicación creá el primer período y luego las actividades.
 
-`COLABORADORAS` se guarda como un arreglo JSON de IDs. La evidencia inicial es un enlace, preferentemente a un archivo de Google Drive.
+La versión actual sólo solicita el nombre de la actividad y, de forma opcional, su responsable. Las columnas antiguas de puntos y evidencia se conservan en Sheets sin usarse, para no borrar información previa.
 
 Si el Apps Script es un proyecto independiente, guardá el ID del spreadsheet en **Project Settings → Script properties** con la clave `SPREADSHEET_ID`. Si está vinculado al spreadsheet, no hace falta configurar esa propiedad.

@@ -124,7 +124,6 @@ export interface ActivityPeriod {
   description?: string;
   startDate?: string;
   endDate?: string;
-  targetPoints: number;
   status: 'Borrador' | 'Activo' | 'En revisión' | 'Cerrado';
   closedAt?: string;
   closedBy?: string;
@@ -144,13 +143,9 @@ export interface ActivityRecord {
   collaboratorIds: string[];
   startDate?: string;
   dueDate?: string;
-  points: number;
   priority: ActivityPriority;
   status: ActivityStatus;
   progress: number;
-  complianceFactor: number;
-  pointsObtained: number;
-  evidence?: string;
   notes?: string;
   boardOrder: number;
   createdBy?: string;
