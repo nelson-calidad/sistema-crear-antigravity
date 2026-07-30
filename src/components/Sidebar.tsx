@@ -102,7 +102,17 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
         )}
         aria-label="Cerrar navegación"
       />
-      {isHidden && <button type="button" onClick={() => setIsHidden(false)} className="fixed left-3 top-24 z-[60] hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-lg transition hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 md:flex" title="Mostrar menú" aria-label="Mostrar menú"><PanelLeftOpen className="h-5 w-5" /></button>}
+      {isHidden && <>
+        <button
+          type="button"
+          onPointerEnter={() => setIsHidden(false)}
+          onFocus={() => setIsHidden(false)}
+          onClick={() => setIsHidden(false)}
+          className="fixed inset-y-0 left-0 z-[60] hidden w-3 cursor-pointer md:block"
+          aria-label="Mostrar menú al pasar o hacer clic"
+        />
+        <button type="button" onClick={() => setIsHidden(false)} className="fixed left-3 top-24 z-[61] hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-lg transition hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 md:flex" title="Mostrar menú" aria-label="Mostrar menú"><PanelLeftOpen className="h-5 w-5" /></button>
+      </>}
       <motion.div
         animate={{ width: isHidden ? '0px' : isCollapsed ? '80px' : '260px' }}
         className={cn(
