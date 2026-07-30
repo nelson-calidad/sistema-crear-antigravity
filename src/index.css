@@ -28,3 +28,172 @@
     @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
   }
 }
+
+.responsibilities-print-sheet {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: #fff !important;
+    color: #0f172a !important;
+  }
+
+  #root * {
+    visibility: hidden;
+  }
+
+  .responsibilities-print-sheet,
+  .responsibilities-print-sheet * {
+    visibility: visible !important;
+  }
+
+  .responsibilities-print-sheet {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    padding: 0;
+    background: #fff;
+    color: #0f172a;
+    font-family: Inter, Arial, sans-serif;
+  }
+
+  .responsibilities-print-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+
+  .responsibilities-print-header p,
+  .responsibilities-print-header span {
+    margin: 0;
+    color: #64748b;
+    font-size: 9pt;
+    font-weight: 700;
+  }
+
+  .responsibilities-print-header h1 {
+    margin: 4px 0 0;
+    font-size: 21pt;
+    line-height: 1.1;
+  }
+
+  .responsibilities-print-header > div:last-child {
+    display: grid;
+    gap: 4px;
+    text-align: right;
+  }
+
+  .responsibilities-print-header strong {
+    font-size: 10pt;
+  }
+
+  .responsibilities-print-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .responsibilities-print-column {
+    break-inside: avoid;
+    min-height: 42mm;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 13px;
+  }
+
+  .responsibilities-print-founder {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 9px;
+  }
+
+  .responsibilities-print-founder span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 8pt;
+    font-weight: 800;
+  }
+
+  .responsibilities-print-founder h2 {
+    margin: 0;
+    font-size: 13pt;
+  }
+
+  .responsibilities-print-column ul {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+    margin: 11px 0 0;
+  }
+
+  .responsibilities-print-column li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 10pt;
+  }
+
+  .responsibilities-print-column li > span {
+    color: #94a3b8;
+    font-size: 13pt;
+    line-height: 1;
+  }
+
+  .responsibilities-print-column li > span.is-complete {
+    color: #059669;
+  }
+
+  .responsibilities-print-column p {
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  .responsibilities-print-column small {
+    display: block;
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 8pt;
+  }
+
+  .responsibilities-print-empty {
+    margin-top: 14px !important;
+    color: #94a3b8;
+    font-size: 10pt;
+    font-style: italic;
+  }
+
+  .responsibilities-print-unassigned {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 12px;
+    margin-top: 14px;
+    border-top: 1px solid #cbd5e1;
+    padding-top: 10px;
+    font-size: 9pt;
+  }
+
+  .responsibilities-print-unassigned span::before {
+    content: '• ';
+    color: #64748b;
+  }
+}

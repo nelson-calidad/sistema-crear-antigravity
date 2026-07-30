@@ -13,6 +13,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   Sun,
   Moon,
   MessageCircle,
@@ -73,7 +75,11 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, theme, onToggleTheme }: SidebarProps) => {
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [isCollapsed, setIsCollapsed] = React.useState(() => window.localStorage.getItem('crear-sidebar-compact') === 'true');
+  const [isHidden, setIsHidden] = React.useState(() => window.localStorage.getItem('crear-sidebar-hidden') === 'true');
+
+  React.useEffect(() => { window.localStorage.setItem('crear-sidebar-compact', String(isCollapsed)); }, [isCollapsed]);
+  React.useEffect(() => { window.localStorage.setItem('crear-sidebar-hidden', String(isHidden)); }, [isHidden]);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -96,10 +102,11 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
         )}
         aria-label="Cerrar navegación"
       />
+      {isHidden && <button type="button" onClick={() => setIsHidden(false)} className="fixed left-3 top-24 z-[60] hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-lg transition hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 md:flex" title="Mostrar menú" aria-label="Mostrar menú"><PanelLeftOpen className="h-5 w-5" /></button>}
       <motion.div
-        animate={{ width: isCollapsed ? '80px' : '260px' }}
+        animate={{ width: isHidden ? '0px' : isCollapsed ? '80px' : '260px' }}
         className={cn(
-          'h-screen bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800 flex flex-col relative',
+          'h-screen overflow-hidden bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800 flex flex-col relative',
           'fixed md:static inset-y-0 left-0 w-[280px] max-w-[85vw] md:w-auto z-50 md:z-auto',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
           'transition-transform duration-200 md:transition-none',
@@ -135,6 +142,14 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
               title={`Activar modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
             >
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={() => setIsHidden(true)}
+              className="hidden flex-1 items-center justify-center rounded-2xl border border-transparent p-3 text-slate-500 transition-colors hover:border-slate-200/70 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800/50 dark:hover:text-slate-100 md:flex"
+              title="Ocultar menú"
+              aria-label="Ocultar menú"
+            >
+              <PanelLeftClose className="w-5 h-5" />
             </button>
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
