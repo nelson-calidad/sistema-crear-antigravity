@@ -20,9 +20,9 @@ const toNumber = (value: unknown, fallback = 0) => {
 };
 const stringValue = (value: unknown) => value === null || value === undefined ? '' : String(value);
 
-const fetchWithTimeout = async (url: string, init: RequestInit) => {
+const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs = 30000) => {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 15000);
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (cause) {
@@ -127,7 +127,7 @@ const request = async <T>(action: string, payload: Record<string, unknown> = {})
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8', Accept: 'application/json' },
     body: JSON.stringify({ entity: 'activities', action, ...payload }),
-  });
+  }, 60000);
   const result = await response.json();
   if (!response.ok || !result?.ok) throw new Error(result?.message || 'No se pudo guardar la información.');
   return result.data as T;
