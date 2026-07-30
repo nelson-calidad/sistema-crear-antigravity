@@ -36,3 +36,16 @@ VITE_SHEETS_ENDPOINT_URL="YOUR_WEB_APP_URL"
 - The first request will create the `appointments` sheet and header row if they do not exist.
 - `selectedDays` is stored as JSON in a single cell.
 - If the browser blocks direct calls to Apps Script, we can switch to a small proxy endpoint next.
+
+## Módulo Responsabilidades
+
+El archivo `apps-script/Code.gs` también contiene el módulo de Responsabilidades. Luego de pegarlo y desplegar una nueva versión del Web App:
+
+1. Abrí la nueva sección **Responsabilidades** en la aplicación. En su primera carga se crearán automáticamente las hojas `FUNDADORAS`, `PERIODOS_ACTIVIDADES`, `ACTIVIDADES`, `HISTORIAL_ACTIVIDADES` y `CONFIG_ACTIVIDADES`.
+2. Como alternativa, desde el editor de Apps Script ejecutá manualmente `crearHojasActividades()` y autorizá el acceso al spreadsheet.
+3. En `FUNDADORAS`, cargá las cuatro fundadoras con `ID_FUNDADORA` únicos (por ejemplo `FUN-0001`), `NOMBRE_MOSTRAR`, `ORDEN` del 1 al 4 y `ACTIVA` = `Sí`.
+4. Desde la aplicación creá el primer período y luego las actividades.
+
+`COLABORADORAS` se guarda como un arreglo JSON de IDs. La evidencia inicial es un enlace, preferentemente a un archivo de Google Drive.
+
+Si el Apps Script es un proyecto independiente, guardá el ID del spreadsheet en **Project Settings → Script properties** con la clave `SPREADSHEET_ID`. Si está vinculado al spreadsheet, no hace falta configurar esa propiedad.
