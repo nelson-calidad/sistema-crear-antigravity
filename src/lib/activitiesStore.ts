@@ -170,6 +170,15 @@ export const createPeriod = async (period: Partial<ActivityPeriod>, user: string
   return normalizePeriod(result);
 };
 
+export const updatePeriod = async (period: Partial<ActivityPeriod>, user: string) => {
+  const result = await request<Record<string, unknown>>('updatePeriod', { period, user });
+  return normalizePeriod(result);
+};
+
+export const deletePeriod = async (periodId: string, user: string) => {
+  await request('deletePeriod', { periodId, user });
+};
+
 export const saveActivity = async (activity: Partial<ActivityRecord>, user: string, reason?: string) => {
   const result = await request<Record<string, unknown>>(activity.id ? 'updateActivity' : 'createActivity', { activity, user, reason });
   return normalizeActivity(result);
