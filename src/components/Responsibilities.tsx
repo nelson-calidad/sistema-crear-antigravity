@@ -224,13 +224,22 @@ export const Responsibilities = () => {
   const printableActivities = useMemo(() => activities.filter((activity) => activity.active && (!periodId || activity.periodId === periodId)), [activities, periodId]);
 
   const save = async (draft: Partial<ActivityRecord>, reason?: string) => {
+    const previous = draft.id ? activities.find((activity) => activity.id === draft.id) : undefined;
+    const optimistic = previous ? { ...previous, ...draft, id: previous.id } as ActivityRecord : undefined;
     setSaving(true);
+    if (optimistic) {
+      setActivities((current) => current.map((activity) => activity.id === optimistic.id ? optimistic : activity));
+      setEditing(undefined); setSelectedId(optimistic.id);
+    }
     try {
       const saved = await saveActivity(draft, CURRENT_USER, reason);
       setActivities((current) => current.some((activity) => activity.id === saved.id) ? current.map((activity) => activity.id === saved.id ? saved : activity) : [...current, saved]);
       setEditing(undefined); setSelectedId(saved.id);
       setNotice({ tone: 'success', message: saved.status === 'Completada' ? 'Actividad lista y marcada en verde.' : 'Actividad guardada.' });
-    } catch (cause) { setNotice({ tone: 'error', message: cause instanceof Error ? cause.message : 'No se pudo guardar la actividad.' }); } finally { setSaving(false); }
+    } catch (cause) {
+      if (previous) setActivities((current) => current.map((activity) => activity.id === previous.id ? previous : activity));
+      setNotice({ tone: 'error', message: cause instanceof Error ? cause.message : 'No se pudo guardar la actividad. Se revirtió el cambio.' });
+    } finally { setSaving(false); }
   };
   const savePeriod = async (period: Partial<ActivityPeriod>) => {
     setSaving(true);
