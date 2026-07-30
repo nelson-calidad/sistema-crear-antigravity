@@ -180,7 +180,10 @@ export const deletePeriod = async (periodId: string, user: string) => {
 };
 
 export const saveActivity = async (activity: Partial<ActivityRecord>, user: string, reason?: string) => {
-  const result = await request<Record<string, unknown>>(activity.id ? 'updateActivity' : 'createActivity', { activity, user, reason });
+  // Compatibilidad con la versión anterior del Apps Script: requería puntos positivos.
+  // La pantalla ya no usa puntos, por eso siempre enviamos el mínimo válido.
+  const payload = { ...activity, points: Math.max(1, Number(activity.points) || 1) };
+  const result = await request<Record<string, unknown>>(payload.id ? 'updateActivity' : 'createActivity', { activity: payload, user, reason });
   return normalizeActivity(result);
 };
 
