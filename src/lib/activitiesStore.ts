@@ -3,6 +3,8 @@ import type { ActivityHistoryRecord, ActivityPeriod, ActivityRecord, FounderReco
 const BACKEND_MODE = import.meta.env.VITE_BACKEND_MODE ?? 'sheet';
 const DEFAULT_SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx5kIMawhlVzjOKGh_s2vNAyogd5x8QwtqoTE9fjBUFN_pin5r23mVQq993Xt4y01ZU/exec';
 const SHEET_ENDPOINT = (import.meta.env.VITE_SHEETS_ENDPOINT_URL as string | undefined) || DEFAULT_SHEET_ENDPOINT;
+const ACTIVITIES_CACHE_KEY = 'crear-activities-cache-v1';
+const ACTIVITIES_CACHE_MAX_AGE = 2 * 60 * 1000;
 
 export type ActivitiesPayload = {
   founders: FounderRecord[];
@@ -17,6 +19,19 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 const stringValue = (value: unknown) => value === null || value === undefined ? '' : String(value);
+
+const fetchWithTimeout = async (url: string, init: RequestInit) => {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 15000);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === 'AbortError') throw new Error('La conexión con Sheets tardó demasiado. Probá nuevamente.');
+    throw cause;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
 
 const parseIds = (value: unknown): string[] => {
   if (Array.isArray(value)) return value.map(String).filter(Boolean);
@@ -103,7 +118,7 @@ const request = async <T>(action: string, payload: Record<string, unknown> = {})
   if (BACKEND_MODE !== 'sheet' || !SHEET_ENDPOINT) {
     throw new Error('El módulo de responsabilidades necesita la conexión con Google Sheets configurada.');
   }
-  const response = await fetch(SHEET_ENDPOINT, {
+  const response = await fetchWithTimeout(SHEET_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8', Accept: 'application/json' },
     body: JSON.stringify({ entity: 'activities', action, ...payload }),
@@ -113,20 +128,36 @@ const request = async <T>(action: string, payload: Record<string, unknown> = {})
   return result.data as T;
 };
 
+const saveActivitiesCache = (data: ActivitiesPayload) => {
+  try { window.sessionStorage.setItem(ACTIVITIES_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data })); } catch { /* La caché es una mejora opcional. */ }
+};
+
+export const readCachedActivitiesData = (): ActivitiesPayload | null => {
+  try {
+    const stored = window.sessionStorage.getItem(ACTIVITIES_CACHE_KEY);
+    if (!stored) return null;
+    const entry = JSON.parse(stored) as { savedAt?: number; data?: ActivitiesPayload };
+    if (!entry.data || !entry.savedAt || Date.now() - entry.savedAt > ACTIVITIES_CACHE_MAX_AGE) return null;
+    return entry.data;
+  } catch { return null; }
+};
+
 export const loadActivitiesData = async (): Promise<ActivitiesPayload> => {
   if (BACKEND_MODE !== 'sheet' || !SHEET_ENDPOINT) {
     throw new Error('Configurá VITE_BACKEND_MODE=sheet y VITE_SHEETS_ENDPOINT_URL para usar Responsabilidades.');
   }
-  const response = await fetch(getUrl({ entity: 'activities' }), { headers: { Accept: 'application/json' }, cache: 'no-store' });
+  const response = await fetchWithTimeout(getUrl({ entity: 'activities' }), { headers: { Accept: 'application/json' }, cache: 'no-store' });
   const result = await response.json();
   if (!response.ok || !result?.ok) throw new Error(result?.message || 'No se pudieron cargar las responsabilidades.');
   const raw = result.data || {};
-  return {
+  const data = {
     founders: Array.isArray(raw.founders) ? raw.founders.map(normalizeFounder) : [],
     periods: Array.isArray(raw.periods) ? raw.periods.map(normalizePeriod) : [],
     activities: Array.isArray(raw.activities) ? raw.activities.map(normalizeActivity) : [],
     config: raw.config || {},
   };
+  saveActivitiesCache(data);
+  return data;
 };
 
 export const createPeriod = async (period: Partial<ActivityPeriod>, user: string) => {
