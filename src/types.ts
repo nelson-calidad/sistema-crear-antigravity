@@ -101,3 +101,74 @@ export interface AppointmentRecord {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type ActivityStatus = 'Sin asignar' | 'Pendiente' | 'En proceso' | 'Bloqueada' | 'Completada' | 'No cumplida' | 'Cancelada';
+export type ActivityPriority = 'Baja' | 'Media' | 'Alta' | 'Urgente';
+
+export interface FounderRecord {
+  id: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  email: string;
+  role: string;
+  order: number;
+  active: boolean;
+  createdAt?: string;
+  notes?: string;
+}
+
+export interface ActivityPeriod {
+  id: string;
+  name: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  targetPoints: number;
+  status: 'Borrador' | 'Activo' | 'En revisión' | 'Cerrado';
+  closedAt?: string;
+  closedBy?: string;
+  notes?: string;
+  createdAt?: string;
+  createdBy?: string;
+}
+
+export interface ActivityRecord {
+  id: string;
+  periodId: string;
+  category: string;
+  title: string;
+  description?: string;
+  expectedResult?: string;
+  responsibleId?: string;
+  collaboratorIds: string[];
+  startDate?: string;
+  dueDate?: string;
+  points: number;
+  priority: ActivityPriority;
+  status: ActivityStatus;
+  progress: number;
+  complianceFactor: number;
+  pointsObtained: number;
+  evidence?: string;
+  notes?: string;
+  boardOrder: number;
+  createdBy?: string;
+  createdAt?: string;
+  modifiedBy?: string;
+  modifiedAt?: string;
+  finishedAt?: string;
+  active: boolean;
+}
+
+export interface ActivityHistoryRecord {
+  id: string;
+  timestamp: string;
+  user: string;
+  action: string;
+  activityId: string;
+  field: string;
+  previousValue: string;
+  newValue: string;
+  reason?: string;
+}

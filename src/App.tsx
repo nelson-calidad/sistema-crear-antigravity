@@ -17,6 +17,7 @@ const Agenda = lazy(() => import('./components/Agenda').then((module) => ({ defa
 const PatientsList = lazy(() => import('./components/PatientsList').then((module) => ({ default: module.PatientsList })));
 const Finance = lazy(() => import('./components/Finance').then((module) => ({ default: module.Finance })));
 const Settings = lazy(() => import('./components/Settings').then((module) => ({ default: module.Settings })));
+const Responsibilities = lazy(() => import('./components/Responsibilities').then((module) => ({ default: module.Responsibilities })));
 
 type ToastTone = 'success' | 'error' | 'info';
 
@@ -27,7 +28,7 @@ type ToastItem = {
   message: string;
 };
 
-const VALID_TABS = new Set(['dashboard', 'professionals', 'agenda', 'patients', 'finance', 'settings']);
+const VALID_TABS = new Set(['dashboard', 'professionals', 'agenda', 'responsibilities', 'patients', 'finance', 'settings']);
 const TAB_QUERY_KEY = 'tab';
 
 const getTabFromLocation = () => {
@@ -105,6 +106,7 @@ export default function App() {
       case 'dashboard': return 'Inicio';
       case 'professionals': return 'Profesionales';
       case 'agenda': return 'Agenda';
+      case 'responsibilities': return 'Responsabilidades';
       case 'patients': return 'Pacientes';
       case 'finance': return 'Finanzas';
       case 'settings': return 'Configuración';
@@ -177,6 +179,7 @@ export default function App() {
       case 'dashboard': return <Dashboard onQuickReserve={handleQuickReserve} />;
       case 'professionals': return <ProfessionalsGrid />;
       case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;
+      case 'responsibilities': return <Responsibilities />;
       case 'patients': return (
         <PatientsList 
           appointments={appointments} 
