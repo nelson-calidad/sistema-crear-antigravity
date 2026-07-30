@@ -3,8 +3,8 @@ import type { ActivityHistoryRecord, ActivityPeriod, ActivityRecord, FounderReco
 const BACKEND_MODE = import.meta.env.VITE_BACKEND_MODE ?? 'sheet';
 const DEFAULT_SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx5kIMawhlVzjOKGh_s2vNAyogd5x8QwtqoTE9fjBUFN_pin5r23mVQq993Xt4y01ZU/exec';
 const SHEET_ENDPOINT = (import.meta.env.VITE_SHEETS_ENDPOINT_URL as string | undefined) || DEFAULT_SHEET_ENDPOINT;
-const ACTIVITIES_CACHE_KEY = 'crear-activities-cache-v1';
-const ACTIVITIES_CACHE_MAX_AGE = 2 * 60 * 1000;
+const ACTIVITIES_CACHE_KEY = 'crear-activities-cache-v2';
+const ACTIVITIES_CACHE_MAX_AGE = 15 * 60 * 1000;
 
 export type ActivitiesPayload = {
   founders: FounderRecord[];
@@ -134,12 +134,12 @@ const request = async <T>(action: string, payload: Record<string, unknown> = {})
 };
 
 const saveActivitiesCache = (data: ActivitiesPayload) => {
-  try { window.sessionStorage.setItem(ACTIVITIES_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data })); } catch { /* La caché es una mejora opcional. */ }
+  try { window.localStorage.setItem(ACTIVITIES_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data })); } catch { /* La caché es una mejora opcional. */ }
 };
 
 export const readCachedActivitiesData = (): ActivitiesPayload | null => {
   try {
-    const stored = window.sessionStorage.getItem(ACTIVITIES_CACHE_KEY);
+    const stored = window.localStorage.getItem(ACTIVITIES_CACHE_KEY);
     if (!stored) return null;
     const entry = JSON.parse(stored) as { savedAt?: number; data?: ActivitiesPayload };
     if (!entry.data || !entry.savedAt || Date.now() - entry.savedAt > ACTIVITIES_CACHE_MAX_AGE) return null;
@@ -181,8 +181,10 @@ export const deletePeriod = async (periodId: string, user: string) => {
 
 export const saveActivity = async (activity: Partial<ActivityRecord>, user: string, reason?: string) => {
   // Compatibilidad con la versión anterior del Apps Script: requería puntos positivos.
-  // La pantalla ya no usa puntos, por eso siempre enviamos el mínimo válido.
-  const payload = { ...activity, points: Math.max(1, Number(activity.points) || 1) };
+  // La pantalla ya no usa puntos ni porcentaje, por eso siempre enviamos valores válidos.
+  const rawProgress = Number(activity.progress);
+  const progress = Number.isFinite(rawProgress) ? Math.min(100, Math.max(0, rawProgress)) : activity.status === 'Completada' ? 100 : 0;
+  const payload = { ...activity, points: Math.max(1, Number(activity.points) || 1), progress };
   const result = await request<Record<string, unknown>>(payload.id ? 'updateActivity' : 'createActivity', { activity: payload, user, reason });
   return normalizeActivity(result);
 };

@@ -277,8 +277,12 @@ export const Responsibilities = () => {
   const confirmMove = async () => {
     if (!moveRequest) return;
     const status: ActivityStatus = moveRequest.responsibleId ? (moveRequest.activity.status === 'Completada' ? 'Completada' : 'Pendiente') : 'Sin asignar';
+    const previous = moveRequest.activity;
+    const optimistic = { ...previous, responsibleId: moveRequest.responsibleId, status, progress: status === 'Completada' ? 100 : previous.progress };
     setSaving(true);
-    try { const saved = await saveActivity({ ...moveRequest.activity, responsibleId: moveRequest.responsibleId, status }, CURRENT_USER, 'Cambio de responsable'); setActivities((current) => current.map((activity) => activity.id === saved.id ? saved : activity)); setMoveRequest(null); setNotice({ tone: 'success', message: 'Responsable actualizada.' }); } catch (cause) { setNotice({ tone: 'error', message: cause instanceof Error ? cause.message : 'No se pudo asignar la actividad.' }); } finally { setSaving(false); }
+    setActivities((current) => current.map((activity) => activity.id === optimistic.id ? optimistic : activity));
+    setMoveRequest(null);
+    try { const saved = await saveActivity(optimistic, CURRENT_USER, 'Cambio de responsable'); setActivities((current) => current.map((activity) => activity.id === saved.id ? saved : activity)); setNotice({ tone: 'success', message: 'Responsable actualizada.' }); } catch (cause) { setActivities((current) => current.map((activity) => activity.id === previous.id ? previous : activity)); setNotice({ tone: 'error', message: cause instanceof Error ? cause.message : 'No se pudo asignar la actividad. Se revirtió el cambio.' }); } finally { setSaving(false); }
   };
   const printedDate = new Intl.DateTimeFormat('es-AR', { dateStyle: 'long' }).format(new Date());
 
