@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { ActivityPeriod, ActivityRecord, ActivityStatus, FounderRecord } from '../types';
-import { createPeriod, deletePeriod, loadActivitiesData, readCachedActivitiesData, saveActivity, updatePeriod } from '../lib/activitiesStore';
+import { createPeriod, deleteActivity, deletePeriod, loadActivitiesData, readCachedActivitiesData, saveActivity, updatePeriod } from '../lib/activitiesStore';
 
 const CURRENT_USER = 'Admin CREAR';
 const inputClass = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
@@ -190,6 +190,7 @@ export const Responsibilities = () => {
   const [editing, setEditing] = useState<ActivityRecord | null | undefined>(undefined);
   const [periodEditor, setPeriodEditor] = useState<ActivityPeriod | null | undefined>(undefined);
   const [periodToDelete, setPeriodToDelete] = useState<ActivityPeriod | null>(null);
+  const [activityToDelete, setActivityToDelete] = useState<ActivityRecord | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -260,6 +261,30 @@ export const Responsibilities = () => {
       setPeriodToDelete(null); setNotice({ tone: 'success', message: 'Periodo eliminado.' });
     } catch (cause) { setNotice({ tone: 'error', message: cause instanceof Error ? cause.message : 'No se pudo eliminar el periodo.' }); } finally { setSaving(false); }
   };
+  const removeActivity = async () => {
+    if (!activityToDelete) return;
+    const target = activityToDelete;
+    const previousIndex = activities.findIndex((activity) => activity.id === target.id);
+    setSaving(true);
+    setActivities((current) => current.filter((activity) => activity.id !== target.id));
+    try {
+      await deleteActivity(target.id, CURRENT_USER);
+      setActivityToDelete(null);
+      setSelectedId(null);
+      setNotice({ tone: 'success', message: 'Actividad eliminada.' });
+    } catch (cause) {
+      setActivities((current) => {
+        if (current.some((activity) => activity.id === target.id)) return current;
+        const restored = [...current];
+        const restoreAt = Math.max(0, Math.min(previousIndex, restored.length));
+        restored.splice(restoreAt, 0, target);
+        return restored;
+      });
+      setActivityToDelete(null);
+      setSelectedId(target.id);
+      setNotice({ tone: 'error', message: cause instanceof Error ? cause.message : 'No se pudo eliminar la actividad. Se restauro la tarjeta.' });
+    } finally { setSaving(false); }
+  };
   const toggleActivityCompletion = async (activity: ActivityRecord) => {
     if (activity.status === 'Completada') {
       await save({ ...activity, status: activity.responsibleId ? 'Pendiente' : 'Sin asignar', progress: 0 }, 'Se quito la marca de completada');
@@ -321,8 +346,10 @@ export const Responsibilities = () => {
       {editing !== undefined && <ActivityForm activity={editing || undefined} periodId={periodId} founders={founders} onClose={() => setEditing(undefined)} onSave={save} saving={saving} />}
       {periodEditor !== undefined && <PeriodForm period={periodEditor || undefined} onClose={() => setPeriodEditor(undefined)} onSave={savePeriod} saving={saving} />}
       {periodToDelete && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/45 p-4" role="dialog" aria-modal="true"><div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40"><Trash2 className="h-5 w-5" /></div><p className="mt-4 text-[10px] font-black uppercase tracking-[.18em] text-rose-500">Confirmacion requerida</p><h2 className="mt-1 text-lg font-bold">Eliminar este periodo?</h2><p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Vas a eliminar <strong>{periodToDelete.name}</strong>. Esta accion no se puede deshacer. Por seguridad, solo se permite borrar periodos sin actividades.</p><div className="mt-6 flex justify-end gap-3"><button onClick={() => setPeriodToDelete(null)} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500">Cancelar</button><button onClick={() => void removePeriod()} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60"><Trash2 className="h-4 w-4" /> {saving ? 'Eliminando...' : 'Si, eliminar'}</button></div></div></div>}
+      {activityToDelete && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/45 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-activity-title"><div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40"><Trash2 className="h-5 w-5" /></div><p className="mt-4 text-[10px] font-black uppercase tracking-[.18em] text-rose-500">Confirmacion requerida</p><h2 id="delete-activity-title" className="mt-1 text-lg font-bold">Eliminar esta actividad?</h2><p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Vas a eliminar <strong>{activityToDelete.title}</strong> de Google Sheets. Esta accion no se puede deshacer.</p><div className="mt-6 flex justify-end gap-3"><button onClick={() => setActivityToDelete(null)} disabled={saving} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 disabled:opacity-50">Cancelar</button><button onClick={() => void removeActivity()} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60"><Trash2 className="h-4 w-4" /> {saving ? 'Eliminando...' : 'Si, eliminar'}</button></div></div></div>}
       {showCalendar && <ResponsibilitiesCalendar activities={printableActivities} activePeriod={activePeriod} founderById={founderById} onClose={() => setShowCalendar(false)} onOpenActivity={(id) => { setShowCalendar(false); setSelectedId(id); }} />}
       {moveRequest && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-4"><div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><p className="text-[10px] font-black uppercase tracking-[.18em] text-slate-400">Asignacion</p><h2 className="mt-1 text-lg font-bold">Confirmar responsable</h2><p className="mt-3 text-sm text-slate-600 dark:text-slate-300"><strong>{moveRequest.activity.title}</strong><br />Se movera a {moveRequest.name}.</p><div className="mt-6 flex justify-end gap-3"><button onClick={() => setMoveRequest(null)} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500">Cancelar</button><button onClick={() => void confirmMove()} disabled={saving} className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white">{saving ? 'Guardando...' : 'Confirmar'}</button></div></div></div>}
+      {selected && <button type="button" onClick={() => setActivityToDelete(selected)} disabled={saving} className="fixed right-[4.5rem] top-4 z-[61] inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-white text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:bg-slate-900 dark:hover:bg-rose-950/30" title="Eliminar actividad" aria-label="Eliminar actividad"><Trash2 className="h-4 w-4" /></button>}
       {selected && <><button aria-label="Cerrar detalle" onClick={() => setSelectedId(null)} className="fixed inset-0 z-[59] bg-slate-950/20" /><aside className="fixed inset-y-0 right-0 z-[60] flex w-full max-w-md flex-col bg-white shadow-2xl dark:bg-slate-900"><div className="flex items-start justify-between border-b border-slate-100 p-5 dark:border-slate-800"><div><div className="flex items-center gap-2"><span className={cn('h-2.5 w-2.5 rounded-full', activitySignal(selected).color)} /><p className="text-xs font-bold text-slate-500">{activitySignal(selected).label}</p></div><h2 className={cn('mt-2 text-xl font-bold', selected.status === 'Completada' && 'text-emerald-700')}>{selected.title}</h2></div><button onClick={() => setSelectedId(null)} className="rounded-xl p-2 text-slate-400" aria-label="Cerrar"><X className="h-5 w-5" /></button></div><div className="flex-1 space-y-6 p-5"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Responsable</p><p className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200">{selected.responsibleId ? founderById.get(selected.responsibleId)?.displayName || 'No disponible' : 'Sin asignar'}</p></div><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40"><p className="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Plazos acordados</p><dl className="mt-3 grid grid-cols-2 gap-3"><div><dt className="text-xs font-medium text-slate-500">Inicio</dt><dd className="mt-1 text-sm font-bold">{formatActivityDate(selected.startDate, true)}</dd></div><div><dt className="text-xs font-medium text-slate-500">Fecha limite</dt><dd className={cn('mt-1 text-sm font-bold', isOverdue(selected) ? 'text-rose-600' : selected.status === 'Completada' ? 'text-emerald-600' : '')}>{formatActivityDate(selected.dueDate, true)}</dd></div></dl></div>{selected.status === 'Completada' && <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"><ClipboardCheck className="mt-0.5 h-5 w-5 shrink-0" /><p><strong>Actividad lista.</strong><br />Quedo registrada como completada{selected.finishedAt ? ` el ${formatActivityDate(selected.finishedAt, true)}` : ''}.</p></div>}</div><div className="flex gap-3 border-t border-slate-100 p-5 dark:border-slate-800"><button onClick={() => setEditing(selected)} className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white">Editar</button><button onClick={() => void toggleActivityCompletion(selected)} disabled={saving} className={cn('inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold disabled:opacity-50', selected.status === 'Completada' ? 'border-amber-200 text-amber-700' : 'border-emerald-200 text-emerald-700')}>{selected.status === 'Completada' ? <><Undo2 className="h-4 w-4" /> Quitar listo</> : <><CheckCircle2 className="h-4 w-4" /> Completar</>}</button></div></aside></>}
     </div>;
 };

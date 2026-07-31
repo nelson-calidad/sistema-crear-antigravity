@@ -179,6 +179,11 @@ export const deletePeriod = async (periodId: string, user: string) => {
   await request('deletePeriod', { periodId, user });
 };
 
+export const deleteActivity = async (activityId: string, user: string) => {
+  await request('deleteActivity', { activityId, user });
+  try { window.localStorage.removeItem(ACTIVITIES_CACHE_KEY); } catch { /* Cache opcional. */ }
+};
+
 export const saveActivity = async (activity: Partial<ActivityRecord>, user: string, reason?: string) => {
   // Compatibilidad con la versión anterior del Apps Script: requería puntos positivos.
   // La pantalla ya no usa puntos ni porcentaje, por eso siempre enviamos valores válidos.
