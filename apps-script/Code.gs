@@ -679,7 +679,7 @@ function crearHojasActividades() {
     const spreadsheet = getActivitiesSpreadsheet_(); const sheets = {};
     Object.keys(ACTIVITY_SHEETS_).forEach((key) => { sheets[key] = activitySheet_(spreadsheet, ACTIVITY_SHEETS_[key], ACTIVITY_HEADERS_[key]); });
     const existing = activityConfig_(sheets.config);
-    ACTIVITY_CONFIG_DEFAULTS_.filter((item) => !existing[item[0]]).forEach((item) => activityAppend_(sheets.config, { CLAVE: item[0], VALOR: item[1], DESCRIPCION: item[2] }));
+    ACTIVITY_CONFIG_DEFAULTS_.filter((item) => !Object.prototype.hasOwnProperty.call(existing, item[0])).forEach((item) => activityAppend_(sheets.config, { CLAVE: item[0], VALOR: item[1], DESCRIPCION: item[2] }));
     return activitySuccess_({ sheets: Object.keys(ACTIVITY_SHEETS_).map((key) => ACTIVITY_SHEETS_[key]) }, 'Hojas de actividades listas.');
   } finally { lock.releaseLock(); }
 }

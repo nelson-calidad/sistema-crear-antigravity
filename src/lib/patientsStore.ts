@@ -4,6 +4,7 @@
  */
 
 import { PatientRecord } from '../types';
+import { readStoredValue, writeStoredValue } from './browserStorage';
 import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'creare.patients';
@@ -34,7 +35,7 @@ const listeners = new Set<(patients: PatientRecord[]) => void>();
 
 const readLocalPatients = (): PatientRecord[] => {
   if (typeof window === 'undefined') return [];
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  const raw = readStoredValue(STORAGE_KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
@@ -45,7 +46,7 @@ const readLocalPatients = (): PatientRecord[] => {
 };
 
 const writeLocalPatients = (patients: PatientRecord[]) => {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(patients));
+  writeStoredValue(STORAGE_KEY, JSON.stringify(patients));
   listeners.forEach(l => l(patients));
 };
 

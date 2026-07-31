@@ -1,4 +1,5 @@
 import { AppointmentRecord } from '../types';
+import { readStoredValue, removeStoredValue, writeStoredValue } from './browserStorage';
 
 type BackendMode = 'sheet' | 'supabase' | 'local';
 
@@ -141,7 +142,7 @@ const readLocalAppointments = (): AppointmentRecord[] => {
     return [];
   }
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  const raw = readStoredValue(STORAGE_KEY);
   if (!raw) {
     return hasRemoteSheet ? [] : demoAppointments;
   }
@@ -160,7 +161,7 @@ const readLocalAppointments = (): AppointmentRecord[] => {
 
 const writeLocalAppointments = (appointments: AppointmentRecord[]) => {
   cachedAppointments = appointments;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
+  writeStoredValue(STORAGE_KEY, JSON.stringify(appointments));
 };
 
 const emitAppointments = (appointments: AppointmentRecord[]) => {
@@ -265,7 +266,7 @@ export const refreshAppointments = async () => {
 
 export const forceRefreshAppointments = async () => {
   if (typeof window !== 'undefined') {
-    window.localStorage.removeItem(STORAGE_KEY);
+    removeStoredValue(STORAGE_KEY);
   }
 
   cachedAppointments = [];
@@ -342,6 +343,7 @@ export const subscribeToAppointments = (
   onError?: (error: unknown) => void,
 ) => {
   listeners.add(callback);
+  callback(readLocalAppointments());
   ensureRemotePolling();
 
   void broadcast().catch((error) => {

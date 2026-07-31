@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PROFESSIONALS as DEFAULT_PROFESSIONALS } from '../constants';
+import { readStoredValue, removeStoredValue, writeStoredValue } from './browserStorage';
 
 export type ProfessionalRecord = {
   id: string;
@@ -29,6 +30,7 @@ let remotePollHandle: number | undefined;
 let visibilityListenerAttached = false;
 let visibilityChangeHandler: (() => void) | undefined;
 let cachedProfessionals: ProfessionalRecord[] = [];
+let remoteReadPromise: Promise<ProfessionalRecord[]> | undefined;
 
 const slugify = (value: string) =>
   value
@@ -131,10 +133,10 @@ const readLocalProfessionals = (): ProfessionalRecord[] => {
     return cachedProfessionals;
   }
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  const raw = readStoredValue(STORAGE_KEY);
   if (!raw) {
     const defaults = createDefaultProfessionals();
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+    writeStoredValue(STORAGE_KEY, JSON.stringify(defaults));
     return defaults;
   }
 
@@ -166,7 +168,7 @@ const writeLocalProfessionals = (professionals: ProfessionalRecord[]) => {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(professionals));
+  writeStoredValue(STORAGE_KEY, JSON.stringify(professionals));
 };
 
 const emit = (professionals: ProfessionalRecord[]) => {
@@ -278,8 +280,18 @@ const normalizeProfessionalsPayload = (payload: unknown): ProfessionalRecord[] |
 };
 
 const broadcast = async () => {
-  const professionals = hasRemoteSheet ? await readRemoteProfessionals() : readLocalProfessionals();
-  emit(professionals);
+  if (!hasRemoteSheet) {
+    emit(readLocalProfessionals());
+    return;
+  }
+
+  if (!remoteReadPromise) {
+    remoteReadPromise = readRemoteProfessionals().finally(() => {
+      remoteReadPromise = undefined;
+    });
+  }
+
+  emit(await remoteReadPromise);
 };
 
 const ensureRemotePolling = () => {
@@ -509,7 +521,7 @@ export const refreshProfessionals = async () => {
 
 export const forceRefreshProfessionals = async () => {
   if (typeof window !== 'undefined') {
-    window.localStorage.removeItem(STORAGE_KEY);
+    removeStoredValue(STORAGE_KEY);
   }
 
   cachedProfessionals = createDefaultProfessionals();

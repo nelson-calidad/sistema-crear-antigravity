@@ -21,8 +21,9 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { readStoredValue, writeStoredValue } from '../lib/browserStorage';
 import { motion, AnimatePresence } from 'motion/react';
-import logoCrear from '../assets/logo-crear.png';
+import logoCrear from '../assets/logo-crear-mobile.jpg';
 
 interface SidebarItemProps {
   key?: string;
@@ -75,11 +76,11 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, theme, onToggleTheme }: SidebarProps) => {
-  const [isCollapsed, setIsCollapsed] = React.useState(() => window.localStorage.getItem('crear-sidebar-compact') === 'true');
-  const [isHidden, setIsHidden] = React.useState(() => window.localStorage.getItem('crear-sidebar-hidden') === 'true');
+  const [isCollapsed, setIsCollapsed] = React.useState(() => readStoredValue('crear-sidebar-compact') === 'true');
+  const [isHidden, setIsHidden] = React.useState(() => readStoredValue('crear-sidebar-hidden') === 'true');
 
-  React.useEffect(() => { window.localStorage.setItem('crear-sidebar-compact', String(isCollapsed)); }, [isCollapsed]);
-  React.useEffect(() => { window.localStorage.setItem('crear-sidebar-hidden', String(isHidden)); }, [isHidden]);
+  React.useEffect(() => { writeStoredValue('crear-sidebar-compact', String(isCollapsed)); }, [isCollapsed]);
+  React.useEffect(() => { writeStoredValue('crear-sidebar-hidden', String(isHidden)); }, [isHidden]);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -102,17 +103,18 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
         )}
         aria-label="Cerrar navegación"
       />
-      {isHidden && <>
+      {isHidden && <div className="fixed inset-y-0 left-0 z-[70] hidden w-12 md:block" onMouseEnter={() => setIsHidden(false)}>
         <button
           type="button"
-          onPointerEnter={() => setIsHidden(false)}
           onFocus={() => setIsHidden(false)}
           onClick={() => setIsHidden(false)}
-          className="fixed inset-y-0 left-0 z-[60] hidden w-3 cursor-pointer md:block"
-          aria-label="Mostrar menú al pasar o hacer clic"
-        />
-        <button type="button" onClick={() => setIsHidden(false)} className="fixed left-3 top-24 z-[61] hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-lg transition hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 md:flex" title="Mostrar menú" aria-label="Mostrar menú"><PanelLeftOpen className="h-5 w-5" /></button>
-      </>}
+          className="absolute left-0 top-1/2 flex h-20 w-10 -translate-y-1/2 items-center justify-center rounded-r-2xl border border-l-0 border-slate-200 bg-white text-slate-600 shadow-lg transition hover:w-12 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          title="Mostrar menú"
+          aria-label="Mostrar menú"
+        >
+          <PanelLeftOpen className="h-5 w-5" />
+        </button>
+      </div>}
       <motion.div
         animate={{ width: isHidden ? '0px' : isCollapsed ? '80px' : '260px' }}
         className={cn(

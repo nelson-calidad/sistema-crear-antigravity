@@ -7,9 +7,9 @@ import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Bell, Search, User, X as CloseIcon, Check, Info, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ReservationModal } from './components/ReservationModal';
 import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
-import logoCrear from './assets/logo-crear.png';
+import { readStoredValue, writeStoredValue } from './lib/browserStorage';
+import logoCrear from './assets/logo-crear-mobile.jpg';
 
 const Dashboard = lazy(() => import('./components/Dashboard').then((module) => ({ default: module.Dashboard })));
 const ProfessionalsGrid = lazy(() => import('./components/ProfessionalsGrid').then((module) => ({ default: module.ProfessionalsGrid })));
@@ -18,6 +18,7 @@ const PatientsList = lazy(() => import('./components/PatientsList').then((module
 const Finance = lazy(() => import('./components/Finance').then((module) => ({ default: module.Finance })));
 const Settings = lazy(() => import('./components/Settings').then((module) => ({ default: module.Settings })));
 const Responsibilities = lazy(() => import('./components/Responsibilities').then((module) => ({ default: module.Responsibilities })));
+const ReservationModal = lazy(() => import('./components/ReservationModal').then((module) => ({ default: module.ReservationModal })));
 
 type ToastTone = 'success' | 'error' | 'info';
 
@@ -65,7 +66,7 @@ export default function App() {
   // Theme logic
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
-      return (window.localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+      return (readStoredValue('theme') as 'light' | 'dark') || 'light';
     }
     return 'light';
   });
@@ -77,7 +78,7 @@ export default function App() {
     } else {
       root.classList.remove('dark');
     }
-    window.localStorage.setItem('theme', theme);
+    writeStoredValue('theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
@@ -283,7 +284,8 @@ export default function App() {
         </section>
       </main>
 
-      <ReservationModal 
+      {isModalOpen && <Suspense fallback={<div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/35 p-4"><div className="rounded-2xl bg-white px-5 py-4 text-sm font-bold text-slate-700 shadow-xl dark:bg-slate-900 dark:text-slate-100">Cargando reserva...</div></div>}>
+        <ReservationModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         room={modalContext.room}
@@ -341,6 +343,7 @@ export default function App() {
         isSaving={modalAction === 'save'}
         isDeleting={modalAction === 'delete'}
       />
+      </Suspense>}
 
       <div className="fixed right-4 top-4 z-[60] flex w-[min(92vw,360px)] flex-col gap-3 pointer-events-none">
         <AnimatePresence initial={false}>
