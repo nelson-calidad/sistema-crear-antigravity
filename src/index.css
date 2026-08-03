@@ -258,3 +258,29 @@
     color: #64748b;
   }
 }
+
+.coverage-print-sheet { display: none; }
+
+@media print {
+  .coverage-print-sheet,
+  .coverage-print-sheet * { visibility: visible !important; }
+  .coverage-print-sheet {
+    display: block !important;
+    position: static !important;
+    width: 100%;
+    color: #172033;
+    font-family: Inter, Arial, sans-serif;
+  }
+  .coverage-print-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; border-bottom: 2px solid #172033; padding-bottom: 12px; }
+  .coverage-print-header p,
+  .coverage-print-header span { margin: 0; color: #64748b; font-size: 9pt; font-weight: 700; }
+  .coverage-print-header h1 { margin: 4px 0 0; font-size: 20pt; line-height: 1.1; }
+  .coverage-print-header > div:last-child { display: grid; gap: 4px; text-align: right; }
+  .coverage-print-table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 9pt; }
+  .coverage-print-table th,
+  .coverage-print-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; }
+  .coverage-print-table th { background: #f1f5f9; color: #475569; font-size: 8pt; text-transform: uppercase; }
+  .coverage-print-table small { display: block; margin-top: 3px; color: #64748b; font-size: 8pt; }
+  .coverage-print-empty { color: #64748b; font-style: italic; }
+  .coverage-print-footnote { margin: 14px 0 0; color: #64748b; font-size: 8.5pt; }
+}
