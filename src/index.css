@@ -276,11 +276,23 @@
   .coverage-print-header span { margin: 0; color: #64748b; font-size: 9pt; font-weight: 700; }
   .coverage-print-header h1 { margin: 4px 0 0; font-size: 20pt; line-height: 1.1; }
   .coverage-print-header > div:last-child { display: grid; gap: 4px; text-align: right; }
-  .coverage-print-table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 9pt; }
-  .coverage-print-table th,
-  .coverage-print-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; }
-  .coverage-print-table th { background: #f1f5f9; color: #475569; font-size: 8pt; text-transform: uppercase; }
-  .coverage-print-table small { display: block; margin-top: 3px; color: #64748b; font-size: 8pt; }
-  .coverage-print-empty { color: #64748b; font-style: italic; }
-  .coverage-print-footnote { margin: 14px 0 0; color: #64748b; font-size: 8.5pt; }
+  .coverage-print-intro { margin: 13px 0 12px; color: #475569; font-size: 10pt; }
+  .coverage-print-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .coverage-print-day { min-height: 125mm; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc; }
+  .coverage-print-day > header { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 9px; background: #e0f2fe; border-bottom: 1px solid #bae6fd; }
+  .coverage-print-day > header p { margin: 0; color: #0369a1; font-size: 8pt; font-weight: 800; text-transform: uppercase; }
+  .coverage-print-day > header strong { color: #0f172a; font-size: 9pt; }
+  .coverage-print-day-content { display: grid; gap: 7px; padding: 7px; }
+  .coverage-print-card { border: 1px solid #bae6fd; border-radius: 7px; padding: 7px; background: #fff; break-inside: avoid; }
+  .coverage-print-card p { margin: 0; }
+  .coverage-print-time { color: #0369a1; font-size: 8pt; font-weight: 800; }
+  .coverage-print-person { margin-top: 5px !important; color: #172033; font-size: 9pt; font-weight: 800; line-height: 1.25; }
+  .coverage-print-detail { margin-top: 5px !important; color: #475569; font-size: 8pt; line-height: 1.3; }
+  .coverage-print-card span { display: inline-block; margin-top: 7px; color: #475569; font-size: 7.5pt; font-weight: 700; }
+  .coverage-print-empty { margin: 0; padding: 5px 1px; color: #94a3b8; font-size: 8pt; font-style: italic; }
+  .coverage-print-weekend { margin-top: 10px; }
+  .coverage-print-weekend > p { margin: 0 0 5px; color: #475569; font-size: 8pt; font-weight: 800; text-transform: uppercase; }
+  .coverage-print-weekend > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .coverage-print-weekend .coverage-print-day { min-height: 0; }
+    .coverage-print-footnote { margin: 12px 0 0; color: #64748b; font-size: 8.5pt; }
 }
