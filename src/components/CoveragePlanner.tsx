@@ -104,7 +104,7 @@ export const CoveragePlanner = () => {
       if (![shift.primaryId, shift.secondaryId].filter(Boolean).includes(founder.id)) return total;
       const planned = hoursBetween(shift.startTime, shift.endTime);
       const actual = shift.status === 'Completed' ? hoursBetween(shift.actualStartTime || shift.startTime, shift.actualEndTime || shift.endTime) : 0;
-      return { plannedHours: total.plannedHours + planned, actualHours: total.actualHours + actual, plannedControls: total.plannedControls + (shift.type === 'control' ? 1 : 0), actualControls: total.actualControls + (shift.type === 'control' && shift.status === 'Completed' ? 1 : 0) };
+      return { ...total, plannedHours: total.plannedHours + planned, actualHours: total.actualHours + actual, plannedControls: total.plannedControls + (shift.type === 'control' ? 1 : 0), actualControls: total.actualControls + (shift.type === 'control' && shift.status === 'Completed' ? 1 : 0) };
     }, { founder, plannedHours: 0, actualHours: 0, plannedControls: 0, actualControls: 0 }));
   }, [founders, shifts]);
 
