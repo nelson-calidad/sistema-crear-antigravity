@@ -32,8 +32,6 @@ function ShiftForm({ founders, shift, onClose, onSave, saving }: {
   const [secondaryId, setSecondaryId] = useState(shift?.secondaryId || '');
   const [professional, setProfessional] = useState(shift?.professional || '');
   const [status, setStatus] = useState<CoverageShift['status']>(shift?.status || 'Planned');
-  const [actualStartTime, setActualStartTime] = useState(shift?.actualStartTime || '');
-  const [actualEndTime, setActualEndTime] = useState(shift?.actualEndTime || '');
   const [notes, setNotes] = useState(shift?.notes || '');
   const [repeats, setRepeats] = useState('1');
   const [error, setError] = useState('');
@@ -47,16 +45,16 @@ function ShiftForm({ founders, shift, onClose, onSave, saving }: {
     await onSave({
       ...shift, date, type, place: place.trim() || (type === 'control' ? 'Control externo' : 'CREAR'), startTime, endTime,
       primaryId, secondaryId: secondaryId || undefined, professional: professional.trim() || undefined, status,
-      actualStartTime: actualStartTime || undefined, actualEndTime: actualEndTime || undefined, notes: notes.trim() || undefined,
+      actualStartTime: status === 'Completed' ? (shift?.actualStartTime || startTime) : undefined, actualEndTime: status === 'Completed' ? (shift?.actualEndTime || endTime) : undefined, notes: notes.trim() || undefined,
       completedAt: status === 'Completed' ? (shift?.completedAt || dateKey(new Date())) : undefined,
-    }, shift ? 1 : Math.max(1, Math.min(12, Number(repeats) || 1)));
+    }, shift?.id ? 1 : Math.max(1, Math.min(12, Number(repeats) || 1)));
   };
 
   return <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/40 sm:items-center sm:p-5" role="dialog" aria-modal="true">
     <form onSubmit={submit} className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-3xl">
-      <header className="flex items-start justify-between border-b border-slate-100 p-5 dark:border-slate-800"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-sky-600">Cobertura operativa</p><h2 className="mt-1 text-xl font-bold">{shift ? 'Editar guardia o control' : 'Nueva guardia o control'}</h2></div><button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400" aria-label="Cerrar"><X className="h-5 w-5" /></button></header>
+      <header className="flex items-start justify-between border-b border-slate-100 p-5 dark:border-slate-800"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-sky-600">Cobertura operativa</p><h2 className="mt-1 text-xl font-bold">{shift?.id ? 'Editar guardia o control' : 'Nueva guardia o control'}</h2></div><button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400" aria-label="Cerrar"><X className="h-5 w-5" /></button></header>
       <div className="grid gap-4 p-5 sm:grid-cols-2">
-        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Fecha<input required type="date" value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} /></label>
+        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Fecha<input required type="date" value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} />{!shift?.id && <><span className="mt-3 block">Repetir semanalmente</span><select value={repeats} onChange={(event) => setRepeats(event.target.value)} className={inputClass}><option value="1">No repetir (solo esta vez)</option><option value="2">Si, durante 2 semanas</option><option value="4">Si, durante 4 semanas</option><option value="8">Si, durante 8 semanas</option><option value="12">Si, durante 12 semanas</option></select><span className="mt-1 block font-medium text-slate-400">Crea la misma cobertura cada semana.</span></>}</label>
         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Tipo<select value={type} onChange={(event) => { const value = event.target.value as CoverageShift['type']; setType(value); if (!place || place === 'CREAR' || place === 'Control externo') setPlace(value === 'control' ? 'Control externo' : 'CREAR'); }} className={inputClass}><option value="guard">Guardia en CREAR</option><option value="control">Control externo</option></select></label>
         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Lugar<input value={place} onChange={(event) => setPlace(event.target.value)} className={inputClass} placeholder="CREAR o domicilio/consultorio" /></label>
         {type === 'control' ? <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Terapeuta o equipo<input required value={professional} onChange={(event) => setProfessional(event.target.value)} className={inputClass} placeholder="Ej. Lic. Garcia" /></label> : <div />}
@@ -65,12 +63,12 @@ function ShiftForm({ founders, shift, onClose, onSave, saving }: {
         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Responsable principal<select required value={primaryId} onChange={(event) => setPrimaryId(event.target.value)} className={inputClass}><option value="">Seleccionar</option>{founders.map((founder) => <option key={founder.id} value={founder.id}>{founder.displayName}</option>)}</select></label>
         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Acompanante <span className="font-medium text-slate-400">(opcional)</span><select value={secondaryId} onChange={(event) => setSecondaryId(event.target.value)} className={inputClass}><option value="">Sin acompanante</option>{founders.filter((founder) => founder.id !== primaryId).map((founder) => <option key={founder.id} value={founder.id}>{founder.displayName}</option>)}</select></label>
         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Estado<select value={status} onChange={(event) => setStatus(event.target.value as CoverageShift['status'])} className={inputClass}><option value="Planned">Planificada</option><option value="Completed">Realizada</option><option value="Rescheduled">Reprogramada</option><option value="Cancelled">Cancelada</option></select></label>
-        {!shift && <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Repetir semanalmente<select value={repeats} onChange={(event) => setRepeats(event.target.value)} className={inputClass}><option value="1">No repetir (solo esta vez)</option><option value="2">Si, por 2 semanas</option><option value="4">Si, por 4 semanas</option><option value="8">Si, por 8 semanas</option><option value="12">Si, por 12 semanas</option></select><span className="mt-1 block font-medium text-slate-400">Crea la misma cobertura cada semana.</span></label>}
-        {status === 'Completed' && <><label className="text-xs font-bold text-slate-600 dark:text-slate-300">Inicio real<input type="time" value={actualStartTime} onChange={(event) => setActualStartTime(event.target.value)} className={inputClass} /></label><label className="text-xs font-bold text-slate-600 dark:text-slate-300">Salida real<input type="time" value={actualEndTime} onChange={(event) => setActualEndTime(event.target.value)} className={inputClass} /></label></>}
+
+
         <label className="sm:col-span-2 text-xs font-bold text-slate-600 dark:text-slate-300">Registro / novedad<textarea value={notes} onChange={(event) => setNotes(event.target.value)} className={cn(inputClass, 'min-h-20 resize-y')} placeholder="Que se hizo, observaciones o motivo de reprogramacion." /></label>
         {error && <p className="sm:col-span-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">{error}</p>}
       </div>
-      <footer className="flex justify-end gap-3 border-t border-slate-100 p-5 dark:border-slate-800"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500">Cancelar</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900">{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{shift ? 'Guardar cambios' : 'Guardar cobertura'}</button></footer>
+      <footer className="flex justify-end gap-3 border-t border-slate-100 p-5 dark:border-slate-800"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500">Cancelar</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900">{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{shift?.id ? 'Guardar cambios' : 'Guardar cobertura'}</button></footer>
     </form>
   </div>;
 }
