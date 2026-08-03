@@ -33,7 +33,9 @@
   display: none;
 }
 
-.responsibilities-commitment-print-sheet {
+
+
+.responsibilities-followup-print-sheet {
   display: none;
 }
 
@@ -246,14 +248,29 @@
   .responsibilities-commitment-table th:first-child,
   .responsibilities-commitment-table td:first-child { width: 48%; }
   .responsibilities-commitment-table .is-complete { color: #047857; font-weight: 800; }
-  .responsibilities-commitment-followup { margin-top: 16px; break-inside: avoid; }
-  .responsibilities-commitment-followup h2 { margin: 0 0 8px; font-size: 11pt; }
-  .responsibilities-commitment-followup table { width: 100%; border-collapse: collapse; font-size: 8pt; }
-  .responsibilities-commitment-followup th,
-  .responsibilities-commitment-followup td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; vertical-align: top; }
-  .responsibilities-commitment-followup th { background: #f8fafc; color: #475569; font-size: 7.5pt; text-transform: uppercase; }
-  .responsibilities-commitment-followup td:nth-child(1) { width: 31%; }
-  .responsibilities-commitment-followup td:nth-child(2) { width: 17%; }
+  .responsibilities-followup-print-sheet,
+  .responsibilities-followup-print-sheet * { visibility: visible !important; }
+  .responsibilities-followup-print-sheet { display: block !important; position: static !important; width: 100%; color: #172033; font-family: Inter, Arial, sans-serif; }
+  .responsibilities-followup-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; border-bottom: 2px solid #172033; padding-bottom: 12px; }
+  .responsibilities-followup-header p, .responsibilities-followup-header span { margin: 0; color: #64748b; font-size: 9pt; font-weight: 700; }
+  .responsibilities-followup-header h1 { margin: 4px 0; font-size: 20pt; line-height: 1.1; }
+  .responsibilities-followup-header > div:last-child { display: grid; gap: 4px; text-align: right; }
+  .responsibilities-followup-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 16px 0; border: 1px solid #cbd5e1; border-radius: 9px; overflow: hidden; background: #cbd5e1; }
+  .responsibilities-followup-summary div { display: grid; gap: 4px; padding: 10px; background: #fff; }
+  .responsibilities-followup-summary span { color: #64748b; font-size: 8pt; font-weight: 700; text-transform: uppercase; }
+  .responsibilities-followup-summary strong { font-size: 13pt; }
+  .responsibilities-followup-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  .responsibilities-followup-table th, .responsibilities-followup-table td { border: 1px solid #cbd5e1; padding: 7px; text-align: left; vertical-align: top; }
+  .responsibilities-followup-table th { background: #f1f5f9; color: #475569; font-size: 7.5pt; text-transform: uppercase; }
+  .responsibilities-followup-table th:nth-child(1), .responsibilities-followup-table td:nth-child(1) { width: 17%; }
+  .responsibilities-followup-table th:nth-child(2), .responsibilities-followup-table td:nth-child(2) { width: 24%; }
+  .responsibilities-followup-table th:nth-child(3), .responsibilities-followup-table td:nth-child(3) { width: 13%; }
+  .responsibilities-followup-table th:nth-child(4), .responsibilities-followup-table td:nth-child(4) { width: 14%; }
+  .responsibilities-followup-table small { display: block; margin-top: 3px; color: #64748b; font-size: 7.5pt; font-weight: 600; }
+  .responsibilities-followup-table .is-realized, .responsibilities-followup-summary .is-realized { color: #047857; font-weight: 800; }
+  .responsibilities-followup-table .is-not-realized, .responsibilities-followup-summary .is-not-realized { color: #be123c; font-weight: 800; }
+  .responsibilities-followup-table .is-empty { color: #64748b; font-style: italic; }
+  .responsibilities-followup-footnote { margin: 14px 0 0; color: #64748b; font-size: 8.5pt; line-height: 1.45; }
   .responsibilities-commitment-table .is-empty { color: #64748b; font-style: italic; }
   .responsibilities-commitment-footnote { margin: 14px 0 0; color: #64748b; font-size: 8.5pt; line-height: 1.45; }
 

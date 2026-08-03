@@ -29,6 +29,7 @@ const inputClass = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3
 
 type Notice = { tone: 'success' | 'error'; message: string } | null;
 type MoveRequest = { activity: ActivityRecord; responsibleId?: string; name: string };
+type ResponsibilityPrintMode = 'commitment' | 'followup';
 
 const dateKey = (date: Date) => {
   const year = date.getFullYear();
@@ -214,6 +215,7 @@ export const Responsibilities = () => {
   const [periodToDelete, setPeriodToDelete] = useState<ActivityPeriod | null>(null);
   const [activityToDelete, setActivityToDelete] = useState<ActivityRecord | null>(null);
   const [completionRequest, setCompletionRequest] = useState<ActivityRecord | null>(null);
+  const [printMode, setPrintMode] = useState<ResponsibilityPrintMode | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -237,6 +239,13 @@ export const Responsibilities = () => {
   };
   useEffect(() => { void reload(); }, []);
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(null), 3200); return () => window.clearTimeout(timer); }, [notice]);
+  useEffect(() => {
+    if (!printMode) return;
+    const timer = window.setTimeout(() => window.print(), 60);
+    const finish = () => setPrintMode(null);
+    window.addEventListener('afterprint', finish);
+    return () => { window.clearTimeout(timer); window.removeEventListener('afterprint', finish); };
+  }, [printMode]);
 
   const founderById = useMemo(() => new Map(founders.map((founder) => [founder.id, founder] as [string, FounderRecord])), [founders]);
   const selected = activities.find((activity) => activity.id === selectedId) || null;
@@ -315,7 +324,8 @@ export const Responsibilities = () => {
     setCompletionRequest(null);
     if (completed) await save({ ...activity, status: 'Completada', progress: 100, finishedAt: dateKey(new Date()), evidence: note, notes: note }, `Actividad realizada: ${note}`);
     else await save({ ...activity, status: 'No cumplida', progress: 0, finishedAt: undefined, evidence: undefined, notes: note }, `Actividad no realizada: ${note}`);
-  };  const drop = (responsibleId?: string) => {
+  };
+  const drop = (responsibleId?: string) => {
     if (!draggedId) return;
     const activity = activities.find((item) => item.id === draggedId);
     setDraggedId(null);
@@ -334,20 +344,39 @@ export const Responsibilities = () => {
   };
   const printedDate = new Intl.DateTimeFormat('es-AR', { dateStyle: 'long' }).format(new Date());
 
+  const followupActivities = [...printableActivities].sort((left, right) => {
+    const leftName = founderById.get(left.responsibleId || '')?.displayName || 'Sin asignar';
+    const rightName = founderById.get(right.responsibleId || '')?.displayName || 'Sin asignar';
+    return leftName.localeCompare(rightName, 'es-AR') || (left.dueDate || '').localeCompare(right.dueDate || '');
+  });
+  const realizedCount = followupActivities.filter((activity) => activity.status === 'Completada').length;
+  const notRealizedCount = followupActivities.filter((activity) => activity.status === 'No cumplida').length;
+  const pendingCount = followupActivities.length - realizedCount - notRealizedCount;
+
   const commitmentPrintSheet = (
     <section id="responsibilities-commitment-print" className="responsibilities-commitment-print-sheet" aria-hidden="true">
       {founders.map((founder) => {
         const founderActivities = printableActivities.filter((activity) => activity.responsibleId === founder.id);
-        return <article key={founder.id} className="responsibilities-commitment-document"><header className="responsibilities-commitment-header"><div><p>CREAR · Espacio Terapeutico</p><h1>Acta de compromiso de responsabilidades</h1></div><div><strong>{activePeriod?.name || 'Periodo actual'}</strong><span>Emitido el {printedDate}</span></div></header><section className="responsibilities-commitment-summary"><div><span>Responsable</span><strong>{founder.displayName}</strong></div><div><span>Actividades asignadas</span><strong>{founderActivities.length}</strong></div><div><span>Periodo</span><strong>{activePeriod?.name || 'Actual'}</strong></div></section><p className="responsibilities-commitment-text">Declaro haber recibido las actividades detalladas a continuacion y me comprometo a realizarlas dentro de los plazos acordados, informando con anticipacion cualquier impedimento o demora.</p><table className="responsibilities-commitment-table"><thead><tr><th>Actividad</th><th>Inicio</th><th>Fecha limite</th><th>Estado</th></tr></thead><tbody>{founderActivities.length ? founderActivities.map((activity) => <tr key={activity.id}><td>{activity.title}</td><td>{formatActivityDate(activity.startDate, true)}</td><td>{formatActivityDate(activity.dueDate, true)}</td><td className={activity.status === 'Completada' ? 'is-complete' : ''}>{activity.status === 'Completada' ? 'Lista' : activity.status === 'No cumplida' ? 'No realizada' : 'Pendiente'}</td></tr>) : <tr><td colSpan={4} className="is-empty">No registra actividades asignadas en este periodo.</td></tr>}</tbody></table><section className="responsibilities-commitment-followup"><h2>Detalle de seguimiento</h2><table><thead><tr><th>Actividad</th><th>Estado</th><th>Observacion</th></tr></thead><tbody>{founderActivities.length ? founderActivities.map((activity) => <tr key={activity.id}><td>{activity.title}</td><td>{activity.status === 'Completada' ? 'Realizada' : activity.status === 'No cumplida' ? 'No realizada' : activity.status}</td><td>{activity.notes || activity.evidence || 'Sin observacion registrada.'}</td></tr>) : <tr><td colSpan={3} className="is-empty">No registra actividades asignadas en este periodo.</td></tr>}</tbody></table></section><p className="responsibilities-commitment-footnote">Esta acta deja constancia interna de la asignacion y el compromiso asumido por la persona responsable.</p><footer className="responsibilities-commitment-signatures"><div><span>Firma y aclaracion</span></div><div><span>DNI</span></div><div><span>Fecha</span></div></footer></article>;
+        return <article key={founder.id} className="responsibilities-commitment-document"><header className="responsibilities-commitment-header"><div><p>CREAR · Espacio Terapeutico</p><h1>Acta de compromiso de responsabilidades</h1></div><div><strong>{activePeriod?.name || 'Periodo actual'}</strong><span>Emitido el {printedDate}</span></div></header><section className="responsibilities-commitment-summary"><div><span>Responsable</span><strong>{founder.displayName}</strong></div><div><span>Actividades asignadas</span><strong>{founderActivities.length}</strong></div><div><span>Periodo</span><strong>{activePeriod?.name || 'Actual'}</strong></div></section><p className="responsibilities-commitment-text">Declaro haber recibido las actividades detalladas a continuacion y me comprometo a realizarlas dentro de los plazos acordados, informando con anticipacion cualquier impedimento o demora.</p><table className="responsibilities-commitment-table"><thead><tr><th>Actividad</th><th>Inicio</th><th>Fecha limite</th></tr></thead><tbody>{founderActivities.length ? founderActivities.map((activity) => <tr key={activity.id}><td>{activity.title}</td><td>{formatActivityDate(activity.startDate, true)}</td><td>{formatActivityDate(activity.dueDate, true)}</td></tr>) : <tr><td colSpan={3} className="is-empty">No registra actividades asignadas en este periodo.</td></tr>}</tbody></table><p className="responsibilities-commitment-footnote">Esta acta deja constancia interna de la asignacion y el compromiso asumido por la persona responsable.</p><footer className="responsibilities-commitment-signatures"><div><span>Firma y aclaracion</span></div><div><span>DNI</span></div><div><span>Fecha</span></div></footer></article>;
       })}
     </section>
   );
 
+  const followupPrintSheet = (
+    <section id="responsibilities-followup-print" className="responsibilities-followup-print-sheet" aria-hidden="true">
+      <header className="responsibilities-followup-header"><div><p>CREAR · Espacio Terapeutico</p><h1>Informe de seguimiento de responsabilidades</h1><span>Resultados y observaciones de las actividades del periodo.</span></div><div><strong>{activePeriod?.name || 'Periodo actual'}</strong><span>Emitido el {printedDate}</span></div></header>
+      <section className="responsibilities-followup-summary"><div><span>Total</span><strong>{followupActivities.length}</strong></div><div><span>Realizadas</span><strong className="is-realized">{realizedCount}</strong></div><div><span>No realizadas</span><strong className="is-not-realized">{notRealizedCount}</strong></div><div><span>Pendientes</span><strong>{pendingCount}</strong></div></section>
+      <table className="responsibilities-followup-table"><thead><tr><th>Responsable</th><th>Actividad</th><th>Estado</th><th>Fecha de registro</th><th>Observacion</th></tr></thead><tbody>{followupActivities.length ? followupActivities.map((activity) => { const realized = activity.status === 'Completada'; const notRealized = activity.status === 'No cumplida'; return <tr key={activity.id}><td>{founderById.get(activity.responsibleId || '')?.displayName || 'Sin asignar'}</td><td><strong>{activity.title}</strong><small>Limite: {formatActivityDate(activity.dueDate, true)}</small></td><td className={realized ? 'is-realized' : notRealized ? 'is-not-realized' : ''}>{realized ? 'Realizada' : notRealized ? 'No realizada' : 'Pendiente'}</td><td>{activity.finishedAt ? formatActivityDate(activity.finishedAt, true) : 'Sin registro'}</td><td>{activity.notes || activity.evidence || 'Sin observacion registrada.'}</td></tr>; }) : <tr><td colSpan={5} className="is-empty">No registra actividades en este periodo.</td></tr>}</tbody></table>
+      <p className="responsibilities-followup-footnote">Este informe concentra el seguimiento operativo. El acta de compromiso se imprime por separado.</p>
+    </section>
+  );
+
   return <>
-    {typeof document !== 'undefined' && createPortal(commitmentPrintSheet, document.body)}
+    {typeof document !== 'undefined' && printMode === 'commitment' && createPortal(commitmentPrintSheet, document.body)}
+    {typeof document !== 'undefined' && printMode === 'followup' && createPortal(followupPrintSheet, document.body)}
     <div className="space-y-5">
 
-    <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-slate-400">Planificacion operativa</p><button onClick={() => setShowCalendar(true)} className="group mt-1 inline-flex items-center gap-2 rounded-lg text-left" title="Abrir calendario de actividades"><h1 className="text-2xl font-bold text-slate-900 transition group-hover:text-sky-700 dark:text-slate-100 md:text-3xl">Responsabilidades</h1><CalendarDays className="h-5 w-5 text-sky-600" /></button><p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Organiza, asigna y completa las tareas. Toca el titulo para ver las fechas.</p></div><div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"><button onClick={() => setShowCalendar(true)} disabled={!periodId} className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-bold text-sky-700 disabled:opacity-50"><CalendarDays className="h-4 w-4" /> Calendario</button><button onClick={() => window.print()} disabled={!periodId} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><Printer className="h-4 w-4" /> Imprimir actas</button><button onClick={() => setPeriodEditor(null)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><CalendarDays className="h-4 w-4" /> Nuevo periodo</button><button onClick={() => setEditing(null)} disabled={!periodId} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"><Plus className="h-4 w-4" /> Nueva actividad</button></div></header>
+    <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-slate-400">Planificacion operativa</p><button onClick={() => setShowCalendar(true)} className="group mt-1 inline-flex items-center gap-2 rounded-lg text-left" title="Abrir calendario de actividades"><h1 className="text-2xl font-bold text-slate-900 transition group-hover:text-sky-700 dark:text-slate-100 md:text-3xl">Responsabilidades</h1><CalendarDays className="h-5 w-5 text-sky-600" /></button><p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Organiza, asigna y completa las tareas. Toca el titulo para ver las fechas.</p></div><div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"><button onClick={() => setShowCalendar(true)} disabled={!periodId} className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-bold text-sky-700 disabled:opacity-50"><CalendarDays className="h-4 w-4" /> Calendario</button><button onClick={() => setPrintMode('commitment')} disabled={!periodId} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><Printer className="h-4 w-4" /> Imprimir actas</button><button onClick={() => setPrintMode('followup')} disabled={!periodId} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><ClipboardCheck className="h-4 w-4" /> Imprimir seguimiento</button><button onClick={() => setPeriodEditor(null)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><CalendarDays className="h-4 w-4" /> Nuevo periodo</button><button onClick={() => setEditing(null)} disabled={!periodId} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"><Plus className="h-4 w-4" /> Nueva actividad</button></div></header>
 
     {notice && <div className={cn('flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium', notice.tone === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700')}><CircleAlert className="h-4 w-4" />{notice.message}</div>}
     {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700"><div className="flex gap-3"><AlertCircle className="h-5 w-5 shrink-0" /><div><p className="font-bold">No se pudo abrir Responsabilidades</p><p className="mt-1">{error}</p><button onClick={() => void reload()} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Reintentar</button></div></div></div>}
