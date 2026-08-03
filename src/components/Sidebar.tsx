@@ -15,6 +15,7 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  CalendarDays,
   Sun,
   Moon,
   MessageCircle,
@@ -81,12 +82,12 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
 
   React.useEffect(() => { writeStoredValue('crear-sidebar-compact', String(isCollapsed)); }, [isCollapsed]);
   React.useEffect(() => { writeStoredValue('crear-sidebar-hidden', String(isHidden)); }, [isHidden]);
-
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'professionals', label: 'Gestión Humana', icon: Users },
     { id: 'agenda', label: 'Operaciones', icon: Calendar },
     { id: 'responsibilities', label: 'Responsabilidades', icon: ClipboardList },
+    { id: 'coverage', label: 'Guardias y controles', icon: CalendarDays },
     { id: 'patients', label: 'Pacientes', icon: MessageCircle },
     { id: 'finance', label: 'Finanzas', icon: Wallet },
     { id: 'settings', label: 'Configuración', icon: Settings },

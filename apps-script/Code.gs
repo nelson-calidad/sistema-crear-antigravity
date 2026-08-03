@@ -112,10 +112,14 @@ const PROFESSIONALS_SEED = [
 function doGet(e) {
   try {
     const requestedEntity = e && e.parameter ? String(e.parameter.entity || '') : '';
-    const entity = requestedEntity === 'professionals' || requestedEntity === 'activities' ? requestedEntity : 'appointments';
+    const entity = requestedEntity === 'professionals' || requestedEntity === 'activities' || requestedEntity === 'coverage' ? requestedEntity : 'appointments';
 
     if (entity === 'activities') {
       return json_(handleActivitiesGet_(e));
+    }
+
+    if (entity === 'coverage') {
+      return json_(handleCoverageGet_(e));
     }
 
     if (entity === 'professionals') {
@@ -136,10 +140,14 @@ function doPost(e) {
   try {
     const body = e && e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : {};
     const requestedEntity = String(body.entity || '');
-    const entity = requestedEntity === 'professionals' || requestedEntity === 'activities' ? requestedEntity : 'appointments';
+    const entity = requestedEntity === 'professionals' || requestedEntity === 'activities' || requestedEntity === 'coverage' ? requestedEntity : 'appointments';
 
     if (entity === 'activities') {
       return json_(handleActivitiesPost_(body));
+    }
+
+    if (entity === 'coverage') {
+      return json_(handleCoveragePost_(body));
     }
 
     if (entity === 'professionals') {
@@ -986,3 +994,115 @@ function obtenerActividades() { const sheets = activitySheets_(); return activit
 function obtenerHistorialActividad() { return []; }
 function obtenerConfiguracionActividades() { return {}; }
 function obtenerResumenActividades(idPeriodo) { const activities = obtenerActividades().filter((activity) => !idPeriodo || activity.periodId === idPeriodo); const founders = obtenerFundadoras(); return founders.map((founder) => { const assigned = activities.filter((activity) => activity.responsibleId === founder.id && activity.active && activity.status !== 'Cancelada'); return { founderId: founder.id, founder: founder.displayName, assigned: assigned.length, completed: assigned.filter((activity) => activity.status === 'Completada').length, pending: assigned.filter((activity) => !['Completada', 'Cancelada'].includes(activity.status)).length }; }); }
+
+// ===== Modulo Guardias y controles =====
+const COVERAGE_SHEET_NAME_ = 'COBERTURA_OPERATIVA';
+const COVERAGE_HEADERS_ = ['ID_COBERTURA', 'FECHA', 'HORA_INICIO', 'HORA_FIN', 'HORA_REAL_INICIO', 'HORA_REAL_FIN', 'TIPO', 'LUGAR', 'ID_RESPONSABLE', 'ID_ACOMPANANTE', 'PROFESIONAL', 'ESTADO', 'NOTAS', 'FECHA_REALIZADO', 'FECHA_CREACION', 'CREADO_POR'];
+
+function coverageText_(value) { return value === null || value === undefined ? '' : String(value); }
+function coverageYes_(value) { const normalized = coverageText_(value).toLowerCase(); return value === true || normalized === 'si' || normalized === 'true' || normalized.charAt(0) === 's'; }
+function coverageSuccess_(data, message) { return { ok: true, data: data, message: message || '' }; }
+function coverageError_(message) { return { ok: false, message: message || 'No se pudo guardar la cobertura.' }; }
+
+function coverageSheet_() {
+  const spreadsheet = getActivitiesSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(COVERAGE_SHEET_NAME_);
+  if (!sheet) sheet = spreadsheet.insertSheet(COVERAGE_SHEET_NAME_);
+  if (sheet.getLastRow() === 0) sheet.getRange(1, 1, 1, COVERAGE_HEADERS_.length).setValues([COVERAGE_HEADERS_]);
+  const currentHeaders = sheet.getRange(1, 1, 1, COVERAGE_HEADERS_.length).getValues()[0];
+  if (coverageText_(currentHeaders[0]) !== 'ID_COBERTURA') sheet.getRange(1, 1, 1, COVERAGE_HEADERS_.length).setValues([COVERAGE_HEADERS_]);
+  sheet.setFrozenRows(1);
+  return sheet;
+}
+
+function coverageRecords_(sheet) {
+  const lastRow = sheet.getLastRow(); const lastColumn = Math.max(sheet.getLastColumn(), COVERAGE_HEADERS_.length);
+  if (lastRow < 2) return [];
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(coverageText_);
+  const values = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  return values.map((row) => headers.reduce((record, header, index) => { record[header] = row[index]; return record; }, {})).filter((record) => coverageText_(record.ID_COBERTURA));
+}
+
+function coverageFounders_() {
+  const sheet = getActivitiesSpreadsheet_().getSheetByName('FUNDADORAS');
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return coverageRecordsFromSheet_(sheet).filter((founder) => coverageYes_(founder.ACTIVA)).map((founder) => ({
+    id: coverageText_(founder.ID_FUNDADORA), displayName: coverageText_(founder.NOMBRE_MOSTRAR || founder.NOMBRE), firstName: coverageText_(founder.NOMBRE), lastName: coverageText_(founder.APELLIDO), email: coverageText_(founder.EMAIL), role: coverageText_(founder.ROL || 'FUNDADORA'), order: Number(founder.ORDEN) || 999, active: true,
+  })).filter((founder) => founder.id);
+}
+
+function coverageRecordsFromSheet_(sheet) {
+  const lastRow = sheet.getLastRow(); const lastColumn = sheet.getLastColumn();
+  if (lastRow < 2 || lastColumn < 1) return [];
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(coverageText_);
+  return sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues().map((row) => headers.reduce((record, header, index) => { record[header] = row[index]; return record; }, {}));
+}
+
+function coveragePublic_(record) {
+  return {
+    id: coverageText_(record.ID_COBERTURA), date: coverageText_(record.FECHA), startTime: coverageText_(record.HORA_INICIO), endTime: coverageText_(record.HORA_FIN), actualStartTime: coverageText_(record.HORA_REAL_INICIO), actualEndTime: coverageText_(record.HORA_REAL_FIN), type: coverageText_(record.TIPO), place: coverageText_(record.LUGAR), primaryId: coverageText_(record.ID_RESPONSABLE), secondaryId: coverageText_(record.ID_ACOMPANANTE), professional: coverageText_(record.PROFESIONAL), status: coverageText_(record.ESTADO), notes: coverageText_(record.NOTAS), completedAt: coverageText_(record.FECHA_REALIZADO), createdAt: coverageText_(record.FECHA_CREACION), createdBy: coverageText_(record.CREADO_POR),
+  };
+}
+
+function coveragePayload_() {
+  const sheet = coverageSheet_();
+  return { founders: coverageFounders_().sort((a, b) => a.order - b.order), shifts: coverageRecords_(sheet).map(coveragePublic_) };
+}
+
+function coverageRecord_(input, previous, founders, user) {
+  const source = input || {}; const record = previous || {};
+  const read = (key, field) => source[key] === undefined ? coverageText_(record[field]) : coverageText_(source[key]);
+  record.ID_COBERTURA = coverageText_(record.ID_COBERTURA);
+  record.FECHA = read('date', 'FECHA');
+  record.HORA_INICIO = read('startTime', 'HORA_INICIO');
+  record.HORA_FIN = read('endTime', 'HORA_FIN');
+  record.HORA_REAL_INICIO = read('actualStartTime', 'HORA_REAL_INICIO');
+  record.HORA_REAL_FIN = read('actualEndTime', 'HORA_REAL_FIN');
+  record.TIPO = read('type', 'TIPO') === 'control' ? 'control' : 'guard';
+  record.LUGAR = read('place', 'LUGAR') || (record.TIPO === 'control' ? 'Control externo' : 'CREAR');
+  record.ID_RESPONSABLE = read('primaryId', 'ID_RESPONSABLE');
+  record.ID_ACOMPANANTE = read('secondaryId', 'ID_ACOMPANANTE');
+  record.PROFESIONAL = read('professional', 'PROFESIONAL');
+  record.ESTADO = ['Completed', 'Rescheduled', 'Cancelled'].indexOf(read('status', 'ESTADO')) >= 0 ? read('status', 'ESTADO') : 'Planned';
+  record.NOTAS = read('notes', 'NOTAS');
+  record.FECHA_REALIZADO = record.ESTADO === 'Completed' ? (read('completedAt', 'FECHA_REALIZADO') || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd')) : '';
+  record.FECHA_CREACION = coverageText_(record.FECHA_CREACION) || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  record.CREADO_POR = coverageText_(record.CREADO_POR) || coverageText_(user || 'Admin CREAR');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(record.FECHA)) throw new Error('La fecha de cobertura no es valida.');
+  if (!/^\d{2}:\d{2}$/.test(record.HORA_INICIO) || !/^\d{2}:\d{2}$/.test(record.HORA_FIN) || record.HORA_FIN <= record.HORA_INICIO) throw new Error('El horario de cobertura no es valido.');
+  if (!record.ID_RESPONSABLE || !founders.some((founder) => founder.id === record.ID_RESPONSABLE)) throw new Error('La responsable seleccionada no existe.');
+  if (record.ID_ACOMPANANTE && (!founders.some((founder) => founder.id === record.ID_ACOMPANANTE) || record.ID_ACOMPANANTE === record.ID_RESPONSABLE)) throw new Error('La acompanante seleccionada no es valida.');
+  if (record.TIPO === 'control' && !record.PROFESIONAL) throw new Error('Indica el terapeuta o equipo a controlar.');
+  return record;
+}
+
+function coverageSave_(body, updating) {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sheet = coverageSheet_(); const records = coverageRecords_(sheet); const founders = coverageFounders_(); const input = body.shift || {};
+    const id = coverageText_(input.id); const previous = updating ? records.find((record) => coverageText_(record.ID_COBERTURA) === id) : null;
+    if (updating && !previous) throw new Error('No se encontro la cobertura a editar.');
+    const record = coverageRecord_(input, previous ? Object.assign({}, previous) : {}, founders, body.user);
+    if (!updating) record.ID_COBERTURA = 'COB-' + new Date().getTime() + '-' + Math.floor(Math.random() * 10000);
+    const values = COVERAGE_HEADERS_.map((header) => record[header] === undefined ? '' : record[header]);
+    if (updating) {
+      const row = records.findIndex((item) => coverageText_(item.ID_COBERTURA) === id) + 2;
+      sheet.getRange(row, 1, 1, COVERAGE_HEADERS_.length).setValues([values]);
+    } else sheet.appendRow(values);
+    return coverageSuccess_(coveragePublic_(record), 'Cobertura guardada.');
+  } finally { lock.releaseLock(); }
+}
+
+function handleCoverageGet_(event) {
+  try { return coverageSuccess_(coveragePayload_()); }
+  catch (error) { Logger.log(error && error.stack ? error.stack : error); return coverageError_('No se pudo cargar Guardias y controles.'); }
+}
+
+function handleCoveragePost_(body) {
+  try {
+    const action = coverageText_(body.action);
+    if (action === 'createShift') return coverageSave_(body, false);
+    if (action === 'updateShift') return coverageSave_(body, true);
+    return coverageError_('La operacion solicitada no esta disponible.');
+  } catch (error) { Logger.log(error && error.stack ? error.stack : error); return coverageError_(error && error.message ? error.message : 'No se pudo guardar la cobertura.'); }
+}

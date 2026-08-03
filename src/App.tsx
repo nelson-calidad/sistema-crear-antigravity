@@ -18,6 +18,7 @@ const PatientsList = lazy(() => import('./components/PatientsList').then((module
 const Finance = lazy(() => import('./components/Finance').then((module) => ({ default: module.Finance })));
 const Settings = lazy(() => import('./components/Settings').then((module) => ({ default: module.Settings })));
 const Responsibilities = lazy(() => import('./components/Responsibilities').then((module) => ({ default: module.Responsibilities })));
+const CoveragePlanner = lazy(() => import('./components/CoveragePlanner').then((module) => ({ default: module.CoveragePlanner })));
 const ReservationModal = lazy(() => import('./components/ReservationModal').then((module) => ({ default: module.ReservationModal })));
 
 type ToastTone = 'success' | 'error' | 'info';
@@ -29,7 +30,7 @@ type ToastItem = {
   message: string;
 };
 
-const VALID_TABS = new Set(['dashboard', 'professionals', 'agenda', 'responsibilities', 'patients', 'finance', 'settings']);
+const VALID_TABS = new Set(['dashboard', 'professionals', 'agenda', 'responsibilities', 'coverage', 'patients', 'finance', 'settings']);
 const TAB_QUERY_KEY = 'tab';
 
 const getTabFromLocation = () => {
@@ -109,6 +110,7 @@ export default function App() {
       case 'agenda': return 'Agenda';
       case 'responsibilities': return 'Responsabilidades';
       case 'patients': return 'Pacientes';
+      case 'coverage': return 'Guardias y controles';
       case 'finance': return 'Finanzas';
       case 'settings': return 'Configuración';
       default: return activeTab;
@@ -190,6 +192,7 @@ export default function App() {
           }} 
         />
       );
+      case 'coverage': return <CoveragePlanner />;
       case 'finance': return <Finance />;
       case 'settings': return <Settings />;
       default: return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;

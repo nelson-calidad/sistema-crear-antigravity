@@ -203,15 +203,24 @@
 
   .responsibilities-commitment-print-sheet {
     display: block !important;
-    position: static;
+    position: static !important;
     width: 100%;
     color: #172033;
     font-family: Inter, Arial, sans-serif;
   }
 
-  .responsibilities-commitment-document { break-after: page; min-height: 260mm; }
-  .responsibilities-commitment-document:last-child { break-after: auto; }
+  .responsibilities-commitment-document {
+    box-sizing: border-box;
+    break-after: page;
+    page-break-after: always;
+    min-height: 260mm;
+  }
 
+  .responsibilities-commitment-document:last-child {
+    break-after: auto;
+    page-break-after: auto;
+
+  }
   .responsibilities-commitment-header {
     display: flex; align-items: flex-end; justify-content: space-between; gap: 18px;
     border-bottom: 2px solid #172033; padding-bottom: 12px;
