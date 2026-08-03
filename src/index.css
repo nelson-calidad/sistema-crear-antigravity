@@ -290,7 +290,13 @@
   .coverage-print-detail { margin-top: 5px !important; color: #475569; font-size: 8pt; line-height: 1.3; }
   .coverage-print-card span { display: inline-block; margin-top: 7px; color: #475569; font-size: 7.5pt; font-weight: 700; }
   .coverage-print-empty { margin: 0; padding: 5px 1px; color: #94a3b8; font-size: 8pt; font-style: italic; }
-  .coverage-print-weekend { margin-top: 10px; }
+  .coverage-print-month { display: grid; gap: 8px; }
+  .coverage-print-month-week { break-inside: avoid; }
+  .coverage-print-month-week > p { margin: 0 0 4px; color: #475569; font-size: 8pt; font-weight: 800; text-transform: uppercase; }
+  .coverage-print-month-week > div { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  .coverage-print-month-week .coverage-print-day { min-height: 32mm; }
+  .coverage-print-day.is-outside { opacity: .38; background: #f8fafc; }
+    .coverage-print-weekend { margin-top: 10px; }
   .coverage-print-weekend > p { margin: 0 0 5px; color: #475569; font-size: 8pt; font-weight: 800; text-transform: uppercase; }
   .coverage-print-weekend > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .coverage-print-weekend .coverage-print-day { min-height: 0; }
