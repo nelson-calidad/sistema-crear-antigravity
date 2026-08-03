@@ -48,8 +48,8 @@
     color: #0f172a !important;
   }
 
-  #root * {
-    visibility: hidden;
+  #root {
+    display: none !important;
   }
 
   .responsibilities-print-sheet,
