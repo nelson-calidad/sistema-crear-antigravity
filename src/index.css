@@ -246,6 +246,14 @@
   .responsibilities-commitment-table th:first-child,
   .responsibilities-commitment-table td:first-child { width: 48%; }
   .responsibilities-commitment-table .is-complete { color: #047857; font-weight: 800; }
+  .responsibilities-commitment-followup { margin-top: 16px; break-inside: avoid; }
+  .responsibilities-commitment-followup h2 { margin: 0 0 8px; font-size: 11pt; }
+  .responsibilities-commitment-followup table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+  .responsibilities-commitment-followup th,
+  .responsibilities-commitment-followup td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; vertical-align: top; }
+  .responsibilities-commitment-followup th { background: #f8fafc; color: #475569; font-size: 7.5pt; text-transform: uppercase; }
+  .responsibilities-commitment-followup td:nth-child(1) { width: 31%; }
+  .responsibilities-commitment-followup td:nth-child(2) { width: 17%; }
   .responsibilities-commitment-table .is-empty { color: #64748b; font-style: italic; }
   .responsibilities-commitment-footnote { margin: 14px 0 0; color: #64748b; font-size: 8.5pt; line-height: 1.45; }
 
