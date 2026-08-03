@@ -82,7 +82,7 @@ export const loadCoverageData = async (): Promise<CoveragePayload> => {
   const data = result.data || {};
   return {
     founders: Array.isArray(data.founders) ? data.founders.map(normalizeFounder).filter((founder) => founder.active).sort((a, b) => a.order - b.order) : [],
-    shifts: Array.isArray(data.shifts) ? data.shifts.map(normalizeShift) : [],
+    shifts: Array.isArray(data.shifts) ? data.shifts.map(normalizeShift).filter((shift) => shift.status !== 'Cancelled') : [],
   };
 };
 
