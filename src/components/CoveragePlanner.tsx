@@ -21,7 +21,7 @@ const dateLabel = (date: Date) => new Intl.DateTimeFormat('es-AR', { day: 'numer
 const weekLabel = (start: Date) => `${dateLabel(start)} al ${dateLabel(addDays(start, 6))}`;
 
 function ShiftForm({ founders, shift, onClose, onSave, onDelete, saving }: {
-  founders: FounderRecord[]; shift?: CoverageShift; onClose: () => void; onSave: (draft: Partial<CoverageShift>, repeats: number) => Promise<void>; onDelete: (shift: CoverageShift) => Promise<void>; saving: boolean;
+  founders: FounderRecord[]; shift?: CoverageShift; onClose: () => void; onSave: (draft: Partial<CoverageShift>, repeats: number, workweek?: boolean) => Promise<void>; onDelete: (shift: CoverageShift) => Promise<void>; saving: boolean;
 }) {
   const [date, setDate] = useState(shift?.date || dateKey(new Date()));
   const [type, setType] = useState<CoverageShift['type']>(shift?.type || 'guard');
@@ -34,6 +34,7 @@ function ShiftForm({ founders, shift, onClose, onSave, onDelete, saving }: {
   const [status, setStatus] = useState<CoverageShift['status']>(shift?.status || 'Planned');
   const [notes, setNotes] = useState(shift?.notes || '');
   const [repeats, setRepeats] = useState('1');
+  const [rangeMode, setRangeMode] = useState<'day' | 'workweek'>('day');
   const [error, setError] = useState('');
 
   const submit = async (event: FormEvent) => {
@@ -47,14 +48,14 @@ function ShiftForm({ founders, shift, onClose, onSave, onDelete, saving }: {
       primaryId, secondaryId: secondaryId || undefined, professional: professional.trim() || undefined, status,
       actualStartTime: status === 'Completed' ? (shift?.actualStartTime || startTime) : undefined, actualEndTime: status === 'Completed' ? (shift?.actualEndTime || endTime) : undefined, notes: notes.trim() || undefined,
       completedAt: status === 'Completed' ? (shift?.completedAt || dateKey(new Date())) : undefined,
-    }, shift?.id ? 1 : Math.max(1, Math.min(12, Number(repeats) || 1)));
+    }, shift?.id ? 1 : Math.max(1, Math.min(12, Number(repeats) || 1)), !shift?.id && rangeMode === 'workweek');
   };
 
   return <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/40 sm:items-center sm:p-5" role="dialog" aria-modal="true">
     <form onSubmit={submit} className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-3xl">
       <header className="flex items-start justify-between border-b border-slate-100 p-5 dark:border-slate-800"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-sky-600">Cobertura operativa</p><h2 className="mt-1 text-xl font-bold">{shift?.id ? 'Editar guardia o control' : 'Nueva guardia o control'}</h2></div><button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400" aria-label="Cerrar"><X className="h-5 w-5" /></button></header>
       <div className="grid gap-4 p-5 sm:grid-cols-2">
-        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Fecha<input required type="date" value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} />{!shift?.id && <><span className="mt-3 block">Repetir semanalmente</span><select value={repeats} onChange={(event) => setRepeats(event.target.value)} className={inputClass}><option value="1">No repetir (solo esta vez)</option><option value="2">Si, durante 2 semanas</option><option value="4">Si, durante 4 semanas</option><option value="8">Si, durante 8 semanas</option><option value="12">Si, durante 12 semanas</option></select><span className="mt-1 block font-medium text-slate-400">Crea la misma cobertura cada semana.</span></>}</label>
+        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Fecha<input required type="date" value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} />{!shift?.id && <><span className="mt-3 block">Alcance de la cobertura</span><select value={rangeMode} onChange={(event) => setRangeMode(event.target.value as 'day' | 'workweek')} className={inputClass}><option value="day">Solo esta fecha</option><option value="workweek">De lunes a viernes de esa semana</option></select><span className="mt-3 block">Proyectar en semanas</span><select value={repeats} onChange={(event) => setRepeats(event.target.value)} className={inputClass}><option value="1">Solo esta semana</option><option value="2">Esta y la proxima semana</option><option value="4">Durante 4 semanas</option><option value="8">Durante 8 semanas</option><option value="12">Durante 12 semanas</option></select><span className="mt-1 block font-medium text-slate-400">{rangeMode === 'workweek' ? 'Crea una cobertura por dia, de lunes a viernes.' : 'Crea la cobertura en la fecha elegida.'}</span></>}</label>
         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Tipo<select value={type} onChange={(event) => { const value = event.target.value as CoverageShift['type']; setType(value); if (!place || place === 'CREAR' || place === 'Control externo') setPlace(value === 'control' ? 'Control externo' : 'CREAR'); }} className={inputClass}><option value="guard">Guardia en CREAR</option><option value="control">Control externo</option></select></label>
         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Lugar<input value={place} onChange={(event) => setPlace(event.target.value)} className={inputClass} placeholder="CREAR o domicilio/consultorio" /></label>
         {type === 'control' ? <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Terapeuta o equipo<input required value={professional} onChange={(event) => setProfessional(event.target.value)} className={inputClass} placeholder="Ej. Lic. Garcia" /></label> : <div />}
@@ -108,8 +109,10 @@ export const CoveragePlanner = () => {
     }, { founder, plannedHours: 0, actualHours: 0, plannedControls: 0, actualControls: 0 }));
   }, [founders, shifts]);
 
-  const save = async (draft: Partial<CoverageShift>, repeats: number) => {
-    const dates = draft.id ? [draft.date || ''] : Array.from({ length: repeats }, (_, index) => dateKey(addDays(parseDate(draft.date || dateKey(new Date())), index * 7)));
+  const save = async (draft: Partial<CoverageShift>, repeats: number, workweek = false) => {
+    const selectedDate = parseDate(draft.date || dateKey(new Date()));
+    const firstDate = workweek ? monday(selectedDate) : selectedDate;
+    const dates = draft.id ? [draft.date || ''] : Array.from({ length: repeats }, (_, weekIndex) => Array.from({ length: workweek ? 5 : 1 }, (_, dayIndex) => dateKey(addDays(firstDate, weekIndex * 7 + dayIndex)))).flat();
     const previous = shifts;
     const temporary = dates.map((date, index) => ({ ...draft, id: draft.id || `pending-${Date.now()}-${index}`, date } as CoverageShift));
     const temporaryIds = new Set(temporary.map((shift) => shift.id));
@@ -122,7 +125,7 @@ export const CoveragePlanner = () => {
       const saved = await Promise.all(dates.map((date) => saveCoverageShift({ ...draft, id: draft.id, date }, CURRENT_USER)));
       const savedIds = new Set(saved.map((shift) => shift.id));
       setShifts((current) => [...current.filter((shift) => !temporaryIds.has(shift.id) && !savedIds.has(shift.id)), ...saved]);
-      setNotice(isCompletion ? 'Cobertura marcada como realizada.' : saved.length > 1 ? `${saved.length} semanas programadas.` : 'Cobertura guardada.');
+      setNotice(isCompletion ? 'Cobertura marcada como realizada.' : saved.length > 1 ? `${saved.length} dias programados.` : 'Cobertura guardada.');
     } catch (cause) {
       setShifts(previous);
       setNotice(cause instanceof Error ? cause.message : 'No se pudo guardar la cobertura. Se revirtio el cambio.');
