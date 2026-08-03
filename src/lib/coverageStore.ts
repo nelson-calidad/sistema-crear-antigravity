@@ -7,7 +7,20 @@ export type CoveragePayload = { founders: FounderRecord[]; shifts: CoverageShift
 
 const text = (value: unknown) => value === null || value === undefined ? '' : String(value);
 const number = (value: unknown, fallback = 999) => Number.isFinite(Number(value)) ? Number(value) : fallback;
-const yes = (value: unknown) => value === true || ['si', 's?', 'true'].includes(text(value).toLowerCase());
+const yes = (value: unknown) => { const normalized = text(value).toLowerCase(); return value === true || normalized === 'si' || normalized === 'true' || normalized.charAt(0) === 's'; };
+const dateValue = (value: unknown) => {
+  const raw = text(value);
+  const direct = raw.match(/\d{4}-\d{2}-\d{2}/);
+  if (direct) return direct[0];
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return raw;
+  return [parsed.getFullYear(), String(parsed.getMonth() + 1).padStart(2, '0'), String(parsed.getDate()).padStart(2, '0')].join('-');
+};
+const timeValue = (value: unknown) => {
+  const raw = text(value);
+  const match = raw.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?/);
+  return match ? `${match[1].padStart(2, '0')}:${match[2]}` : raw;
+};
 
 const normalizeFounder = (raw: Record<string, unknown>): FounderRecord => ({
   id: text(raw.id ?? raw.ID_FUNDADORA),
@@ -25,11 +38,11 @@ const normalizeShift = (raw: Record<string, unknown>): CoverageShift => {
   const status = text(raw.status ?? raw.ESTADO);
   return {
     id: text(raw.id ?? raw.ID_COBERTURA),
-    date: text(raw.date ?? raw.FECHA),
-    startTime: text(raw.startTime ?? raw.HORA_INICIO),
-    endTime: text(raw.endTime ?? raw.HORA_FIN),
-    actualStartTime: text(raw.actualStartTime ?? raw.HORA_REAL_INICIO) || undefined,
-    actualEndTime: text(raw.actualEndTime ?? raw.HORA_REAL_FIN) || undefined,
+    date: dateValue(raw.date ?? raw.FECHA),
+    startTime: timeValue(raw.startTime ?? raw.HORA_INICIO),
+    endTime: timeValue(raw.endTime ?? raw.HORA_FIN),
+    actualStartTime: timeValue(raw.actualStartTime ?? raw.HORA_REAL_INICIO) || undefined,
+    actualEndTime: timeValue(raw.actualEndTime ?? raw.HORA_REAL_FIN) || undefined,
     type,
     place: text(raw.place ?? raw.LUGAR) || (type === 'control' ? 'Control externo' : 'CREAR'),
     primaryId: text(raw.primaryId ?? raw.ID_RESPONSABLE),
@@ -37,7 +50,7 @@ const normalizeShift = (raw: Record<string, unknown>): CoverageShift => {
     professional: text(raw.professional ?? raw.PROFESIONAL) || undefined,
     status: (['Completed', 'Rescheduled', 'Cancelled'].includes(status) ? status : 'Planned') as CoverageShift['status'],
     notes: text(raw.notes ?? raw.NOTAS) || undefined,
-    completedAt: text(raw.completedAt ?? raw.FECHA_REALIZADO) || undefined,
+    completedAt: dateValue(raw.completedAt ?? raw.FECHA_REALIZADO) || undefined,
     createdAt: text(raw.createdAt ?? raw.FECHA_CREACION) || undefined,
     createdBy: text(raw.createdBy ?? raw.CREADO_POR) || undefined,
   };

@@ -1000,6 +1000,8 @@ const COVERAGE_SHEET_NAME_ = 'COBERTURA_OPERATIVA';
 const COVERAGE_HEADERS_ = ['ID_COBERTURA', 'FECHA', 'HORA_INICIO', 'HORA_FIN', 'HORA_REAL_INICIO', 'HORA_REAL_FIN', 'TIPO', 'LUGAR', 'ID_RESPONSABLE', 'ID_ACOMPANANTE', 'PROFESIONAL', 'ESTADO', 'NOTAS', 'FECHA_REALIZADO', 'FECHA_CREACION', 'CREADO_POR'];
 
 function coverageText_(value) { return value === null || value === undefined ? '' : String(value); }
+function coverageDate_(value) { return Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime()) ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd') : coverageText_(value); }
+function coverageTime_(value) { return Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime()) ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm') : coverageText_(value); }
 function coverageYes_(value) { const normalized = coverageText_(value).toLowerCase(); return value === true || normalized === 'si' || normalized === 'true' || normalized.charAt(0) === 's'; }
 function coverageSuccess_(data, message) { return { ok: true, data: data, message: message || '' }; }
 function coverageError_(message) { return { ok: false, message: message || 'No se pudo guardar la cobertura.' }; }
@@ -1040,7 +1042,22 @@ function coverageRecordsFromSheet_(sheet) {
 
 function coveragePublic_(record) {
   return {
-    id: coverageText_(record.ID_COBERTURA), date: coverageText_(record.FECHA), startTime: coverageText_(record.HORA_INICIO), endTime: coverageText_(record.HORA_FIN), actualStartTime: coverageText_(record.HORA_REAL_INICIO), actualEndTime: coverageText_(record.HORA_REAL_FIN), type: coverageText_(record.TIPO), place: coverageText_(record.LUGAR), primaryId: coverageText_(record.ID_RESPONSABLE), secondaryId: coverageText_(record.ID_ACOMPANANTE), professional: coverageText_(record.PROFESIONAL), status: coverageText_(record.ESTADO), notes: coverageText_(record.NOTAS), completedAt: coverageText_(record.FECHA_REALIZADO), createdAt: coverageText_(record.FECHA_CREACION), createdBy: coverageText_(record.CREADO_POR),
+    id: coverageText_(record.ID_COBERTURA),
+    date: coverageDate_(record.FECHA),
+    startTime: coverageTime_(record.HORA_INICIO),
+    endTime: coverageTime_(record.HORA_FIN),
+    actualStartTime: coverageTime_(record.HORA_REAL_INICIO),
+    actualEndTime: coverageTime_(record.HORA_REAL_FIN),
+    type: coverageText_(record.TIPO),
+    place: coverageText_(record.LUGAR),
+    primaryId: coverageText_(record.ID_RESPONSABLE),
+    secondaryId: coverageText_(record.ID_ACOMPANANTE),
+    professional: coverageText_(record.PROFESIONAL),
+    status: coverageText_(record.ESTADO),
+    notes: coverageText_(record.NOTAS),
+    completedAt: coverageDate_(record.FECHA_REALIZADO),
+    createdAt: coverageText_(record.FECHA_CREACION),
+    createdBy: coverageText_(record.CREADO_POR),
   };
 }
 
