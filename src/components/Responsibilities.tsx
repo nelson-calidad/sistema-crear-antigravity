@@ -127,24 +127,28 @@ function ActivityForm({ activity, periodId, founders, onClose, onSave, saving }:
   );
 }
 
-function CompletionNoteForm({ activity, onClose, onSave, saving }: { activity: ActivityRecord; onClose: () => void; onSave: (note: string, completed: boolean) => Promise<void>; saving: boolean }) {
-  const [completed, setCompleted] = useState(activity.status !== 'Completada');
+type CompletionResult = 'completed' | 'notCompleted' | 'pending';
+
+function CompletionNoteForm({ activity, onClose, onSave, saving }: { activity: ActivityRecord; onClose: () => void; onSave: (note: string, result: CompletionResult) => Promise<void>; saving: boolean }) {
+  const [result, setResult] = useState<CompletionResult>(activity.status === 'Completada' ? 'pending' : activity.status === 'No cumplida' ? 'notCompleted' : 'completed');
   const [note, setNote] = useState(activity.evidence || activity.notes || '');
   const [error, setError] = useState('');
+  const isCompleted = result === 'completed';
+  const isPending = result === 'pending';
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!note.trim()) return setError(completed ? 'Escribi que se realizo o una acotacion.' : 'Escribi el motivo por el que no se realizo.');
-    await onSave(note.trim(), completed);
+    if (!isPending && !note.trim()) return setError(isCompleted ? 'Escribi que se realizo o una acotacion.' : 'Escribi el motivo por el que no se realizo.');
+    await onSave(note.trim(), result);
   };
   return <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4" role="dialog" aria-modal="true">
     <form onSubmit={submit} className="w-full max-w-lg rounded-3xl bg-white shadow-2xl dark:bg-slate-900">
       <header className="flex items-start justify-between border-b border-slate-100 p-5 dark:border-slate-800"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-sky-600">Seguimiento de actividad</p><h2 className="mt-1 text-lg font-bold">Registrar resultado</h2><p className="mt-1 text-sm text-slate-500">{activity.title}</p></div><button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400" aria-label="Cerrar"><X className="h-5 w-5" /></button></header>
       <div className="space-y-4 p-5">
-        <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Resultado<select value={completed ? 'completed' : 'notCompleted'} onChange={(event) => setCompleted(event.target.value === 'completed')} className={inputClass}><option value="completed">Realizada</option><option value="notCompleted">No realizada</option></select></label>
-        <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">{completed ? 'Que se hizo / observacion' : 'Motivo o impedimento'}<textarea autoFocus value={note} onChange={(event) => setNote(event.target.value)} className={cn(inputClass, 'min-h-28 resize-y')} placeholder={completed ? 'Ej. Se presento la documentacion en la municipalidad.' : 'Ej. No se pudo realizar porque faltaba documentacion.'} /></label>
+        <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Resultado<select value={result} onChange={(event) => setResult(event.target.value as CompletionResult)} className={inputClass}><option value="completed">Realizada</option><option value="notCompleted">No realizada</option><option value="pending">Pendiente</option></select></label>
+        <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">{isPending ? 'Acotacion (opcional)' : isCompleted ? 'Que se hizo / observacion' : 'Motivo o impedimento'}<textarea autoFocus value={note} onChange={(event) => setNote(event.target.value)} className={cn(inputClass, 'min-h-28 resize-y')} placeholder={isPending ? 'Ej. Se vuelve a pendiente porque se marco por error.' : isCompleted ? 'Ej. Se presento la documentacion en la municipalidad.' : 'Ej. No se pudo realizar porque faltaba documentacion.'} /></label>
         {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">{error}</p>}
       </div>
-      <footer className="flex justify-end gap-3 border-t border-slate-100 p-5 dark:border-slate-800"><button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500">Cancelar</button><button disabled={saving} className={cn('inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60', completed ? 'bg-slate-900 dark:bg-slate-100 dark:text-slate-900' : 'bg-rose-600')}>{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{completed ? 'Guardar como realizada' : 'Guardar como no realizada'}</button></footer>
+      <footer className="flex justify-end gap-3 border-t border-slate-100 p-5 dark:border-slate-800"><button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500">Cancelar</button><button disabled={saving} className={cn('inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60', isCompleted ? 'bg-slate-900 dark:bg-slate-100 dark:text-slate-900' : isPending ? 'bg-amber-500' : 'bg-rose-600')}>{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{isCompleted ? 'Guardar como realizada' : isPending ? 'Volver a pendiente' : 'Guardar como no realizada'}</button></footer>
     </form>
   </div>;
 }
@@ -318,12 +322,13 @@ export const Responsibilities = () => {
     } finally { setSaving(false); }
   };
   const toggleActivityCompletion = (activity: ActivityRecord) => setCompletionRequest(activity);
-  const confirmActivityCompletion = async (note: string, completed: boolean) => {
+  const confirmActivityCompletion = async (note: string, result: CompletionResult) => {
     const activity = completionRequest;
     if (!activity) return;
     setCompletionRequest(null);
-    if (completed) await save({ ...activity, status: 'Completada', progress: 100, finishedAt: dateKey(new Date()), evidence: note, notes: note }, `Actividad realizada: ${note}`);
-    else await save({ ...activity, status: 'No cumplida', progress: 0, finishedAt: undefined, evidence: undefined, notes: note }, `Actividad no realizada: ${note}`);
+    if (result === 'completed') await save({ ...activity, status: 'Completada', progress: 100, finishedAt: dateKey(new Date()), evidence: note, notes: note }, `Actividad realizada: ${note}`);
+    else if (result === 'notCompleted') await save({ ...activity, status: 'No cumplida', progress: 0, finishedAt: undefined, evidence: undefined, notes: note }, `Actividad no realizada: ${note}`);
+    else await save({ ...activity, status: 'Pendiente', progress: 0, finishedAt: undefined, evidence: undefined, notes: note || undefined }, note ? `Actividad devuelta a pendiente: ${note}` : 'Actividad devuelta a pendiente');
   };
   const drop = (responsibleId?: string) => {
     if (!draggedId) return;
