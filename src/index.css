@@ -319,3 +319,43 @@
   .coverage-print-weekend .coverage-print-day { min-height: 0; }
     .coverage-print-footnote { margin: 12px 0 0; color: #64748b; font-size: 8.5pt; }
 }
+.coverage-followup-print-sheet { display: none; }
+
+@media print {
+  .coverage-followup-print-sheet,
+  .coverage-followup-print-sheet * { visibility: visible !important; }
+  .coverage-followup-print-sheet {
+    display: block !important;
+    position: static !important;
+    width: 100%;
+    color: #172033;
+    font-family: Inter, Arial, sans-serif;
+  }
+  .coverage-followup-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; border-bottom: 2px solid #172033; padding-bottom: 12px; }
+  .coverage-followup-header p,
+  .coverage-followup-header span { margin: 0; color: #64748b; font-size: 9pt; font-weight: 700; }
+  .coverage-followup-header h1 { margin: 4px 0; font-size: 20pt; line-height: 1.1; }
+  .coverage-followup-header > div:last-child { display: grid; gap: 4px; text-align: right; }
+  .coverage-followup-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 16px 0; border: 1px solid #cbd5e1; border-radius: 9px; overflow: hidden; background: #cbd5e1; }
+  .coverage-followup-summary div { display: grid; gap: 4px; padding: 10px; background: #fff; }
+  .coverage-followup-summary span { color: #64748b; font-size: 8pt; font-weight: 700; text-transform: uppercase; }
+  .coverage-followup-summary strong { font-size: 13pt; }
+  .coverage-followup-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  .coverage-followup-table th,
+  .coverage-followup-table td { border: 1px solid #cbd5e1; padding: 7px; text-align: left; vertical-align: top; }
+  .coverage-followup-table th { background: #f1f5f9; color: #475569; font-size: 7.5pt; text-transform: uppercase; }
+  .coverage-followup-table th:nth-child(1), .coverage-followup-table td:nth-child(1) { width: 20%; }
+  .coverage-followup-table th:nth-child(2), .coverage-followup-table td:nth-child(2) { width: 29%; }
+  .coverage-followup-table th:nth-child(3), .coverage-followup-table td:nth-child(3) { width: 16%; }
+  .coverage-followup-table small { display: block; margin-top: 3px; color: #64748b; font-size: 7.5pt; font-weight: 600; }
+  .coverage-followup-table thead { display: table-header-group; }
+  .coverage-followup-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .coverage-followup-table .is-realized,
+  .coverage-followup-summary .is-realized { color: #047857; font-weight: 800; }
+  .coverage-followup-table .is-not-realized,
+  .coverage-followup-summary .is-not-realized { color: #be123c; font-weight: 800; }
+  .coverage-followup-table .is-pending,
+  .coverage-followup-summary .is-pending { color: #a16207; font-weight: 800; }
+  .coverage-followup-table .is-empty { color: #64748b; font-style: italic; }
+  .coverage-followup-footnote { margin: 14px 0 0; color: #64748b; font-size: 8.5pt; line-height: 1.45; }
+}

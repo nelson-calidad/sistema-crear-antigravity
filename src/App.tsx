@@ -110,7 +110,7 @@ export default function App() {
       case 'agenda': return 'Agenda';
       case 'responsibilities': return 'Responsabilidades';
       case 'patients': return 'Pacientes';
-      case 'coverage': return 'Guardias y controles';
+      case 'coverage': return 'Guardias CREAR';
       case 'finance': return 'Finanzas';
       case 'settings': return 'Configuración';
       default: return activeTab;

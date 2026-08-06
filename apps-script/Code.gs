@@ -997,6 +997,7 @@ function obtenerResumenActividades(idPeriodo) { const activities = obtenerActivi
 
 // ===== Modulo Guardias y controles =====
 const COVERAGE_SHEET_NAME_ = 'COBERTURA_OPERATIVA';
+// TIPO, LUGAR y PROFESIONAL se conservan en la planilla para no desalinear datos historicos.
 const COVERAGE_HEADERS_ = ['ID_COBERTURA', 'FECHA', 'HORA_INICIO', 'HORA_FIN', 'HORA_REAL_INICIO', 'HORA_REAL_FIN', 'TIPO', 'LUGAR', 'ID_RESPONSABLE', 'ID_ACOMPANANTE', 'PROFESIONAL', 'ESTADO', 'NOTAS', 'FECHA_REALIZADO', 'FECHA_CREACION', 'CREADO_POR'];
 
 function coverageText_(value) { return value === null || value === undefined ? '' : String(value); }
@@ -1048,11 +1049,10 @@ function coveragePublic_(record) {
     endTime: coverageTime_(record.HORA_FIN),
     actualStartTime: coverageTime_(record.HORA_REAL_INICIO),
     actualEndTime: coverageTime_(record.HORA_REAL_FIN),
-    type: coverageText_(record.TIPO),
+    type: 'guard',
     place: coverageText_(record.LUGAR),
     primaryId: coverageText_(record.ID_RESPONSABLE),
     secondaryId: coverageText_(record.ID_ACOMPANANTE),
-    professional: coverageText_(record.PROFESIONAL),
     status: coverageText_(record.ESTADO),
     notes: coverageText_(record.NOTAS),
     completedAt: coverageDate_(record.FECHA_REALIZADO),
@@ -1075,11 +1075,11 @@ function coverageRecord_(input, previous, founders, user) {
   record.HORA_FIN = read('endTime', 'HORA_FIN');
   record.HORA_REAL_INICIO = read('actualStartTime', 'HORA_REAL_INICIO');
   record.HORA_REAL_FIN = read('actualEndTime', 'HORA_REAL_FIN');
-  record.TIPO = read('type', 'TIPO') === 'control' ? 'control' : 'guard';
-  record.LUGAR = read('place', 'LUGAR') || (record.TIPO === 'control' ? 'Control externo' : 'CREAR');
+  record.TIPO = 'guard';
+  record.LUGAR = read('place', 'LUGAR') || 'CREAR';
   record.ID_RESPONSABLE = read('primaryId', 'ID_RESPONSABLE');
   record.ID_ACOMPANANTE = read('secondaryId', 'ID_ACOMPANANTE');
-  record.PROFESIONAL = read('professional', 'PROFESIONAL');
+  record.PROFESIONAL = '';
   record.ESTADO = ['Completed', 'Rescheduled', 'Cancelled'].indexOf(read('status', 'ESTADO')) >= 0 ? read('status', 'ESTADO') : 'Planned';
   record.NOTAS = read('notes', 'NOTAS');
   record.FECHA_REALIZADO = record.ESTADO === 'Completed' ? (read('completedAt', 'FECHA_REALIZADO') || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd')) : '';
@@ -1089,7 +1089,6 @@ function coverageRecord_(input, previous, founders, user) {
   if (!/^\d{2}:\d{2}$/.test(record.HORA_INICIO) || !/^\d{2}:\d{2}$/.test(record.HORA_FIN) || record.HORA_FIN <= record.HORA_INICIO) throw new Error('El horario de cobertura no es valido.');
   if (!record.ID_RESPONSABLE || !founders.some((founder) => founder.id === record.ID_RESPONSABLE)) throw new Error('La responsable seleccionada no existe.');
   if (record.ID_ACOMPANANTE && (!founders.some((founder) => founder.id === record.ID_ACOMPANANTE) || record.ID_ACOMPANANTE === record.ID_RESPONSABLE)) throw new Error('La acompanante seleccionada no es valida.');
-  if (record.TIPO === 'control' && !record.PROFESIONAL) throw new Error('Indica el terapeuta o equipo a controlar.');
   return record;
 }
 
@@ -1112,7 +1111,7 @@ function coverageSave_(body, updating) {
 
 function handleCoverageGet_(event) {
   try { return coverageSuccess_(coveragePayload_()); }
-  catch (error) { Logger.log(error && error.stack ? error.stack : error); return coverageError_('No se pudo cargar Guardias y controles.'); }
+  catch (error) { Logger.log(error && error.stack ? error.stack : error); return coverageError_('No se pudieron cargar las guardias CREAR.'); }
 }
 
 function handleCoveragePost_(body) {

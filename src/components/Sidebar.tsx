@@ -87,7 +87,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
     { id: 'professionals', label: 'Gestión Humana', icon: Users },
     { id: 'agenda', label: 'Operaciones', icon: Calendar },
     { id: 'responsibilities', label: 'Responsabilidades', icon: ClipboardList },
-    { id: 'coverage', label: 'Guardias y controles', icon: CalendarDays },
+    { id: 'coverage', label: 'Guardias CREAR', icon: CalendarDays },
     { id: 'patients', label: 'Pacientes', icon: MessageCircle },
     { id: 'finance', label: 'Finanzas', icon: Wallet },
     { id: 'settings', label: 'Configuración', icon: Settings },

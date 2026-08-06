@@ -34,8 +34,8 @@ const normalizeFounder = (raw: Record<string, unknown>): FounderRecord => ({
 });
 
 const normalizeShift = (raw: Record<string, unknown>): CoverageShift => {
-  const type = text(raw.type ?? raw.TIPO) === 'control' ? 'control' : 'guard';
   const status = text(raw.status ?? raw.ESTADO);
+  const activity = text(raw.place ?? raw.LUGAR);
   return {
     id: text(raw.id ?? raw.ID_COBERTURA),
     date: dateValue(raw.date ?? raw.FECHA),
@@ -43,11 +43,10 @@ const normalizeShift = (raw: Record<string, unknown>): CoverageShift => {
     endTime: timeValue(raw.endTime ?? raw.HORA_FIN),
     actualStartTime: timeValue(raw.actualStartTime ?? raw.HORA_REAL_INICIO) || undefined,
     actualEndTime: timeValue(raw.actualEndTime ?? raw.HORA_REAL_FIN) || undefined,
-    type,
-    place: text(raw.place ?? raw.LUGAR) || (type === 'control' ? 'Control externo' : 'CREAR'),
+    type: 'guard',
+    place: activity === 'Control externo' ? '' : activity || 'CREAR',
     primaryId: text(raw.primaryId ?? raw.ID_RESPONSABLE),
     secondaryId: text(raw.secondaryId ?? raw.ID_ACOMPANANTE) || undefined,
-    professional: text(raw.professional ?? raw.PROFESIONAL) || undefined,
     status: (['Completed', 'Rescheduled', 'Cancelled'].includes(status) ? status : 'Planned') as CoverageShift['status'],
     notes: text(raw.notes ?? raw.NOTAS) || undefined,
     completedAt: dateValue(raw.completedAt ?? raw.FECHA_REALIZADO) || undefined,
@@ -78,11 +77,11 @@ const request = async <T>(action: string, body: Record<string, unknown>) => {
 export const loadCoverageData = async (): Promise<CoveragePayload> => {
   const response = await fetch(endpoint(), { headers: { Accept: 'application/json' }, cache: 'no-store' });
   const result = await response.json();
-  if (!response.ok || !result?.ok) throw new Error(result?.message || 'No se pudo cargar Guardias y controles.');
+  if (!response.ok || !result?.ok) throw new Error(result?.message || 'No se pudieron cargar las guardias CREAR.');
   const data = result.data || {};
   return {
     founders: Array.isArray(data.founders) ? data.founders.map(normalizeFounder).filter((founder) => founder.active).sort((a, b) => a.order - b.order) : [],
-    shifts: Array.isArray(data.shifts) ? data.shifts.map(normalizeShift).filter((shift) => shift.status !== 'Cancelled') : [],
+    shifts: Array.isArray(data.shifts) ? data.shifts.map(normalizeShift) : [],
   };
 };
 

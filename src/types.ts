@@ -173,7 +173,7 @@ export interface ActivityHistoryRecord {
   reason?: string;
 }
 
-export type CoverageType = 'guard' | 'control';
+export type CoverageType = 'guard';
 export type CoverageStatus = 'Planned' | 'Completed' | 'Rescheduled' | 'Cancelled';
 
 export interface CoverageShift {
@@ -187,7 +187,6 @@ export interface CoverageShift {
   place: string;
   primaryId: string;
   secondaryId?: string;
-  professional?: string;
   status: CoverageStatus;
   notes?: string;
   completedAt?: string;
