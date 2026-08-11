@@ -998,7 +998,9 @@ function obtenerResumenActividades(idPeriodo) { const activities = obtenerActivi
 // ===== Modulo Guardias y controles =====
 const COVERAGE_SHEET_NAME_ = 'COBERTURA_OPERATIVA';
 // TIPO, LUGAR y PROFESIONAL se conservan en la planilla para no desalinear datos historicos.
-const COVERAGE_HEADERS_ = ['ID_COBERTURA', 'FECHA', 'HORA_INICIO', 'HORA_FIN', 'HORA_REAL_INICIO', 'HORA_REAL_FIN', 'TIPO', 'LUGAR', 'ID_RESPONSABLE', 'ID_ACOMPANANTE', 'PROFESIONAL', 'ESTADO', 'NOTAS', 'FECHA_REALIZADO', 'FECHA_CREACION', 'CREADO_POR'];
+const COVERAGE_HEADERS_ = ['ID_COBERTURA', 'FECHA', 'HORA_INICIO', 'HORA_FIN', 'HORA_REAL_INICIO', 'HORA_REAL_FIN', 'TIPO', 'LUGAR', 'ID_RESPONSABLE', 'ID_ACOMPANANTE', 'PROFESIONAL', 'ESTADO', 'NOTAS', 'FECHA_REALIZADO', 'FECHA_CREACION', 'CREADO_POR', 'NOTA_SEMANAL_ADJUNTA'];
+const WEEKLY_COVERAGE_NOTES_SHEET_NAME_ = 'NOTAS_SEMANALES_GUARDIAS';
+const WEEKLY_COVERAGE_NOTES_HEADERS_ = ['SEMANA', 'TAREAS_JSON', 'ACTUALIZADO', 'ACTUALIZADO_POR'];
 
 function coverageText_(value) { return value === null || value === undefined ? '' : String(value); }
 function coverageDate_(value) { return Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime()) ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd') : coverageText_(value); }
@@ -1012,10 +1014,29 @@ function coverageSheet_() {
   let sheet = spreadsheet.getSheetByName(COVERAGE_SHEET_NAME_);
   if (!sheet) sheet = spreadsheet.insertSheet(COVERAGE_SHEET_NAME_);
   if (sheet.getLastRow() === 0) sheet.getRange(1, 1, 1, COVERAGE_HEADERS_.length).setValues([COVERAGE_HEADERS_]);
-  const currentHeaders = sheet.getRange(1, 1, 1, COVERAGE_HEADERS_.length).getValues()[0];
-  if (coverageText_(currentHeaders[0]) !== 'ID_COBERTURA') sheet.getRange(1, 1, 1, COVERAGE_HEADERS_.length).setValues([COVERAGE_HEADERS_]);
+  const currentHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), COVERAGE_HEADERS_.length)).getValues()[0].map(coverageText_);
+  COVERAGE_HEADERS_.forEach((header, index) => { if (currentHeaders[index] !== header) sheet.getRange(1, index + 1).setValue(header); });
   sheet.setFrozenRows(1);
   return sheet;
+}
+
+function weeklyCoverageNotesSheet_() {
+  const spreadsheet = getActivitiesSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(WEEKLY_COVERAGE_NOTES_SHEET_NAME_);
+  if (!sheet) sheet = spreadsheet.insertSheet(WEEKLY_COVERAGE_NOTES_SHEET_NAME_);
+  const headers = sheet.getLastRow() ? sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), WEEKLY_COVERAGE_NOTES_HEADERS_.length)).getValues()[0].map(coverageText_) : [];
+  WEEKLY_COVERAGE_NOTES_HEADERS_.forEach((header, index) => { if (headers[index] !== header) sheet.getRange(1, index + 1).setValue(header); });
+  sheet.setFrozenRows(1);
+  return sheet;
+}
+
+function weeklyCoverageNotes_(sheet) {
+  if (sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, WEEKLY_COVERAGE_NOTES_HEADERS_.length).getValues().map((row) => {
+    let tasks = [];
+    try { tasks = JSON.parse(coverageText_(row[1]) || '[]'); } catch (error) { tasks = []; }
+    return { weekStart: coverageDate_(row[0]), tasks: Array.isArray(tasks) ? tasks : [], updatedAt: coverageText_(row[2]), updatedBy: coverageText_(row[3]) };
+  }).filter((note) => /^\d{4}-\d{2}-\d{2}$/.test(note.weekStart));
 }
 
 function coverageRecords_(sheet) {
@@ -1055,6 +1076,7 @@ function coveragePublic_(record) {
     secondaryId: coverageText_(record.ID_ACOMPANANTE),
     status: coverageText_(record.ESTADO),
     notes: coverageText_(record.NOTAS),
+    hasWeeklyNote: coverageYes_(record.NOTA_SEMANAL_ADJUNTA),
     completedAt: coverageDate_(record.FECHA_REALIZADO),
     createdAt: coverageText_(record.FECHA_CREACION),
     createdBy: coverageText_(record.CREADO_POR),
@@ -1063,7 +1085,7 @@ function coveragePublic_(record) {
 
 function coveragePayload_() {
   const sheet = coverageSheet_();
-  return { founders: coverageFounders_().sort((a, b) => a.order - b.order), shifts: coverageRecords_(sheet).map(coveragePublic_) };
+  return { founders: coverageFounders_().sort((a, b) => a.order - b.order), shifts: coverageRecords_(sheet).map(coveragePublic_), weeklyNotes: weeklyCoverageNotes_(weeklyCoverageNotesSheet_()) };
 }
 
 function coverageRecord_(input, previous, founders, user) {
@@ -1082,6 +1104,7 @@ function coverageRecord_(input, previous, founders, user) {
   record.PROFESIONAL = '';
   record.ESTADO = ['Completed', 'Rescheduled', 'Cancelled'].indexOf(read('status', 'ESTADO')) >= 0 ? read('status', 'ESTADO') : 'Planned';
   record.NOTAS = read('notes', 'NOTAS');
+  record.NOTA_SEMANAL_ADJUNTA = coverageYes_(source.hasWeeklyNote === undefined ? record.NOTA_SEMANAL_ADJUNTA : source.hasWeeklyNote) ? 'SI' : '';
   record.FECHA_REALIZADO = record.ESTADO === 'Completed' ? (read('completedAt', 'FECHA_REALIZADO') || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd')) : '';
   record.FECHA_CREACION = coverageText_(record.FECHA_CREACION) || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   record.CREADO_POR = coverageText_(record.CREADO_POR) || coverageText_(user || 'Admin CREAR');
@@ -1090,6 +1113,17 @@ function coverageRecord_(input, previous, founders, user) {
   if (!record.ID_RESPONSABLE || !founders.some((founder) => founder.id === record.ID_RESPONSABLE)) throw new Error('La responsable seleccionada no existe.');
   if (record.ID_ACOMPANANTE && (!founders.some((founder) => founder.id === record.ID_ACOMPANANTE) || record.ID_ACOMPANANTE === record.ID_RESPONSABLE)) throw new Error('La acompanante seleccionada no es valida.');
   return record;
+}
+
+function coverageSaveWeeklyNote_(body) {
+  const input = body.note || {}; const weekStart = coverageText_(input.weekStart);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) throw new Error('La semana de la nota no es valida.');
+  const tasks = Array.isArray(input.tasks) ? input.tasks.map((task) => ({ id: coverageText_(task.id), text: coverageText_(task.text).trim(), completed: coverageYes_(task.completed) })).filter((task) => task.id && task.text) : [];
+  const updatedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'); const updatedBy = coverageText_(body.user || 'Admin CREAR');
+  const sheet = weeklyCoverageNotesSheet_(); const records = weeklyCoverageNotes_(sheet); const row = records.findIndex((note) => note.weekStart === weekStart) + 2;
+  const values = [weekStart, JSON.stringify(tasks), updatedAt, updatedBy];
+  if (row > 1) sheet.getRange(row, 1, 1, WEEKLY_COVERAGE_NOTES_HEADERS_.length).setValues([values]); else sheet.appendRow(values);
+  return coverageSuccess_({ weekStart: weekStart, tasks: tasks, updatedAt: updatedAt, updatedBy: updatedBy }, 'Nota semanal guardada.');
 }
 
 function coverageSave_(body, updating) {
@@ -1119,6 +1153,7 @@ function handleCoveragePost_(body) {
     const action = coverageText_(body.action);
     if (action === 'createShift') return coverageSave_(body, false);
     if (action === 'updateShift') return coverageSave_(body, true);
+    if (action === 'saveWeeklyNote') return coverageSaveWeeklyNote_(body);
     return coverageError_('La operacion solicitada no esta disponible.');
   } catch (error) { Logger.log(error && error.stack ? error.stack : error); return coverageError_(error && error.message ? error.message : 'No se pudo guardar la cobertura.'); }
 }

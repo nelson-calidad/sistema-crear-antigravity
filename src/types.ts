@@ -189,7 +189,21 @@ export interface CoverageShift {
   secondaryId?: string;
   status: CoverageStatus;
   notes?: string;
+  hasWeeklyNote?: boolean;
   completedAt?: string;
   createdAt?: string;
   createdBy?: string;
+}
+
+export interface WeeklyCoverageTask {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+export interface WeeklyCoverageNote {
+  weekStart: string;
+  tasks: WeeklyCoverageTask[];
+  updatedAt?: string;
+  updatedBy?: string;
 }

@@ -1,9 +1,9 @@
-import type { CoverageShift, FounderRecord } from '../types';
+import type { CoverageShift, FounderRecord, WeeklyCoverageNote } from '../types';
 
 const DEFAULT_SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx5kIMawhlVzjOKGh_s2vNAyogd5x8QwtqoTE9fjBUFN_pin5r23mVQq993Xt4y01ZU/exec';
 const SHEET_ENDPOINT = (import.meta.env.VITE_SHEETS_ENDPOINT_URL as string | undefined) || DEFAULT_SHEET_ENDPOINT;
 
-export type CoveragePayload = { founders: FounderRecord[]; shifts: CoverageShift[] };
+export type CoveragePayload = { founders: FounderRecord[]; shifts: CoverageShift[]; weeklyNotes: WeeklyCoverageNote[] };
 
 const text = (value: unknown) => value === null || value === undefined ? '' : String(value);
 const number = (value: unknown, fallback = 999) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -49,6 +49,7 @@ const normalizeShift = (raw: Record<string, unknown>): CoverageShift => {
     secondaryId: text(raw.secondaryId ?? raw.ID_ACOMPANANTE) || undefined,
     status: (['Completed', 'Rescheduled', 'Cancelled'].includes(status) ? status : 'Planned') as CoverageShift['status'],
     notes: text(raw.notes ?? raw.NOTAS) || undefined,
+    hasWeeklyNote: yes(raw.hasWeeklyNote ?? raw.NOTA_SEMANAL_ADJUNTA),
     completedAt: dateValue(raw.completedAt ?? raw.FECHA_REALIZADO) || undefined,
     createdAt: text(raw.createdAt ?? raw.FECHA_CREACION) || undefined,
     createdBy: text(raw.createdBy ?? raw.CREADO_POR) || undefined,
@@ -82,10 +83,26 @@ export const loadCoverageData = async (): Promise<CoveragePayload> => {
   return {
     founders: Array.isArray(data.founders) ? data.founders.map(normalizeFounder).filter((founder) => founder.active).sort((a, b) => a.order - b.order) : [],
     shifts: Array.isArray(data.shifts) ? data.shifts.map(normalizeShift) : [],
+    weeklyNotes: Array.isArray(data.weeklyNotes) ? data.weeklyNotes.map((note: Record<string, unknown>) => ({
+      weekStart: dateValue(note.weekStart ?? note.SEMANA),
+      tasks: Array.isArray(note.tasks) ? note.tasks.map((task: Record<string, unknown>) => ({ id: text(task.id), text: text(task.text), completed: yes(task.completed) })).filter((task) => task.id && task.text) : [],
+      updatedAt: text(note.updatedAt ?? note.ACTUALIZADO) || undefined,
+      updatedBy: text(note.updatedBy ?? note.ACTUALIZADO_POR) || undefined,
+    })) : [],
   };
 };
 
 export const saveCoverageShift = async (shift: Partial<CoverageShift>, user: string) => {
   const result = await request<Record<string, unknown>>(shift.id ? 'updateShift' : 'createShift', { shift, user });
   return normalizeShift(result);
+};
+
+export const saveWeeklyCoverageNote = async (note: WeeklyCoverageNote, user: string) => {
+  const result = await request<Record<string, unknown>>('saveWeeklyNote', { note, user });
+  return {
+    weekStart: dateValue(result.weekStart ?? result.SEMANA),
+    tasks: Array.isArray(result.tasks) ? result.tasks.map((task: Record<string, unknown>) => ({ id: text(task.id), text: text(task.text), completed: yes(task.completed) })).filter((task) => task.id && task.text) : [],
+    updatedAt: text(result.updatedAt ?? result.ACTUALIZADO) || undefined,
+    updatedBy: text(result.updatedBy ?? result.ACTUALIZADO_POR) || undefined,
+  } as WeeklyCoverageNote;
 };
