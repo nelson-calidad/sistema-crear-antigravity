@@ -48,7 +48,7 @@ export function isAppointmentActiveOnDate(appointment: AppointmentRecord, target
   s.setHours(0, 0, 0, 0);
 
   // Check excluded dates
-  const dateStr = targetDate.toISOString().split('T')[0];
+  const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
   if (appointment.excludedDates?.includes(dateStr)) {
     return false;
   }

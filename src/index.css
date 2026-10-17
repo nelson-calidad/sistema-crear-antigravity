@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+:root { --crear-bg: #F9F8F5; --crear-surface: #FFFFFF; --crear-sage: #DDEAE2; --crear-primary: #46766B; --crear-text: #34433F; --crear-muted: #6D7C76; --crear-border: #E5EAE5; }
+body { background: var(--crear-bg); color: var(--crear-text); }
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {

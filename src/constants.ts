@@ -4,16 +4,16 @@
  */
 
 export const PROFESSIONALS = [
-  { id: '1', name: 'Vero', color: 'bg-blue-500', specialty: 'Psicomotricidad', status: 'Activo' },
-  { id: '2', name: 'Carlos', color: 'bg-indigo-500', specialty: 'Fonoaudiología', status: 'Activo' },
-  { id: '3', name: 'Laura', color: 'bg-emerald-500', specialty: 'Kinesiología Infantil', status: 'En Pausa' },
-  { id: '4', name: 'Marta', color: 'bg-rose-500', specialty: 'Terapia Ocupacional', status: 'Activo' },
-  { id: '5', name: 'Sofia', color: 'bg-amber-500', specialty: 'Psicopedagogía', status: 'Activo' },
-  { id: '6', name: 'Diego', color: 'bg-purple-500', specialty: 'Psicología', status: 'Activo' },
+  { id: 'ariadna', name: 'Ariadna', color: 'bg-emerald-500', specialty: 'Psicología', status: 'Activo' },
+  { id: 'ivana', name: 'Ivana', color: 'bg-teal-500', specialty: 'Educación especial', status: 'Activo' },
+  { id: 'dana', name: 'Dana', color: 'bg-sky-500', specialty: 'Psicopedagogía', status: 'Activo' },
+  { id: 'romy', name: 'Romy', color: 'bg-violet-500', specialty: 'Psicomotricidad', status: 'Activo' },
+  { id: 'barbie', name: 'Barbie', color: 'bg-amber-500', specialty: 'Terapia ocupacional', status: 'Activo' },
+  { id: 'vero', name: 'Vero', color: 'bg-rose-500', specialty: 'Fonoaudiología', status: 'Activo' },
 ];
 
 export const ROOMS = [
-  { id: 'c1', name: 'C.1', type: 'Consultorio' },
-  { id: 'c2', name: 'C.2', type: 'Consultorio' },
-  { id: 'c3', name: 'C.3', type: 'Consultorio' },
+  { id: 'c1', name: 'Consultorio 1 — Pedagogía', type: 'Consultorio' },
+  { id: 'c2', name: 'Consultorio 2 — Rehabilitación', type: 'Consultorio' },
+  { id: 'c3', name: 'Consultorio 3 — Atención tranquila', type: 'Consultorio' },
 ];

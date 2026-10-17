@@ -1,487 +1,65 @@
-import { AppointmentRecord } from '../types';
-import { readStoredValue, removeStoredValue, writeStoredValue } from './browserStorage';
+import type { AppointmentRecord } from '../types';
+import { apiRequest, getSession } from './session';
+import { conflictOnDate, type Slot } from './scheduling';
 
-type BackendMode = 'sheet' | 'supabase' | 'local';
-
-const STORAGE_KEY = 'creare.appointments';
-const BACKEND_MODE = (import.meta.env.VITE_BACKEND_MODE ?? 'sheet') as BackendMode;
-const DEFAULT_SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx5kIMawhlVzjOKGh_s2vNAyogd5x8QwtqoTE9fjBUFN_pin5r23mVQq993Xt4y01ZU/exec';
-const SHEET_ENDPOINT = (import.meta.env.VITE_SHEETS_ENDPOINT_URL as string | undefined) || DEFAULT_SHEET_ENDPOINT;
-
-const listeners = new Set<(appointments: AppointmentRecord[]) => void>();
-let remotePollHandle: number | undefined;
-let visibilityListenerAttached = false;
-let visibilityChangeHandler: (() => void) | undefined;
-let cachedAppointments: AppointmentRecord[] = [];
-
-const hasRemoteSheet = BACKEND_MODE === 'sheet' && Boolean(SHEET_ENDPOINT);
-const REMOTE_POLL_INTERVAL_MS = 15 * 60 * 1000;
-
-const today = () => new Date().toISOString().slice(0, 10);
-
-const createId = () => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
+const storageKey = 'creare.appointments';
+const demo = (import.meta.env.VITE_BACKEND_MODE ?? 'local') === 'local';
+const listeners = new Set<(rows: AppointmentRecord[]) => void>();
+let cache: AppointmentRecord[] = [];
+let timer: number | undefined;
+const emit = () => listeners.forEach(listener => listener(cache));
+const dateToday = () => `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+function normalize(value: Partial<AppointmentRecord>): AppointmentRecord {
+  const kind = value.kind || value.type || 'session';
+  return { id: String(value.id || crypto.randomUUID()), title: String(value.title || 'Reserva'), kind, type: kind, status: value.status || 'scheduled', professionalId: value.professionalId || value.proId, proId: value.professionalId || value.proId, roomId: value.roomId, patient: value.patient, patientPhone: value.patientPhone, notes: value.notes, date: value.date || dateToday(), start: value.start || '08:00', end: value.end || '08:45', recurrence: value.recurrence || 'none', selectedDays: value.selectedDays || [], untilDate: value.untilDate, excludedDates: value.excludedDates || [], createdBy: value.createdBy, createdAt: value.createdAt, updatedAt: value.updatedAt, coverageType: value.coverageType };
+}
+function localRows(): AppointmentRecord[] {
+  try { const value = JSON.parse(localStorage.getItem(storageKey) || '[]'); return Array.isArray(value) ? value.map(normalize) : []; } catch { return []; }
+}
+async function refresh() {
+  if (demo) cache = localRows();
+  else {
+    const result = await apiRequest<{ ok: true; appointments: AppointmentRecord[] }>({ action: 'list', entity: 'appointments' });
+    cache = result.appointments.map(normalize);
   }
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-};
-
-const resolveAppointmentKind = (value?: unknown): AppointmentRecord['kind'] => {
-  if (value === 'interview') return 'interview';
-  if (value === 'block' || value === 'survey') return 'block';
-  return 'session';
-};
-
-const resolveAppointmentStatus = (value?: unknown): AppointmentRecord['status'] => {
-  if (value === 'completed') return 'completed';
-  if (value === 'cancelled') return 'cancelled';
-  return 'scheduled';
-};
-
-const buildSheetUrl = () => {
-  if (!SHEET_ENDPOINT) {
-    return null;
-  }
-
-  const url = new URL(SHEET_ENDPOINT);
-  url.searchParams.set('_ts', String(Date.now()));
-  return url.toString();
-};
-
-const normalizeTime = (value?: unknown, fallback = '08:00') => {
-  if (typeof value !== 'string') {
-    return fallback;
-  }
-
-  const raw = value.trim();
-  const match = raw.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) {
-    return fallback;
-  }
-
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-    return fallback;
-  }
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-};
-
-const demoAppointments: AppointmentRecord[] = [
-  {
-    id: 'demo-1',
-    title: 'Sesión Juan P.',
-    kind: 'session',
-    status: 'scheduled',
-    type: 'session',
-    professionalId: '1',
-    proId: '1',
-    roomId: 'c1',
-    date: today(),
-    start: '09:00',
-    end: '09:45',
-    createdBy: 'sheet-admin',
-  },
-  {
-    id: 'demo-2',
-    title: 'Entrevista Maria G.',
-    kind: 'interview',
-    status: 'scheduled',
-    type: 'interview',
-    professionalId: '2',
-    proId: '2',
-    roomId: 'c3',
-    date: today(),
-    start: '10:30',
-    end: '11:00',
-    createdBy: 'sheet-admin',
-  },
-  {
-    id: 'demo-3',
-    title: 'Otros de ingreso',
-    kind: 'block',
-    status: 'scheduled',
-    type: 'block',
-    roomId: 'c2',
-    date: today(),
-    start: '11:15',
-    end: '11:35',
-    createdBy: 'sheet-admin',
-  },
-];
-
-const normalizeAppointment = (appointment: Partial<AppointmentRecord> & Record<string, unknown>): AppointmentRecord => ({
-  id: String(appointment.id || createId()),
-  title: String(appointment.title || 'Nueva Reserva'),
-  kind: resolveAppointmentKind(appointment.kind ?? appointment.type),
-  status: resolveAppointmentStatus(appointment.status),
-  type: resolveAppointmentKind(appointment.kind ?? appointment.type),
-  coverageType: (appointment.coverageType as AppointmentRecord['coverageType']) || 'particular',
-  professionalId: appointment.professionalId ? String(appointment.professionalId) : appointment.proId ? String(appointment.proId) : undefined,
-  proId: appointment.professionalId ? String(appointment.professionalId) : appointment.proId ? String(appointment.proId) : undefined,
-  roomId: appointment.roomId ? String(appointment.roomId) : undefined,
-  patient: appointment.patient ? String(appointment.patient) : undefined,
-  patientPhone: appointment.patientPhone ? String(appointment.patientPhone) : undefined,
-  notes: appointment.notes ? String(appointment.notes) : undefined,
-  date: String(appointment.date || today()),
-  start: normalizeTime(appointment.start, '08:00'),
-  end: normalizeTime(appointment.end, '08:45'),
-  recurrence: (appointment.recurrence as AppointmentRecord['recurrence']) || 'none',
-  selectedDays: Array.isArray(appointment.selectedDays) ? appointment.selectedDays.map(Number) : [],
-  untilDate: appointment.untilDate ? String(appointment.untilDate) : undefined,
-  excludedDates: Array.isArray(appointment.excludedDates) ? appointment.excludedDates.map(String) : [],
-  createdBy: appointment.createdBy ? String(appointment.createdBy) : undefined,
-  createdAt: appointment.createdAt ? String(appointment.createdAt) : undefined,
-  updatedAt: appointment.updatedAt ? String(appointment.updatedAt) : undefined,
-});
-
-const readLocalAppointments = (): AppointmentRecord[] => {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-
-  const raw = readStoredValue(STORAGE_KEY);
-  if (!raw) {
-    return hasRemoteSheet ? [] : demoAppointments;
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return hasRemoteSheet ? [] : demoAppointments;
-    }
-
-    return parsed.map((item) => normalizeAppointment(item));
-  } catch {
-    return hasRemoteSheet ? [] : demoAppointments;
-  }
-};
-
-const writeLocalAppointments = (appointments: AppointmentRecord[]) => {
-  cachedAppointments = appointments;
-  writeStoredValue(STORAGE_KEY, JSON.stringify(appointments));
-};
-
-const emitAppointments = (appointments: AppointmentRecord[]) => {
-  cachedAppointments = appointments;
-  listeners.forEach((listener) => listener(appointments));
-};
-
-const upsertCachedAppointment = (appointment: AppointmentRecord, id?: string) => {
-  const targetId = String(id || appointment.id);
-
-  return cachedAppointments.some((item) => item.id === targetId)
-    ? cachedAppointments.map((item) => (item.id === targetId ? { ...item, ...appointment, id: targetId } : item))
-    : [...cachedAppointments, { ...appointment, id: targetId }];
-};
-
-const deleteCachedAppointment = (id: string) => {
-  return cachedAppointments.filter((appointment) => appointment.id !== id);
-};
-
-const readRemoteAppointments = async (): Promise<AppointmentRecord[]> => {
-  if (!SHEET_ENDPOINT) {
-    return readLocalAppointments();
-  }
-
-  try {
-    const sheetUrl = buildSheetUrl();
-    if (!sheetUrl) {
-      return readLocalAppointments();
-    }
-
-    const response = await fetch(sheetUrl, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      throw new Error(`No se pudieron leer los datos del sheet (${response.status})`);
-    }
-
-    const payload = await response.json();
-    const rawAppointments = Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.appointments)
-        ? payload.appointments
-        : [];
-
-    const normalized = rawAppointments.map((item) => normalizeAppointment(item));
-    writeLocalAppointments(normalized);
-    return normalized;
-  } catch (error) {
-    console.warn('Leyendo desde el cache local porque falló el Sheet.', error);
-    if (hasRemoteSheet) {
-      throw error;
-    }
-    return cachedAppointments.length ? cachedAppointments : readLocalAppointments();
-  }
-};
-
-const fetchRemoteAppointmentsStrict = async (): Promise<AppointmentRecord[]> => {
-  if (!SHEET_ENDPOINT) {
-    throw new Error('No hay endpoint de Sheets configurado.');
-  }
-
-  const sheetUrl = buildSheetUrl();
-  if (!sheetUrl) {
-    throw new Error('No hay endpoint de Sheets configurado.');
-  }
-
-  const response = await fetch(sheetUrl, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(`No se pudieron leer los datos del sheet (${response.status})`);
-  }
-
-  const payload = await response.json();
-  const rawAppointments = Array.isArray(payload)
-    ? payload
-    : Array.isArray(payload?.appointments)
-      ? payload.appointments
-      : [];
-
-  return rawAppointments.map((item) => normalizeAppointment(item));
-};
-
-const broadcast = async () => {
-  const appointments = hasRemoteSheet ? await readRemoteAppointments() : readLocalAppointments();
-  emitAppointments(appointments);
-};
-
-export const refreshAppointments = async () => {
-  await broadcast();
-};
-
-export const forceRefreshAppointments = async () => {
-  if (typeof window !== 'undefined') {
-    removeStoredValue(STORAGE_KEY);
-  }
-
-  cachedAppointments = [];
-  await broadcast();
-};
-
-const ensureRemotePolling = () => {
-  if (!hasRemoteSheet || remotePollHandle || typeof window === 'undefined') {
-    return;
-  }
-
-  remotePollHandle = window.setInterval(() => {
-    if (typeof document !== 'undefined' && document.hidden) {
-      return;
-    }
-
-    void broadcast().catch((error) => {
-      console.warn('No se pudo refrescar la agenda remota.', error);
-    });
-  }, REMOTE_POLL_INTERVAL_MS);
-
-  if (!visibilityListenerAttached && typeof document !== 'undefined') {
-    visibilityChangeHandler = () => {
-      if (!document.hidden) {
-        void broadcast().catch((error) => {
-          console.warn('No se pudo refrescar la agenda al volver a la pestaña.', error);
-        });
-      }
-    };
-
-    document.addEventListener('visibilitychange', visibilityChangeHandler);
-    visibilityListenerAttached = true;
-  }
-};
-
-const stopRemotePolling = () => {
-  if (remotePollHandle) {
-    window.clearInterval(remotePollHandle);
-    remotePollHandle = undefined;
-  }
-
-  if (visibilityChangeHandler && typeof document !== 'undefined') {
-    document.removeEventListener('visibilitychange', visibilityChangeHandler);
-    visibilityChangeHandler = undefined;
-  }
-
-  visibilityListenerAttached = false;
-};
-
-export const getBackendLabel = () => {
-  if (BACKEND_MODE === 'supabase') {
-    return 'Supabase';
-  }
-
-  if (hasRemoteSheet) {
-    return 'Sheet';
-  }
-
-  return 'Local';
-};
-
-export const getSessionUser = () => ({
-  uid: `session-${BACKEND_MODE}`,
-  displayName: 'Admin CREAR',
-  photoURL: '',
-});
-
+  emit();
+  return cache;
+}
+export const refreshAppointments = refresh;
+export const forceRefreshAppointments = refresh;
+export const getBackendLabel = () => demo ? 'Demostración local' : 'Compartido';
+export const getSessionUser = () => ({ uid: getSession()?.actor.email || 'demo', displayName: getSession()?.actor.email || 'Admin CREAR', photoURL: '' });
 export const signInWithGoogle = async () => getSessionUser();
-
 export const logout = async () => undefined;
-
-export const subscribeToAppointments = (
-  callback: (appointments: AppointmentRecord[]) => void,
-  onError?: (error: unknown) => void,
-) => {
+export function subscribeToAppointments(callback: (rows: AppointmentRecord[]) => void, onError?: (error: unknown) => void) {
   listeners.add(callback);
-  callback(readLocalAppointments());
-  ensureRemotePolling();
-
-  void broadcast().catch((error) => {
-    console.warn('No se pudo cargar la agenda inicial.', error);
-    onError?.(error);
-  });
-
-  return () => {
-    listeners.delete(callback);
-
-    if (!listeners.size) {
-      stopRemotePolling();
-    }
-  };
-};
-
-const persistLocalAppointment = async (appointment: AppointmentRecord, id?: string) => {
-  const current = readLocalAppointments();
-  const now = new Date().toISOString();
-  const normalized = normalizeAppointment({
-    ...appointment,
-    id: id || appointment.id,
-    updatedAt: now,
-    createdAt: appointment.createdAt || now,
-  });
-
-  const next = id
-    ? current.map((item) => (item.id === id ? { ...item, ...normalized } : item))
-    : [...current, normalized];
-
-  writeLocalAppointments(next);
-  await broadcast();
-};
-
-const deleteLocalAppointment = async (id: string) => {
-  const next = readLocalAppointments().filter((appointment) => appointment.id !== id);
-  writeLocalAppointments(next);
-  await broadcast();
-};
-
-const persistRemoteAppointment = async (appointment: AppointmentRecord, id?: string) => {
-  if (!SHEET_ENDPOINT) {
-    await persistLocalAppointment(appointment, id);
-    return;
+  callback(demo ? localRows() : cache);
+  void refresh().catch(onError);
+  if (!timer && !demo) timer = window.setInterval(() => { if (!document.hidden) void refresh().catch(onError); }, 20000);
+  return () => { listeners.delete(callback); if (!listeners.size && timer) { window.clearInterval(timer); timer = undefined; } };
+}
+function validateLocal(candidate: AppointmentRecord, existing: AppointmentRecord[]) {
+  const start = new Date(`${candidate.date}T12:00:00`);
+  const days = candidate.recurrence && candidate.recurrence !== 'none' ? 365 : 1;
+  for (let index = 0; index < days; index++) {
+    const day = new Date(start); day.setDate(day.getDate() + index);
+    const date = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    const conflicting = conflictOnDate(candidate as Slot, existing as Slot[], date);
+    if (conflicting) throw new Error(`Conflicto de horario el ${date}.`);
   }
-
-  const response = await fetch(SHEET_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8',
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-    body: JSON.stringify({
-      action: id ? 'update' : 'create',
-      id,
-      appointment,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`No se pudo guardar el turno (${response.status})`);
+}
+export async function saveAppointment(data: Partial<AppointmentRecord>, id?: string) {
+  const record = normalize({ ...data, id: id || data.id, updatedAt: new Date().toISOString(), createdAt: data.createdAt || new Date().toISOString() });
+  if (demo) {
+    const rows = localRows(); validateLocal(record, rows);
+    const next = rows.some(row => row.id === record.id) ? rows.map(row => row.id === record.id ? record : row) : [...rows, record];
+    localStorage.setItem(storageKey, JSON.stringify(next)); cache = next; emit(); return;
   }
-
-  const nextAppointments = upsertCachedAppointment(appointment, id);
-  writeLocalAppointments(nextAppointments);
-  emitAppointments(nextAppointments);
-
-  // We don't await the second verify fetch here to avoid delaying the UI closing.
-  // The background broadcast will pick up any changes eventually.
-  void broadcast().catch((error) => {
-    console.warn('No se pudo refrescar la agenda remota luego de guardar.', error);
-  });
-};
-
-const deleteRemoteAppointment = async (id: string) => {
-  if (!SHEET_ENDPOINT) {
-    await deleteLocalAppointment(id);
-    return;
-  }
-
-  const response = await fetch(SHEET_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8',
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-    body: JSON.stringify({
-      action: 'delete',
-      id,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`No se pudo eliminar el turno (${response.status})`);
-  }
-
-  const nextAppointments = deleteCachedAppointment(id);
-  writeLocalAppointments(nextAppointments);
-  emitAppointments(nextAppointments);
-
-  const remoteAppointments = await fetchRemoteAppointmentsStrict();
-  if (remoteAppointments.some((item) => item.id === id)) {
-    throw new Error('Sheets respondió, pero el turno no se eliminó.');
-  }
-
-  void broadcast().catch((error) => {
-    console.warn('No se pudo refrescar la agenda remota luego de eliminar.', error);
-  });
-};
-
-export const saveAppointment = async (data: Partial<AppointmentRecord>, id?: string) => {
-  const appointment = normalizeAppointment({
-    ...data,
-    id: id || data.id,
-    updatedAt: new Date().toISOString(),
-    createdAt: data.createdAt || new Date().toISOString(),
-  });
-
-  if (BACKEND_MODE === 'sheet' && SHEET_ENDPOINT) {
-    await persistRemoteAppointment(appointment, id);
-    return;
-  }
-
-  if (BACKEND_MODE === 'supabase') {
-    await persistLocalAppointment(appointment, id);
-    return;
-  }
-
-  await persistLocalAppointment(appointment, id);
-};
-
-export const deleteAppointment = async (id: string) => {
-  if (BACKEND_MODE === 'sheet' && SHEET_ENDPOINT) {
-    await deleteRemoteAppointment(id);
-    return;
-  }
-
-  await deleteLocalAppointment(id);
-};
+  await apiRequest({ action: id ? 'update' : 'create', entity: 'appointments', id, appointment: record });
+  await refresh();
+}
+export async function deleteAppointment(id: string) {
+  if (demo) { const next = localRows().map(row => row.id === id ? { ...row, status: 'cancelled' as const } : row); localStorage.setItem(storageKey, JSON.stringify(next)); cache = next; emit(); return; }
+  await apiRequest({ action: 'delete', entity: 'appointments', id });
+  await refresh();
+}

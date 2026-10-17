@@ -5,20 +5,23 @@
 
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { Bell, Search, User, X as CloseIcon, Check, Info, AlertCircle } from 'lucide-react';
+import { X as CloseIcon, Check, Info, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
 import { readStoredValue, writeStoredValue } from './lib/browserStorage';
 import logoCrear from './assets/logo-crear-mobile.jpg';
+import { isDemo, useRecords } from './lib/crearStore';
+import { AccessGate } from './components/AccessGate';
+import { ProfessionalPortal } from './components/ProfessionalPortal';
+import { signOut, useSession } from './lib/session';
 
-const Dashboard = lazy(() => import('./components/Dashboard').then((module) => ({ default: module.Dashboard })));
-const ProfessionalsGrid = lazy(() => import('./components/ProfessionalsGrid').then((module) => ({ default: module.ProfessionalsGrid })));
+const Dashboard = lazy(() => import('./components/HomeReal').then((module) => ({ default: module.HomeReal })));
+const Admissions = lazy(() => import('./components/Admissions').then((module) => ({ default: module.Admissions })));
+const Rooms = lazy(() => import('./components/RoomsReal').then((module) => ({ default: module.RoomsReal })));
+const ProfessionalsGrid = lazy(() => import('./components/ProfilesReal').then((module) => ({ default: module.ProfilesReal })));
 const Agenda = lazy(() => import('./components/Agenda').then((module) => ({ default: module.Agenda })));
-const PatientsList = lazy(() => import('./components/PatientsList').then((module) => ({ default: module.PatientsList })));
-const Finance = lazy(() => import('./components/Finance').then((module) => ({ default: module.Finance })));
-const Settings = lazy(() => import('./components/Settings').then((module) => ({ default: module.Settings })));
-const Responsibilities = lazy(() => import('./components/Responsibilities').then((module) => ({ default: module.Responsibilities })));
-const CoveragePlanner = lazy(() => import('./components/CoveragePlanner').then((module) => ({ default: module.CoveragePlanner })));
+const Finance = lazy(() => import('./components/FinanceReal').then((module) => ({ default: module.FinanceReal })));
+const Settings = lazy(() => import('./components/SettingsReal').then((module) => ({ default: module.SettingsReal })));
 const ReservationModal = lazy(() => import('./components/ReservationModal').then((module) => ({ default: module.ReservationModal })));
 
 type ToastTone = 'success' | 'error' | 'info';
@@ -30,7 +33,7 @@ type ToastItem = {
   message: string;
 };
 
-const VALID_TABS = new Set(['dashboard', 'professionals', 'agenda', 'responsibilities', 'coverage', 'patients', 'finance', 'settings']);
+const VALID_TABS = new Set(['dashboard', 'admissions', 'professionals', 'agenda', 'rooms', 'finance', 'settings']);
 const TAB_QUERY_KEY = 'tab';
 
 const getTabFromLocation = () => {
@@ -39,7 +42,7 @@ const getTabFromLocation = () => {
   }
 
   const tab = new URL(window.location.href).searchParams.get(TAB_QUERY_KEY);
-  return tab && VALID_TABS.has(tab) ? tab : 'agenda';
+  return tab && VALID_TABS.has(tab) ? tab : 'dashboard';
 };
 
 const buildTabUrl = (tab: string) => {
@@ -53,12 +56,18 @@ const buildTabUrl = (tab: string) => {
   return `${url.pathname}${url.search}${url.hash}`;
 };
 
-export default function App() {
+function AdminApp() {
+  const authenticated = useSession();
   const [activeTab, setActiveTab] = useState(() => getTabFromLocation());
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [user] = useState(() => getSessionUser());
   const [appointments, setAppointments] = useState<any[]>([]);
   const [agendaFocusDate, setAgendaFocusDate] = useState<string | null>(null);
+  const interviewRecords = useRecords('interviews');
+  const agreementRecords = useRecords('agreements');
+  const rentalRecords = useRecords('rentals');
+  const nextWeeklyDate = (weekday: number) => { const date = new Date(); date.setDate(date.getDate() + (weekday - date.getDay() + 7) % 7); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
+  const agendaAppointments = [...appointments, ...interviewRecords.rows.map(item => ({ id: item.id, title: 'Entrevista inicial', kind: 'interview', type: 'interview', status: item.status === 'cancelada' ? 'cancelled' : item.status === 'realizada' ? 'completed' : item.status === 'confirmada' ? 'confirmed' : 'scheduled', professionalId: item.professionalId, proId: item.professionalId, roomId: item.roomId, date: item.date, start: item.start, end: item.end, recurrence: 'none', source: 'interviews' })), ...agreementRecords.rows.filter(item => item.status === 'activo').map(item => ({ id: item.id, title: 'Reserva fija de profesional', kind: 'block', type: 'block', status: 'confirmed', professionalId: item.professionalId, proId: item.professionalId, roomId: item.roomId, date: nextWeeklyDate(Number(item.days)), start: item.start, end: item.end, recurrence: 'weekly', selectedDays: [Number(item.days)], source: 'agreements' })), ...rentalRecords.rows.map(item => ({ id: item.id, title: `Alquiler ${item.period}`, kind: 'block', type: 'block', status: item.status === 'cancelled' ? 'cancelled' : item.status === 'confirmado' ? 'confirmed' : 'scheduled', professionalId: item.professionalId, proId: item.professionalId, roomId: item.roomId, date: item.date, start: item.start, end: item.end, recurrence: item.recurrence, selectedDays: item.selectedDays, untilDate: item.untilDate, excludedDates: item.excludedDates, source: 'rentals' }))];
   const [modalAction, setModalAction] = useState<'save' | 'delete' | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastTimers = useRef<number[]>([]);
@@ -106,11 +115,10 @@ export default function App() {
   const mobileTabLabel = (() => {
     switch (activeTab) {
       case 'dashboard': return 'Inicio';
+      case 'admissions': return 'Consultas y admisiones';
+      case 'rooms': return 'Consultorios';
       case 'professionals': return 'Profesionales';
       case 'agenda': return 'Agenda';
-      case 'responsibilities': return 'Responsabilidades';
-      case 'patients': return 'Pacientes';
-      case 'coverage': return 'Guardias CREAR';
       case 'finance': return 'Finanzas';
       case 'settings': return 'Configuración';
       default: return activeTab;
@@ -167,6 +175,9 @@ export default function App() {
   }>({});
 
   const handleOpenModal = (room?: string, pro?: string, app?: any, options?: { date?: string; startTime?: string }) => {
+    if (app?.source === 'interviews') { navigateToTab('admissions'); return; }
+    if (app?.source === 'agreements') { navigateToTab('rooms'); return; }
+    if (app?.source === 'rentals') { navigateToTab('rooms'); return; }
     setModalContext({ room, pro, appointment: app, date: options?.date, startTime: options?.startTime });
     setIsModalOpen(true);
   };
@@ -179,23 +190,14 @@ export default function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard onQuickReserve={handleQuickReserve} />;
-      case 'professionals': return <ProfessionalsGrid />;
-      case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;
-      case 'responsibilities': return <Responsibilities />;
-      case 'patients': return (
-        <PatientsList 
-          appointments={appointments} 
-          onOpenAgendaWithDate={(date) => {
-            setAgendaFocusDate(date);
-            navigateToTab('agenda');
-          }} 
-        />
-      );
-      case 'coverage': return <CoveragePlanner />;
+      case 'dashboard': return <Dashboard onNewInquiry={() => navigateToTab('admissions')} onAgenda={() => navigateToTab('agenda')} />;
+      case 'admissions': return <Admissions />;
+      case 'professionals': return <ProfessionalsGrid onAgenda={() => navigateToTab('agenda')} />;
+      case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} />;
+      case 'rooms': return <Rooms />;
       case 'finance': return <Finance />;
       case 'settings': return <Settings />;
-      default: return <Agenda onOpenModal={handleOpenModal} appointments={appointments} focusDate={agendaFocusDate} />;
+      default: return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} />;
     }
   };
 
@@ -209,7 +211,7 @@ export default function App() {
   );
 
   return (
-    <div className="flex h-[100dvh] font-sans antialiased overflow-hidden bg-slate-50 dark:bg-[#090b11] text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <div className="flex h-[100dvh] font-sans antialiased overflow-hidden bg-[#F9F8F5] dark:bg-[#090b11] text-[#34433F] dark:text-slate-100 transition-colors duration-200">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(tab) => {
@@ -223,6 +225,7 @@ export default function App() {
       />
       
       <main className="flex-1 flex flex-col min-w-0">
+        {isDemo && <div className="bg-[#F6E9DB] px-4 py-2 text-center text-xs text-[#34433F]">Modo de demostración local: los datos quedan solo en este navegador. No cargues datos personales reales.</div>}
         <header className="bg-white dark:bg-[#0f172a] border-b border-slate-100 dark:border-slate-800 px-3 md:px-8 py-2 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0">
           <div className="flex items-center justify-between gap-2 md:hidden w-full">
             <button
@@ -234,35 +237,16 @@ export default function App() {
             <div className="min-w-0 flex-1 px-1">
               <p className="text-[13px] font-black text-slate-900 dark:text-slate-100 truncate leading-none">{mobileTabLabel}</p>
             </div>
-            <button className="relative p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 shrink-0">
-              <Bell className="w-4.5 h-4.5" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-rose-500 rounded-full border border-white dark:border-slate-800" />
-            </button>
-          </div>
 
-          <div className="flex-1 max-w-xl hidden md:block">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-              <input
-                type="text"
-                placeholder="Buscar..."
-                className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-cyan-200 dark:focus:border-cyan-900 rounded-xl text-sm transition-all text-slate-900 dark:text-slate-100"
-              />
-            </div>
           </div>
 
           <div className="hidden md:flex items-center justify-end gap-4">
-            <button className="relative p-2 text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-[#0f172a]" />
-            </button>
-            <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 mx-2" />
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{user?.displayName || 'Admin'}</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{authenticated?.actor.email || 'Admin CREAR'}</p>
                 <p className="text-[10px] font-medium text-slate-400 uppercase">{getBackendLabel()}</p>
               </div>
-              <button className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
+              <button type="button" onClick={signOut} title="Cerrar sesión" className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
                 {user?.photoURL ? <img src={user.photoURL} alt="avatar" /> : 'AD'}
               </button>
             </div>
@@ -326,7 +310,7 @@ export default function App() {
             navigateToTab('agenda', { replace: true });
             pushToast('success', 'Turno guardado', 'La reserva se realizó correctamente.');
           } catch (error) {
-            pushToast('error', 'Error', 'No se pudo guardar la reserva.');
+            pushToast('error', 'No se pudo guardar', error instanceof Error ? error.message : 'No se pudo guardar la reserva.');
           } finally {
             setModalAction(null);
           }
@@ -385,4 +369,8 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+export default function App() {
+  return <AccessGate admin={<AdminApp />} professional={<ProfessionalPortal />} />;
 }

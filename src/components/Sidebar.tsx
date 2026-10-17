@@ -10,7 +10,6 @@ import {
   Calendar,
   Wallet,
   Settings,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   PanelLeftClose,
@@ -18,8 +17,7 @@ import {
   CalendarDays,
   Sun,
   Moon,
-  MessageCircle,
-  ClipboardList
+  MessageCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { readStoredValue, writeStoredValue } from '../lib/browserStorage';
@@ -83,12 +81,11 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
   React.useEffect(() => { writeStoredValue('crear-sidebar-compact', String(isCollapsed)); }, [isCollapsed]);
   React.useEffect(() => { writeStoredValue('crear-sidebar-hidden', String(isHidden)); }, [isHidden]);
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'professionals', label: 'Gestión Humana', icon: Users },
-    { id: 'agenda', label: 'Operaciones', icon: Calendar },
-    { id: 'responsibilities', label: 'Responsabilidades', icon: ClipboardList },
-    { id: 'coverage', label: 'Guardias CREAR', icon: CalendarDays },
-    { id: 'patients', label: 'Pacientes', icon: MessageCircle },
+    { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
+    { id: 'admissions', label: 'Consultas y admisiones', icon: MessageCircle },
+    { id: 'agenda', label: 'Agenda', icon: Calendar },
+    { id: 'rooms', label: 'Consultorios', icon: CalendarDays },
+    { id: 'professionals', label: 'Profesionales', icon: Users },
     { id: 'finance', label: 'Finanzas', icon: Wallet },
     { id: 'settings', label: 'Configuración', icon: Settings },
   ];
@@ -171,7 +168,6 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
               {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
             </button>
           </div>
-          <SidebarItem icon={LogOut} label="Cerrar Sesión" collapsed={isCollapsed} onClick={() => {}} />
         </div>
       </motion.div>
     </>

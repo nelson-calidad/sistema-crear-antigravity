@@ -1,4 +1,119 @@
 const SPREADSHEET_ID = '1BgP_FlLmoSAPZHvTvJ746w8LmDisaVX78XjotOW_UHo';
+const CREAR_ENTITIES_ = ['inquiries', 'interviews', 'money', 'rooms', 'agreements', 'profiles', 'settings', 'rentals'];
+function crearSheet_(entity) {
+  const book = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const name = 'crear_' + entity;
+  let sheet = book.getSheetByName(name);
+  if (!sheet) { sheet = book.insertSheet(name); sheet.getRange(1, 1, 1, 3).setValues([['id', 'data', 'updatedAt']]); sheet.setFrozenRows(1); }
+  return sheet;
+}
+function crearList_(entity) {
+  const sheet = crearSheet_(entity);
+  const values = sheet.getDataRange().getValues().slice(1);
+  return { ok: true, records: values.filter(row => row[0]).map(row => JSON.parse(String(row[1]))) };
+}
+function crearUpsert_(body, actor) {
+  if (!body.record || !body.record.id) throw new Error('Registro inválido.');
+  const entity = String(body.entity);
+  const record = body.record;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('Otra administradora está guardando. Reintentá.');
+  try {
+    const sheet = crearSheet_(entity);
+    if (actor.role === 'professional') {
+      if (entity !== 'profiles' || body.action !== 'updateAvailability' || record.id !== actor.professionalId) throw new Error('No podés modificar estos datos.');
+      const current = crearList_('profiles').records.find(item => item.id === actor.professionalId);
+      if (!current) throw new Error('La ficha profesional debe ser creada por una administradora.');
+      if (typeof record.availability !== 'string' || record.availability.length > 500) throw new Error('Disponibilidad inválida.');
+      const rowIndex = sheet.getDataRange().getValues().findIndex((row, index) => index > 0 && String(row[0]) === actor.professionalId);
+      sheet.getRange(rowIndex + 1, 1, 1, 3).setValues([[actor.professionalId, JSON.stringify({ ...current, availability: record.availability }), new Date().toISOString()]]);
+      return { ok: true, id: actor.professionalId };
+    }
+    if (body.action !== 'upsert') throw new Error('Operación inválida.');
+    if (entity === 'interviews' && record.status !== 'cancelada') {
+      const interviews = crearList_('interviews').records;
+      const appointments = readAppointments_(ensureSheet_());
+      const busy = interviews.concat(appointments).find(item => item.id !== record.id && item.status !== 'cancelada' && item.status !== 'cancelled' && (item.recurrence ? crearOccurs_(item, record.date) : item.date === record.date) && item.start < record.end && item.end > record.start && (item.roomId === record.roomId || item.professionalId === record.professionalId) && !(item.kind === 'block' && item.roomId === record.roomId && item.professionalId === record.professionalId));
+      if (busy) throw new Error('Conflicto de horario: consultorio o profesional ocupados.');
+      const weekday = new Date(record.date + 'T12:00:00').getDay();
+      const agreement = crearList_('agreements').records.find(item => item.status === 'activo' && String(item.days) === String(weekday) && item.start < record.end && item.end > record.start && (item.roomId === record.roomId && item.professionalId !== record.professionalId || item.professionalId === record.professionalId && item.roomId !== record.roomId));
+      if (agreement) throw new Error('Conflicto con la reserva fija de un consultorio.');
+      const rental = crearList_('rentals').records.find(item => item.status !== 'cancelled' && item.roomId === record.roomId && crearOccurs_(item, record.date) && item.start < record.end && item.end > record.start);
+      if (rental) throw new Error('El consultorio está alquilado en esa franja.');
+    }
+    if (entity === 'agreements' && record.status === 'activo') {
+      const agreements = crearList_('agreements').records;
+      const busy = agreements.find(item => item.id !== record.id && item.status === 'activo' && String(item.days) === String(record.days) && item.start < record.end && item.end > record.start && (item.roomId === record.roomId || item.professionalId === record.professionalId));
+      if (busy) throw new Error('Conflicto de horario con otro acuerdo de consultorio.');
+    }
+    if (entity === 'rentals' && record.status !== 'cancelled') {
+      const room = crearList_('rooms').records.find(item => item.id === record.roomId);
+      if (record.audience === 'tercero' && (!room || room.thirdPartyEnabled !== true)) throw new Error('El alquiler a terceros no está habilitado para este consultorio.');
+      crearCheckRentalConflict_(record);
+    }
+    const values = sheet.getDataRange().getValues();
+    const index = values.findIndex((row, i) => i > 0 && String(row[0]) === String(record.id));
+    const row = [String(record.id), JSON.stringify(record), new Date().toISOString()];
+    if (index >= 0) sheet.getRange(index + 1, 1, 1, 3).setValues([row]); else sheet.appendRow(row);
+    return { ok: true, id: record.id };
+  } finally { lock.releaseLock(); }
+}
+function crearCheckConflict_(sheet, incoming) {
+  if (incoming.status === 'cancelled') return;
+  const rows = readAppointments_(sheet);
+  const startDate = String(incoming.date || '');
+  const endDate = String(incoming.untilDate || startDate);
+  const days = Math.min(370, Math.max(1, Math.round((new Date(endDate + 'T12:00:00') - new Date(startDate + 'T12:00:00')) / 86400000) + 1));
+  const agreements = crearList_('agreements').records;
+  const interviews = crearList_('interviews').records;
+  const rentals = crearList_('rentals').records;
+  for (let offset = 0; offset < days; offset++) {
+    const date = new Date(startDate + 'T12:00:00'); date.setDate(date.getDate() + offset);
+    const day = Utilities.formatDate(date, 'America/Argentina/Jujuy', 'yyyy-MM-dd');
+    if (!crearOccurs_(incoming, day)) continue;
+    const weekday = date.getDay();
+    const agreement = agreements.find(item => item.status === 'activo' && String(item.days) === String(weekday) && item.start < incoming.end && item.end > incoming.start && (item.roomId === incoming.roomId && item.professionalId !== incoming.professionalId || item.professionalId === incoming.professionalId && item.roomId !== incoming.roomId));
+    if (agreement) throw new Error('Conflicto con una reserva fija de consultorio.');
+    const interview = interviews.find(item => item.status !== 'cancelada' && item.date === day && item.start < incoming.end && item.end > incoming.start && (item.roomId === incoming.roomId || item.professionalId === incoming.professionalId));
+    if (interview) throw new Error('Conflicto con una entrevista inicial.');
+    const rental = rentals.find(item => item.status !== 'cancelled' && item.roomId === incoming.roomId && crearOccurs_(item, day) && item.start < incoming.end && item.end > incoming.start);
+    if (rental) throw new Error('El consultorio está alquilado en esa franja.');
+    for (const existing of rows) {
+      if (String(existing.id) === String(incoming.id) || existing.status === 'cancelled' || !crearOccurs_(existing, day)) continue;
+      if (!(incoming.start < existing.end && incoming.end > existing.start)) continue;
+      const samePro = incoming.professionalId && incoming.professionalId === existing.professionalId;
+      const sameRoom = incoming.roomId && incoming.roomId === existing.roomId;
+      const nestedSamePro = samePro && ((incoming.kind === 'block' && existing.kind !== 'block') || (existing.kind === 'block' && incoming.kind !== 'block'));
+      if (sameRoom && !nestedSamePro || samePro && !nestedSamePro) throw new Error('Conflicto de horario: el consultorio o la profesional ya tienen una reserva.');
+    }
+  }
+}
+function crearOccurs_(item, date) {
+  if (date < item.date || item.untilDate && date > item.untilDate || item.excludedDates && item.excludedDates.indexOf(date) >= 0) return false;
+  if (date === item.date) return true;
+  const recurrence = item.recurrence || 'none';
+  const day = new Date(date + 'T12:00:00').getDay();
+  return recurrence === 'daily' || recurrence === 'weekdays' && day >= 1 && day <= 5 || recurrence === 'weekly' && (item.selectedDays || []).indexOf(day) >= 0;
+}
+function crearCheckRentalConflict_(rental) {
+  const appointments = readAppointments_(ensureSheet_());
+  const interviews = crearList_('interviews').records;
+  const rentals = crearList_('rentals').records;
+  const agreements = crearList_('agreements').records;
+  const startDate = String(rental.date || '');
+  const endDate = String(rental.untilDate || startDate);
+  const days = Math.min(370, Math.max(1, Math.round((new Date(endDate + 'T12:00:00') - new Date(startDate + 'T12:00:00')) / 86400000) + 1));
+  for (let offset = 0; offset < days; offset++) {
+    const date = new Date(startDate + 'T12:00:00'); date.setDate(date.getDate() + offset);
+    const day = Utilities.formatDate(date, 'America/Argentina/Jujuy', 'yyyy-MM-dd');
+    if (!crearOccurs_(rental, day)) continue;
+    const overlap = item => item.start < rental.end && item.end > rental.start;
+    if (appointments.some(item => item.status !== 'cancelled' && item.roomId === rental.roomId && crearOccurs_(item, day) && overlap(item))) throw new Error('El consultorio tiene una reserva en esa franja.');
+    if (interviews.some(item => item.status !== 'cancelada' && item.roomId === rental.roomId && item.date === day && overlap(item))) throw new Error('El consultorio tiene una entrevista en esa franja.');
+    if (rentals.some(item => item.id !== rental.id && item.status !== 'cancelled' && item.roomId === rental.roomId && crearOccurs_(item, day) && overlap(item))) throw new Error('El consultorio ya está alquilado en esa franja.');
+    if (agreements.some(item => item.status === 'activo' && item.roomId === rental.roomId && Number(item.days) === date.getDay() && overlap(item))) throw new Error('El consultorio está reservado por un acuerdo mensual.');
+  }
+}
 const SHEET_NAME = 'appointments';
 const PROFESSIONALS_SHEET_NAME = 'professionals';
 const HEADER = [
@@ -21,6 +136,8 @@ const HEADER = [
   'coverageType',
   'kind',
   'status',
+  'untilDate',
+  'excludedDates',
 ];
 const PROFESSIONALS_HEADER = [
   'id',
@@ -34,113 +151,21 @@ const PROFESSIONALS_HEADER = [
   'retention',
   'image',
 ];
-const PROFESSIONALS_SEED = [
-  {
-    id: '1',
-    name: 'Vero',
-    specialty: 'Psicomotricidad',
-    color: 'bg-blue-500',
-    status: 'Activo',
-    email: 'vero@lab.com',
-    phone: '+54 11 2345-6789',
-    hours: 'Lun, Mie, Vie (08:00 - 14:00)',
-    retention: '20%',
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
-  },
-  {
-    id: '2',
-    name: 'Carlos',
-    specialty: 'Fonoaudiología',
-    color: 'bg-indigo-500',
-    status: 'Activo',
-    email: 'carlos@lab.com',
-    phone: '+54 11 2345-6789',
-    hours: 'Mar, Jue (09:00 - 15:00)',
-    retention: '20%',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-  },
-  {
-    id: '3',
-    name: 'Laura',
-    specialty: 'Kinesiología Infantil',
-    color: 'bg-emerald-500',
-    status: 'En Pausa',
-    email: 'laura@lab.com',
-    phone: '+54 11 2345-6789',
-    hours: 'Lun, Mie (08:00 - 12:00)',
-    retention: '20%',
-    image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop',
-  },
-  {
-    id: '4',
-    name: 'Marta',
-    specialty: 'Terapia Ocupacional',
-    color: 'bg-rose-500',
-    status: 'Activo',
-    email: 'marta@lab.com',
-    phone: '+54 11 2345-6789',
-    hours: 'Mar, Jue, Vie (10:00 - 16:00)',
-    retention: '20%',
-    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=150&h=150&fit=crop',
-  },
-  {
-    id: '5',
-    name: 'Sofia',
-    specialty: 'Psicopedagogía',
-    color: 'bg-amber-500',
-    status: 'Activo',
-    email: 'sofia@lab.com',
-    phone: '+54 11 2345-6789',
-    hours: 'Lun, Mie, Vie (09:00 - 13:00)',
-    retention: '20%',
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
-  },
-  {
-    id: '6',
-    name: 'Diego',
-    specialty: 'Psicología',
-    color: 'bg-purple-500',
-    status: 'Activo',
-    email: 'diego@lab.com',
-    phone: '+54 11 2345-6789',
-    hours: 'Lun, Mar, Jue (14:00 - 18:00)',
-    retention: '20%',
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop',
-  },
-];
+const PROFESSIONALS_SEED = [{ id: 'ariadna', name: 'Ariadna', specialty: 'Psicología' }, { id: 'ivana', name: 'Ivana', specialty: 'Educación especial' }, { id: 'dana', name: 'Dana', specialty: 'Psicopedagogía' }, { id: 'romy', name: 'Romy', specialty: 'Psicomotricidad' }, { id: 'barbie', name: 'Barbie', specialty: 'Terapia ocupacional' }, { id: 'vero', name: 'Vero', specialty: 'Fonoaudiología' }];
 
-function doGet(e) {
-  try {
-    const requestedEntity = e && e.parameter ? String(e.parameter.entity || '') : '';
-    const entity = requestedEntity === 'professionals' || requestedEntity === 'activities' || requestedEntity === 'coverage' ? requestedEntity : 'appointments';
-
-    if (entity === 'activities') {
-      return json_(handleActivitiesGet_(e));
-    }
-
-    if (entity === 'coverage') {
-      return json_(handleCoverageGet_(e));
-    }
-
-    if (entity === 'professionals') {
-      const sheet = ensureProfessionalsSheet_();
-      const professionals = readProfessionals_(sheet);
-      return json_({ ok: true, professionals });
-    }
-
-    const sheet = ensureSheet_();
-    const appointments = readAppointments_(sheet);
-    return json_({ ok: true, appointments });
-  } catch (error) {
-    return json_({ ok: false, error: error.message }, 500);
-  }
+function doGet() {
+  return json_({ ok: false, error: 'Acceso no autorizado.' });
 }
-
 function doPost(e) {
   try {
     const body = e && e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : {};
+    const actor = crearAuthorize_(body);
+    if (body.action === 'whoami') return json_({ ok: true, actor: actor });
+    if (body.action === 'list') return json_(crearListAuthorized_(String(body.entity || ''), actor));
+    if (CREAR_ENTITIES_.indexOf(String(body.entity || '')) >= 0) return json_(crearUpsert_(body, actor));
     const requestedEntity = String(body.entity || '');
     const entity = requestedEntity === 'professionals' || requestedEntity === 'activities' || requestedEntity === 'coverage' ? requestedEntity : 'appointments';
+    if (actor.role !== 'admin' && entity !== 'appointments') throw new Error('Esta operación requiere acceso administrativo.');
 
     if (entity === 'activities') {
       return json_(handleActivitiesPost_(body));
@@ -217,11 +242,15 @@ function doPost(e) {
         throw new Error('Missing id');
       }
 
-      const deleted = deleteAppointment_(sheet, String(body.id));
-      return json_({ ok: true, action: 'delete', id: String(body.id), deleted, lastRow: sheet.getLastRow() });
+      const existing = readAppointments_(sheet).find(item => item.id === String(body.id));
+      if (!existing) throw new Error('No se encontró la reserva.');
+      if (actor.role === 'professional' && existing.professionalId !== actor.professionalId) throw new Error('No podés modificar turnos ajenos.');
+      const rowNumber = upsertAppointment_(sheet, { ...existing, status: 'cancelled' }, true);
+      return json_({ ok: true, action: 'cancel', id: String(body.id), rowNumber });
     }
 
     const appointment = normalizeAppointment_(body.appointment || {});
+    if (actor.role === 'professional' && appointment.professionalId !== actor.professionalId) throw new Error('No podés modificar turnos ajenos.');
 
     if (action === 'update') {
       if (!body.id && !appointment.id) {
@@ -229,15 +258,54 @@ function doPost(e) {
       }
 
       const updatedId = String(body.id || appointment.id);
-      const rowNumber = upsertAppointment_(sheet, { ...appointment, id: updatedId }, true);
+      const previous = readAppointments_(sheet).find(item => item.id === updatedId);
+      if (!previous) throw new Error('No se encontró la reserva.');
+      if (actor.role === 'professional' && previous.professionalId !== actor.professionalId) throw new Error('No podés modificar turnos ajenos.');
+      const appointmentLock = LockService.getScriptLock();
+      if (!appointmentLock.tryLock(10000)) throw new Error('Otra reserva se está guardando. Reintentá.');
+      let rowNumber;
+      try {
+        crearCheckConflict_(sheet, { ...appointment, id: updatedId });
+        rowNumber = upsertAppointment_(sheet, { ...appointment, id: updatedId }, true);
+      } finally { appointmentLock.releaseLock(); }
       return json_({ ok: true, action: 'update', id: updatedId, rowNumber, lastRow: sheet.getLastRow() });
     }
 
-    const rowNumber = upsertAppointment_(sheet, appointment, false);
+    const appointmentLock = LockService.getScriptLock();
+    if (!appointmentLock.tryLock(10000)) throw new Error('Otra reserva se está guardando. Reintentá.');
+    let rowNumber;
+    try {
+      crearCheckConflict_(sheet, appointment);
+      rowNumber = upsertAppointment_(sheet, appointment, false);
+    } finally { appointmentLock.releaseLock(); }
     return json_({ ok: true, action: 'create', id: appointment.id, rowNumber, lastRow: sheet.getLastRow() });
   } catch (error) {
     return json_({ ok: false, error: error.message }, 500);
   }
+}
+function crearAuthorize_(body) {
+  const configured = String(PropertiesService.getScriptProperties().getProperty('CREAR_PROXY_SECRET') || '');
+  if (!configured || configured.length < 32 || String(body.proxySecret || '') !== configured) throw new Error('Acceso no autorizado.');
+  const actor = body.actor || {};
+  const email = String(actor.email || '').toLowerCase();
+  if (!email || (actor.role !== 'admin' && actor.role !== 'professional') || actor.role === 'professional' && !actor.professionalId) throw new Error('Identidad inválida.');
+  return { email: email, role: actor.role, professionalId: String(actor.professionalId || '') };
+}
+function crearListAuthorized_(entity, actor) {
+  if (entity === 'appointments') {
+    const appointments = readAppointments_(ensureSheet_());
+    return { ok: true, appointments: actor.role === 'admin' ? appointments : appointments.filter(item => item.professionalId === actor.professionalId) };
+  }
+  if (entity === 'professionals') {
+    if (actor.role !== 'admin') throw new Error('Acceso administrativo requerido.');
+    return { ok: true, professionals: readProfessionals_(ensureProfessionalsSheet_()) };
+  }
+  if (CREAR_ENTITIES_.indexOf(entity) < 0) throw new Error('Entidad desconocida.');
+  if (actor.role === 'admin') return crearList_(entity);
+  if (entity === 'rooms') return crearList_(entity);
+  if (entity === 'profiles') return { ok: true, records: crearList_(entity).records.filter(item => item.id === actor.professionalId) };
+  if (entity === 'agreements' || entity === 'interviews') return { ok: true, records: crearList_(entity).records.filter(item => item.professionalId === actor.professionalId) };
+  throw new Error('Acceso administrativo requerido.');
 }
 
 function ensureSheet_() {
@@ -329,6 +397,8 @@ function normalizeAppointment_(appointment) {
     updatedAt: appointment.updatedAt ? String(appointment.updatedAt) : '',
     kind: String(resolvedKind),
     status: String(appointment.status || 'scheduled'),
+    untilDate: appointment.untilDate ? String(appointment.untilDate) : '',
+    excludedDates: Array.isArray(appointment.excludedDates) ? appointment.excludedDates : typeof appointment.excludedDates === 'string' && appointment.excludedDates ? JSON.parse(appointment.excludedDates) : [],
   };
 }
 
@@ -509,10 +579,10 @@ function normalizeProfessional_(professional) {
     specialty: String(professional.specialty || seed.specialty || ''),
     color: String(professional.color || seed.color || 'bg-slate-500'),
     status: String(professional.status || seed.status || 'Activo') === 'En Pausa' ? 'En Pausa' : 'Activo',
-    email: String(professional.email || seed.email || `${slugify_(name)}@lab.com`),
+    email: String(professional.email || ''),
     phone: String(professional.phone || seed.phone || ''),
-    hours: String(professional.hours || seed.hours || 'Lun, Mie, Vie (08:00 - 14:00)'),
-    retention: formatRetentionValue_(professional.retention || seed.retention || '20%'),
+    hours: String(professional.hours || seed.hours || ''),
+    retention: formatRetentionValue_(professional.retention || seed.retention || ''),
     image: String(professional.image || seed.image || ''),
   };
 }
@@ -586,12 +656,12 @@ function slugify_(value) {
 
 function formatRetentionValue_(value) {
   if (value === null || value === undefined || value === '') {
-    return '20%';
+    return '';
   }
 
   const raw = String(value).trim();
   if (!raw) {
-    return '20%';
+    return '';
   }
 
   if (raw.endsWith('%')) {
