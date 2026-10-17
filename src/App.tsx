@@ -22,6 +22,8 @@ const ProfessionalsGrid = lazy(() => import('./components/ProfilesReal').then((m
 const Agenda = lazy(() => import('./components/Agenda').then((module) => ({ default: module.Agenda })));
 const Finance = lazy(() => import('./components/FinanceReal').then((module) => ({ default: module.FinanceReal })));
 const Settings = lazy(() => import('./components/SettingsReal').then((module) => ({ default: module.SettingsReal })));
+const Responsibilities = lazy(() => import('./components/Responsibilities').then((module) => ({ default: module.Responsibilities })));
+const CoveragePlanner = lazy(() => import('./components/CoveragePlanner').then((module) => ({ default: module.CoveragePlanner })));
 const ReservationModal = lazy(() => import('./components/ReservationModal').then((module) => ({ default: module.ReservationModal })));
 
 type ToastTone = 'success' | 'error' | 'info';
@@ -33,7 +35,7 @@ type ToastItem = {
   message: string;
 };
 
-const VALID_TABS = new Set(['dashboard', 'admissions', 'professionals', 'agenda', 'rooms', 'finance', 'settings']);
+const VALID_TABS = new Set(['dashboard', 'admissions', 'professionals', 'agenda', 'rooms', 'responsibilities', 'coverage', 'finance', 'settings']);
 const TAB_QUERY_KEY = 'tab';
 
 const getTabFromLocation = () => {
@@ -117,6 +119,8 @@ function AdminApp() {
       case 'dashboard': return 'Inicio';
       case 'admissions': return 'Consultas';
       case 'rooms': return 'Consultorios';
+      case 'responsibilities': return 'Responsabilidades';
+      case 'coverage': return 'Guardias CREAR';
       case 'professionals': return 'Profesionales';
       case 'agenda': return 'Agenda';
       case 'finance': return 'Finanzas';
@@ -195,6 +199,8 @@ function AdminApp() {
       case 'professionals': return <ProfessionalsGrid onAgenda={() => navigateToTab('agenda')} />;
       case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} />;
       case 'rooms': return <Rooms />;
+      case 'responsibilities': return <Responsibilities />;
+      case 'coverage': return <CoveragePlanner />;
       case 'finance': return <Finance />;
       case 'settings': return <Settings />;
       default: return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} />;

@@ -17,7 +17,9 @@ import {
   CalendarDays,
   Sun,
   Moon,
-  MessageCircle
+  MessageCircle,
+  ClipboardList,
+  DoorOpen
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { readStoredValue, writeStoredValue } from '../lib/browserStorage';
@@ -84,7 +86,9 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'admissions', label: 'Consultas', icon: MessageCircle },
     { id: 'agenda', label: 'Agenda', icon: Calendar },
-    { id: 'rooms', label: 'Consultorios', icon: CalendarDays },
+    { id: 'rooms', label: 'Consultorios', icon: DoorOpen },
+    { id: 'responsibilities', label: 'Responsabilidades', icon: ClipboardList },
+    { id: 'coverage', label: 'Guardias CREAR', icon: CalendarDays },
     { id: 'professionals', label: 'Profesionales', icon: Users },
     { id: 'finance', label: 'Finanzas', icon: Wallet },
     { id: 'settings', label: 'Configuración', icon: Settings },
