@@ -40,8 +40,8 @@ const SidebarItem = ({ icon: Icon, label, active, collapsed, onClick }: SidebarI
     className={cn(
       'flex items-center w-full p-3 rounded-2xl transition-all duration-200 group relative border',
       active
-        ? 'bg-slate-100 text-slate-900 border-slate-200 shadow-sm dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700'
-        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border-transparent dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-100',
+        ? 'bg-[#DDEAE2] text-[#34433F] border-[#D2E2D9] shadow-sm dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700'
+        : 'text-[#6D7C76] hover:bg-[#F1F3EF] hover:text-[#34433F] border-transparent dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-100',
     )}
   >
     <Icon className={cn('w-5 h-5 flex-shrink-0', active ? 'text-slate-900 dark:text-slate-100' : 'group-hover:text-slate-700 dark:group-hover:text-slate-300')} />
@@ -82,7 +82,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
   React.useEffect(() => { writeStoredValue('crear-sidebar-hidden', String(isHidden)); }, [isHidden]);
   const menuItems = [
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
-    { id: 'admissions', label: 'Consultas y admisiones', icon: MessageCircle },
+    { id: 'admissions', label: 'Consultas', icon: MessageCircle },
     { id: 'agenda', label: 'Agenda', icon: Calendar },
     { id: 'rooms', label: 'Consultorios', icon: CalendarDays },
     { id: 'professionals', label: 'Profesionales', icon: Users },

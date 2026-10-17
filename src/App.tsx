@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
 import { readStoredValue, writeStoredValue } from './lib/browserStorage';
 import logoCrear from './assets/logo-crear-mobile.jpg';
-import { isDemo, useRecords } from './lib/crearStore';
+import { isDemo, seedDemoData, useRecords } from './lib/crearStore';
 import { AccessGate } from './components/AccessGate';
 import { ProfessionalPortal } from './components/ProfessionalPortal';
 import { signOut, useSession } from './lib/session';
@@ -115,7 +115,7 @@ function AdminApp() {
   const mobileTabLabel = (() => {
     switch (activeTab) {
       case 'dashboard': return 'Inicio';
-      case 'admissions': return 'Consultas y admisiones';
+      case 'admissions': return 'Consultas';
       case 'rooms': return 'Consultorios';
       case 'professionals': return 'Profesionales';
       case 'agenda': return 'Agenda';
@@ -190,7 +190,7 @@ function AdminApp() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard onNewInquiry={() => navigateToTab('admissions')} onAgenda={() => navigateToTab('agenda')} />;
+      case 'dashboard': return <Dashboard onNewInquiry={() => navigateToTab('admissions')} onNavigate={navigateToTab} />;
       case 'admissions': return <Admissions />;
       case 'professionals': return <ProfessionalsGrid onAgenda={() => navigateToTab('agenda')} />;
       case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} />;
@@ -211,7 +211,7 @@ function AdminApp() {
   );
 
   return (
-    <div className="flex h-[100dvh] font-sans antialiased overflow-hidden bg-[#F9F8F5] dark:bg-[#090b11] text-[#34433F] dark:text-slate-100 transition-colors duration-200">
+    <div className="flex h-[100dvh] w-screen max-w-full font-sans antialiased overflow-hidden bg-[#F9F8F5] dark:bg-[#090b11] text-[#34433F] dark:text-slate-100 transition-colors duration-200">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(tab) => {
@@ -224,8 +224,8 @@ function AdminApp() {
         onToggleTheme={toggleTheme}
       />
       
-      <main className="flex-1 flex flex-col min-w-0">
-        {isDemo && <div className="bg-[#F6E9DB] px-4 py-2 text-center text-xs text-[#34433F]">Modo de demostración local: los datos quedan solo en este navegador. No cargues datos personales reales.</div>}
+      <main className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
+        {isDemo && <div className="shrink-0 bg-[#F6E9DB] px-3 py-2 text-center text-xs leading-4 text-[#34433F]">Modo de demostración local · datos ficticios guardados solo en este navegador.</div>}
         <header className="bg-white dark:bg-[#0f172a] border-b border-slate-100 dark:border-slate-800 px-3 md:px-8 py-2 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0">
           <div className="flex items-center justify-between gap-2 md:hidden w-full">
             <button
@@ -253,21 +253,8 @@ function AdminApp() {
           </div>
         </header>
 
-        <section className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-          <Suspense fallback={loadingFallback}>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.2 }}
-                className="h-full"
-              >
-                {renderContent()}
-              </motion.div>
-            </AnimatePresence>
-          </Suspense>
+        <section className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 custom-scrollbar">
+          <Suspense fallback={loadingFallback}><div key={activeTab} className="h-full animate-[fadeIn_.18s_ease-out]">{renderContent()}</div></Suspense>
         </section>
       </main>
 
@@ -372,5 +359,6 @@ function AdminApp() {
 }
 
 export default function App() {
+  seedDemoData();
   return <AccessGate admin={<AdminApp />} professional={<ProfessionalPortal />} />;
 }

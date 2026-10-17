@@ -16,6 +16,13 @@ function normalize(value: Partial<AppointmentRecord>): AppointmentRecord {
 function localRows(): AppointmentRecord[] {
   try { const value = JSON.parse(localStorage.getItem(storageKey) || '[]'); return Array.isArray(value) ? value.map(normalize) : []; } catch { return []; }
 }
+function localRelatedSlots(): Slot[] {
+  const read = (key: string) => { try { const value = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(value) ? value : []; } catch { return []; } };
+  const interviews = read('crear.demo.interviews').map(item => ({ ...item, kind: 'interview', recurrence: 'none' }));
+  const rentals = read('crear.demo.rentals').map(item => ({ ...item, kind: 'block' }));
+  const agreements = read('crear.demo.agreements').map(item => ({ ...item, date: dateToday(), kind: 'block', recurrence: 'weekly', selectedDays: [Number(item.days)], status: item.status === 'activo' ? 'confirmed' : 'cancelled' }));
+  return [...interviews, ...rentals, ...agreements] as Slot[];
+}
 async function refresh() {
   if (demo) cache = localRows();
   else {
@@ -38,7 +45,7 @@ export function subscribeToAppointments(callback: (rows: AppointmentRecord[]) =>
   if (!timer && !demo) timer = window.setInterval(() => { if (!document.hidden) void refresh().catch(onError); }, 20000);
   return () => { listeners.delete(callback); if (!listeners.size && timer) { window.clearInterval(timer); timer = undefined; } };
 }
-function validateLocal(candidate: AppointmentRecord, existing: AppointmentRecord[]) {
+function validateLocal(candidate: AppointmentRecord, existing: Slot[]) {
   const start = new Date(`${candidate.date}T12:00:00`);
   const days = candidate.recurrence && candidate.recurrence !== 'none' ? 365 : 1;
   for (let index = 0; index < days; index++) {
@@ -51,7 +58,7 @@ function validateLocal(candidate: AppointmentRecord, existing: AppointmentRecord
 export async function saveAppointment(data: Partial<AppointmentRecord>, id?: string) {
   const record = normalize({ ...data, id: id || data.id, updatedAt: new Date().toISOString(), createdAt: data.createdAt || new Date().toISOString() });
   if (demo) {
-    const rows = localRows(); validateLocal(record, rows);
+    const rows = localRows(); validateLocal(record, [...rows, ...localRelatedSlots()] as Slot[]);
     const next = rows.some(row => row.id === record.id) ? rows.map(row => row.id === record.id ? record : row) : [...rows, record];
     localStorage.setItem(storageKey, JSON.stringify(next)); cache = next; emit(); return;
   }
