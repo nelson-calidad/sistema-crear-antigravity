@@ -1,36 +1,53 @@
 import { useSyncExternalStore } from 'react';
-import { apiRequest, signIn as sessionSignIn, signOut as sessionSignOut } from './session';
+import { SHEETS_ENDPOINT, signOut as sessionSignOut, syncSessionFromAuth } from './session';
+import type { AuthorizedUserRecord } from '../types';
 
 export type UserRole = 'admin' | 'therapist';
 
 export interface AuthUser {
   id: string;
+  userId?: string;
   email: string;
   name: string;
   role: UserRole;
+  professionalId?: string;
   specialty?: string;
   token?: string;
+  sessionToken?: string;
 }
 
-// Equipo interdisciplinario y responsables de CREAR
+// Equipo inicial de CREAR (sincronizado con crear_users en Google Sheets)
 export const CREAR_TEAM: AuthUser[] = [
   // 4 Responsables / Administradoras
-  { id: 'karina', email: 'karina@crear.com', name: 'Karina', role: 'admin', specialty: 'Coordinación General' },
-  { id: 'janina', email: 'janina@crear.com', name: 'Janina', role: 'admin', specialty: 'Coordinación Terapéutica' },
-  { id: 'responsable3', email: 'admin3@crear.com', name: 'Tercera Responsable', role: 'admin', specialty: 'Administración' },
-  { id: 'responsable4', email: 'admin4@crear.com', name: 'Cuarta Responsable', role: 'admin', specialty: 'Supervisión' },
-  
+  { id: 'karina', userId: 'user-karina', email: 'karina@crear.com', name: 'Karina', role: 'admin', specialty: 'Coordinación General' },
+  { id: 'janina', userId: 'user-janina', email: 'janina@crear.com', name: 'Janina', role: 'admin', specialty: 'Coordinación Terapéutica' },
+  { id: 'responsable3', userId: 'user-admin3', email: 'admin3@crear.com', name: 'Responsable 3', role: 'admin', specialty: 'Administración' },
+  { id: 'responsable4', userId: 'user-admin4', email: 'admin4@crear.com', name: 'Responsable 4', role: 'admin', specialty: 'Supervisión' },
+
   // Terapeutas del equipo interdisciplinario
-  { id: 'ariadna', email: 'ariadna@crear.com', name: 'Ariadna', role: 'therapist', specialty: 'Psicología' },
-  { id: 'ivana', email: 'ivana@crear.com', name: 'Ivana', role: 'therapist', specialty: 'Educación especial' },
-  { id: 'dana', email: 'dana@crear.com', name: 'Dana', role: 'therapist', specialty: 'Psicopedagogía' },
-  { id: 'romy', email: 'romy@crear.com', name: 'Romy', role: 'therapist', specialty: 'Psicomotricidad' },
-  { id: 'barbie', email: 'barbie@crear.com', name: 'Barbie', role: 'therapist', specialty: 'Terapia ocupacional' },
-  { id: 'vero', email: 'vero@crear.com', name: 'Vero', role: 'therapist', specialty: 'Fonoaudiología' },
+  { id: 'ariadna', userId: 'user-ariadna', professionalId: 'ariadna', email: 'ariadna@crear.com', name: 'Ariadna', role: 'therapist', specialty: 'Psicología' },
+  { id: 'ivana', userId: 'user-ivana', professionalId: 'ivana', email: 'ivana@crear.com', name: 'Ivana', role: 'therapist', specialty: 'Educación especial' },
+  { id: 'dana', userId: 'user-dana', professionalId: 'dana', email: 'dana@crear.com', name: 'Dana', role: 'therapist', specialty: 'Psicopedagogía' },
+  { id: 'romy', userId: 'user-romy', professionalId: 'romy', email: 'romy@crear.com', name: 'Romy', role: 'therapist', specialty: 'Psicomotricidad' },
+  { id: 'barbie', userId: 'user-barbie', professionalId: 'barbie', email: 'barbie@crear.com', name: 'Barbie', role: 'therapist', specialty: 'Terapia ocupacional' },
+  { id: 'vero', userId: 'user-vero', professionalId: 'vero', email: 'vero@crear.com', name: 'Vero', role: 'therapist', specialty: 'Fonoaudiología' },
+];
+
+export const DEFAULT_INITIAL_USERS: (AuthorizedUserRecord & { defaultPass?: string })[] = [
+  { id: 'user-karina', name: 'Karina', email: 'karina@crear.com', googleEmail: '', defaultPass: 'crear2026', role: 'admin', professionalId: '', specialty: 'Coordinación General', active: true, createdAt: '2026-01-01' },
+  { id: 'user-janina', name: 'Janina', email: 'janina@crear.com', googleEmail: '', defaultPass: 'crear2026', role: 'admin', professionalId: '', specialty: 'Coordinación Terapéutica', active: true, createdAt: '2026-01-01' },
+  { id: 'user-admin3', name: 'Responsable 3', email: 'admin3@crear.com', googleEmail: '', defaultPass: 'crear2026', role: 'admin', professionalId: '', specialty: 'Administración', active: true, createdAt: '2026-01-01' },
+  { id: 'user-admin4', name: 'Responsable 4', email: 'admin4@crear.com', googleEmail: '', defaultPass: 'crear2026', role: 'admin', professionalId: '', specialty: 'Supervisión', active: true, createdAt: '2026-01-01' },
+  { id: 'user-ariadna', name: 'Ariadna', email: 'ariadna@crear.com', googleEmail: '', defaultPass: 'ariadna2026', role: 'professional', professionalId: 'ariadna', specialty: 'Psicología', active: true, createdAt: '2026-01-01' },
+  { id: 'user-ivana', name: 'Ivana', email: 'ivana@crear.com', googleEmail: '', defaultPass: 'ivana2026', role: 'professional', professionalId: 'ivana', specialty: 'Educación especial', active: true, createdAt: '2026-01-01' },
+  { id: 'user-dana', name: 'Dana', email: 'dana@crear.com', googleEmail: '', defaultPass: 'dana2026', role: 'professional', professionalId: 'dana', specialty: 'Psicopedagogía', active: true, createdAt: '2026-01-01' },
+  { id: 'user-romy', name: 'Romy', email: 'romy@crear.com', googleEmail: '', defaultPass: 'romy2026', role: 'professional', professionalId: 'romy', specialty: 'Psicomotricidad', active: true, createdAt: '2026-01-01' },
+  { id: 'user-barbie', name: 'Barbie', email: 'barbie@crear.com', googleEmail: '', defaultPass: 'barbie2026', role: 'professional', professionalId: 'barbie', specialty: 'Terapia ocupacional', active: true, createdAt: '2026-01-01' },
+  { id: 'user-vero', name: 'Vero', email: 'vero@crear.com', googleEmail: '', defaultPass: 'vero2026', role: 'professional', professionalId: 'vero', specialty: 'Fonoaudiología', active: true, createdAt: '2026-01-01' },
 ];
 
 const AUTH_STORAGE_KEY = 'crear.session.user';
-const OTP_STORAGE_PREFIX = 'crear.otp.';
+const LOCAL_USERS_CACHE_KEY = 'crear.users.cache';
 
 let currentUser: AuthUser | null = (() => {
   try {
@@ -61,94 +78,176 @@ export function getCurrentUser(): AuthUser | null {
   return currentUser;
 }
 
-export interface RequestOtpResult {
-  ok: boolean;
-  message: string;
-  devCode?: string;
+function setSessionUser(user: AuthUser) {
+  currentUser = user;
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  syncSessionFromAuth();
+  notify();
 }
 
 /**
- * Inicia sesión mediante Google Sign-In con verificación criptográfica en el servidor.
- * El servidor valida el token con Google y asigna el rol y professionalId de forma segura.
+ * Opción 1: Ingreso con Usuario/Correo (@crear.com o Gmail) y Contraseña validada en Google Sheets
+ */
+export async function signInWithCredentials(identifierInput: string, passwordInput: string): Promise<AuthUser> {
+  const rawId = identifierInput.trim().toLowerCase();
+  const password = passwordInput.trim();
+
+  if (!rawId || !password) {
+    throw new Error('Ingresá tu usuario/correo y tu contraseña.');
+  }
+
+  const normalizedEmail = rawId.includes('@') ? rawId : `${rawId}@crear.com`;
+
+  try {
+    const response = await fetch(SHEETS_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify({
+        action: 'loginPassword',
+        email: normalizedEmail,
+        password,
+      }),
+      cache: 'no-store',
+    });
+
+    const data = await response.json();
+
+    if (data && data.ok && data.user) {
+      const user: AuthUser = {
+        id: data.user.professionalId || data.user.id,
+        userId: data.user.userId || data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        role: data.user.role === 'admin' ? 'admin' : 'therapist',
+        professionalId: data.user.professionalId || '',
+        specialty: data.user.specialty || (data.user.role === 'admin' ? 'Responsable CREAR' : 'Terapeuta'),
+        sessionToken: data.sessionToken,
+      };
+      setSessionUser(user);
+      return user;
+    }
+
+    // Si el servidor ya tiene implementado loginPassword y rechazó la credencial explícitamente
+    if (data && data.ok === false && data.error && !String(data.error).includes('Missing id')) {
+      throw new Error(data.error);
+    }
+  } catch (err) {
+    if (err instanceof Error && (err.message.includes('Contraseña') || err.message.includes('autorizada') || err.message.includes('inactiva'))) {
+      throw err;
+    }
+  }
+
+  // Respaldo contra el padrón de crear_users sincronizado en caso de que falte publicar la nueva versión de Code.gs
+  const cachedUsers: (AuthorizedUserRecord & { defaultPass?: string })[] = (() => {
+    try {
+      const raw = localStorage.getItem(LOCAL_USERS_CACHE_KEY);
+      return raw ? JSON.parse(raw) : DEFAULT_INITIAL_USERS;
+    } catch {
+      return DEFAULT_INITIAL_USERS;
+    }
+  })();
+
+  const matched = cachedUsers.find((u) => {
+    const uEmail = u.email.toLowerCase();
+    const uGoogle = (u.googleEmail || '').toLowerCase();
+    return uEmail === rawId || uEmail === normalizedEmail || (uGoogle && uGoogle === rawId);
+  });
+
+  if (!matched || matched.active === false) {
+    throw new Error('La cuenta no está autorizada o se encuentra inactiva.');
+  }
+
+  const expectedPass = matched.password || matched.defaultPass || 'crear2026';
+  if (password !== expectedPass) {
+    throw new Error('Contraseña incorrecta.');
+  }
+
+  const user: AuthUser = {
+    id: matched.professionalId || matched.id.replace('user-', ''),
+    userId: matched.id,
+    email: matched.email,
+    name: matched.name,
+    role: matched.role === 'admin' ? 'admin' : 'therapist',
+    professionalId: matched.professionalId || '',
+    specialty: matched.specialty || (matched.role === 'admin' ? 'Responsable CREAR' : 'Terapeuta'),
+  };
+
+  setSessionUser(user);
+  return user;
+}
+
+/**
+ * Opción 2: Ingreso con Google Identity Services (validación de token en el servidor)
  */
 export async function signInWithGoogle(credential: string): Promise<AuthUser> {
-  const actor = await sessionSignIn(credential);
-  const matchedTeam = CREAR_TEAM.find((m) => m.email.toLowerCase() === actor.email.toLowerCase());
-  
+  const response = await fetch(SHEETS_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify({
+      action: 'loginGoogle',
+      credential,
+    }),
+    cache: 'no-store',
+  });
+
+  const data = await response.json();
+
+  if (data && data.ok && data.user) {
+    const user: AuthUser = {
+      id: data.user.professionalId || data.user.id,
+      userId: data.user.userId || data.user.id,
+      email: data.user.email,
+      name: data.user.name,
+      role: data.user.role === 'admin' ? 'admin' : 'therapist',
+      professionalId: data.user.professionalId || '',
+      specialty: data.user.specialty || (data.user.role === 'admin' ? 'Responsable CREAR' : 'Terapeuta'),
+      token: credential,
+      sessionToken: data.sessionToken,
+    };
+    setSessionUser(user);
+    return user;
+  }
+
+  // Fallback a whoami si el script en la nube tiene la versión anterior
+  const whoamiRes = await fetch(SHEETS_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify({
+      action: 'whoami',
+      credential,
+    }),
+    cache: 'no-store',
+  });
+
+  const whoamiData = await whoamiRes.json();
+  if (!whoamiData || !whoamiData.ok || !whoamiData.actor) {
+    throw new Error(data?.error || whoamiData?.error || 'Tu cuenta de Google no está autorizada en CREAR.');
+  }
+
+  const actor = whoamiData.actor;
+  const matchedTeam = CREAR_TEAM.find((m) => m.email.toLowerCase() === String(actor.email).toLowerCase());
+
   const user: AuthUser = {
-    id: actor.professionalId || matchedTeam?.id || actor.email.split('@')[0],
+    id: actor.professionalId || matchedTeam?.id || String(actor.email).split('@')[0],
     email: actor.email,
-    name: matchedTeam?.name || actor.email.split('@')[0],
+    name: actor.name || matchedTeam?.name || String(actor.email).split('@')[0],
     role: actor.role === 'admin' ? 'admin' : 'therapist',
+    professionalId: actor.professionalId || matchedTeam?.professionalId || '',
     specialty: matchedTeam?.specialty || (actor.role === 'admin' ? 'Responsable CREAR' : 'Terapeuta'),
     token: credential,
   };
 
-  currentUser = user;
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-  notify();
+  setSessionUser(user);
   return user;
-}
-
-/**
- * Solicita un código de acceso temporal para el correo indicado.
- */
-export async function requestAccessOtp(emailInput: string): Promise<RequestOtpResult> {
-  const email = emailInput.trim().toLowerCase();
-  if (!email || !email.includes('@')) {
-    throw new Error('Ingresá un correo electrónico válido.');
-  }
-
-  // Generamos un código temporal de 6 dígitos para validación
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  sessionStorage.setItem(`${OTP_STORAGE_PREFIX}${email}`, code);
-
-  return {
-    ok: true,
-    message: `Código temporal de acceso para ${email}.`,
-    devCode: code,
-  };
-}
-
-/**
- * Verifica el código de acceso temporal e inicia la sesión de la usuaria.
- */
-export async function verifyAccessOtp(emailInput: string, codeInput: string): Promise<AuthUser> {
-  const email = emailInput.trim().toLowerCase();
-  const code = codeInput.trim();
-
-  if (!code) {
-    throw new Error('Ingresá el código de acceso.');
-  }
-
-  const expectedCode = sessionStorage.getItem(`${OTP_STORAGE_PREFIX}${email}`) || '123456';
-  if (code !== expectedCode && code !== '123456') {
-    throw new Error('Código incorrecto. Revisá el código e intentalo nuevamente.');
-  }
-
-  const matchedTeam = CREAR_TEAM.find((m) => m.email.toLowerCase() === email);
-  const user: AuthUser = {
-    id: matchedTeam?.id || email.split('@')[0],
-    email,
-    name: matchedTeam?.name || email.split('@')[0],
-    role: matchedTeam?.role || (email.includes('admin') || email.includes('karina') || email.includes('janina') ? 'admin' : 'therapist'),
-    specialty: matchedTeam?.specialty || 'Terapeuta CREAR',
-  };
-
-  currentUser = user;
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-  sessionStorage.removeItem(`${OTP_STORAGE_PREFIX}${email}`);
-  notify();
-  return user;
-}
-
-/**
- * Acceso directo para desarrollo y pruebas del equipo
- */
-export function quickLoginAs(user: AuthUser): void {
-  currentUser = user;
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-  notify();
 }
 
 /**

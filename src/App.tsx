@@ -277,7 +277,7 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
                 <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{authenticated?.actor.email || 'Admin CREAR'}</p>
                 <p className="text-[10px] font-medium text-slate-400 uppercase">{getBackendLabel()}</p>
               </div>
-              <button type="button" onClick={signOut} title="Cerrar sesión" className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
+              <button type="button" onClick={() => void logoutUser()} title="Cerrar sesión" className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
                 {user?.photoURL ? <img src={user.photoURL} alt="avatar" /> : 'AD'}
               </button>
             </div>
@@ -392,23 +392,82 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
 export default function App() {
   seedDemoData();
   const authUser = useAuth();
-  const [showFullAdminSuite, setShowFullAdminSuite] = useState(false);
+  const [routeHash, setRouteHash] = useState<string>(() =>
+    typeof window !== 'undefined' ? window.location.hash : ''
+  );
   const [adminInitialTab, setAdminInitialTab] = useState<string | undefined>();
+
+  useEffect(() => {
+    const onHashChange = () => setRouteHash(window.location.hash);
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Redirección automática en la ruta raíz según el rol verificado
+  useEffect(() => {
+    if (!authUser) return;
+    const currentHash = window.location.hash;
+    if (!currentHash || currentHash === '#' || currentHash === '#/') {
+      const target = authUser.role === 'admin' ? '#/admin' : '#/terapeutas';
+      window.history.replaceState(null, '', target);
+      setRouteHash(target);
+    }
+  }, [authUser]);
 
   if (!authUser) {
     return <LoginView />;
   }
 
-  const handleOpenAdminSuite = (tab?: string) => {
-    setAdminInitialTab(tab || 'dashboard');
-    setShowFullAdminSuite(true);
+  const goToPortal = (portal: 'admin' | 'terapeutas', tab?: string) => {
+    if (tab) setAdminInitialTab(tab);
+    const nextHash = portal === 'admin' ? '#/admin' : '#/terapeutas';
+    window.location.hash = nextHash;
+    setRouteHash(nextHash);
   };
 
-  if (showFullAdminSuite && authUser.role === 'admin') {
+  const wantsAdminRoute =
+    routeHash.startsWith('#/admin') ||
+    (!routeHash.startsWith('#/terapeutas') && authUser.role === 'admin');
+
+  // Si una terapeuta intenta acceder a /#/admin, mostrar aviso de acceso restringido
+  if (routeHash.startsWith('#/admin') && authUser.role !== 'admin') {
+    return (
+      <main className="min-h-dvh flex items-center justify-center bg-[#F9F8F5] p-4 text-[#34433F]">
+        <div className="w-full max-w-md rounded-3xl border border-[#E5EAE5] bg-white p-7 text-center shadow-sm space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-800">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <h1 className="text-lg font-bold text-[#34433F]">Acceso Restringido</h1>
+          <p className="text-xs leading-relaxed text-[#6D7C76]">
+            El Panel Administrativo Integral es de uso exclusivo para las responsables autorizadas de CREAR.
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => goToPortal('terapeutas')}
+              className="w-full rounded-2xl bg-[#46766B] py-3 px-4 text-xs font-bold text-white hover:bg-[#3B645B]"
+            >
+              Ir a Mi Portal de Terapeuta
+            </button>
+            <button
+              type="button"
+              onClick={() => void logoutUser()}
+              className="w-full rounded-2xl border border-[#D5DDD7] bg-white py-2.5 px-4 text-xs font-semibold text-[#6D7C76] hover:bg-[#F9F8F5]"
+            >
+              Cambiar de cuenta
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Si es responsable y está en /#/admin (o raíz), abrir directamente el Panel Administrativo Completo
+  if (wantsAdminRoute && authUser.role === 'admin') {
     return (
       <AdminApp
         initialTab={adminInitialTab}
-        onBackToAgenda={() => setShowFullAdminSuite(false)}
+        onBackToAgenda={() => goToPortal('terapeutas')}
       />
     );
   }
@@ -416,7 +475,9 @@ export default function App() {
   return (
     <TherapistPortal
       currentUser={authUser}
-      onOpenAdminSuite={authUser.role === 'admin' ? handleOpenAdminSuite : undefined}
+      onOpenAdminSuite={
+        authUser.role === 'admin' ? (tab) => goToPortal('admin', tab) : undefined
+      }
     />
   );
 }

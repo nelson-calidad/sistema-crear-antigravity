@@ -29,6 +29,7 @@ export interface Professional {
 export interface Patient {
   id: string;
   name: string;
+  professionalId?: string;
   dni?: string;
   healthInsurance?: string;
   plan?: string;
@@ -42,6 +43,38 @@ export interface Patient {
 }
 
 export type PatientRecord = Patient;
+
+export interface AuthorizedUserRecord {
+  id: string;
+  googleSub?: string;
+  name: string;
+  email: string;
+  googleEmail?: string;
+  password?: string;
+  role: 'admin' | 'professional';
+  professionalId?: string;
+  specialty?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface ServiceCatalogItem {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  active: boolean;
+}
+
+export interface AuditLogRecord {
+  id: string;
+  timestamp: string;
+  actorEmail: string;
+  actorRole: string;
+  action: string;
+  entity: string;
+  targetId: string;
+  summary: string;
+}
 
 export interface Appointment {
   id: string;
@@ -108,8 +141,12 @@ export interface AppointmentRecord {
   professionalId?: string;
   proId?: string;
   roomId?: string;
+  patientId?: string;
   patient?: string;
   patientPhone?: string;
+  serviceId?: string;
+  serviceName?: string;
+  roomBlockId?: string;
   notes?: string;
   date: string;
   start: string;
@@ -121,6 +158,7 @@ export interface AppointmentRecord {
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  syncPending?: boolean;
 }
 
 export type ActivityStatus = 'Sin asignar' | 'Pendiente' | 'En proceso' | 'Bloqueada' | 'Completada' | 'No cumplida' | 'Cancelada';
