@@ -5,7 +5,7 @@
 
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { X as CloseIcon, Check, Info, AlertCircle } from 'lucide-react';
+import { X as CloseIcon, Check, Info, AlertCircle, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
 import { readStoredValue, writeStoredValue } from './lib/browserStorage';
@@ -14,6 +14,9 @@ import { isDemo, seedDemoData, useRecords } from './lib/crearStore';
 import { AccessGate } from './components/AccessGate';
 import { ProfessionalPortal } from './components/ProfessionalPortal';
 import { signOut, useSession } from './lib/session';
+import { useAuth, logoutUser } from './lib/crearAuth';
+import { LoginView } from './components/LoginView';
+import { TherapistPortal } from './components/TherapistPortal';
 
 const Dashboard = lazy(() => import('./components/HomeReal').then((module) => ({ default: module.HomeReal })));
 const Admissions = lazy(() => import('./components/Admissions').then((module) => ({ default: module.Admissions })));
@@ -58,7 +61,7 @@ const buildTabUrl = (tab: string) => {
   return `${url.pathname}${url.search}${url.hash}`;
 };
 
-function AdminApp() {
+function AdminApp({ onBackToAgenda }: { onBackToAgenda?: () => void } = {}) {
   const authenticated = useSession();
   const [activeTab, setActiveTab] = useState(() => getTabFromLocation());
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -247,6 +250,16 @@ function AdminApp() {
           </div>
 
           <div className="hidden md:flex items-center justify-end gap-4">
+            {onBackToAgenda && (
+              <button
+                type="button"
+                onClick={onBackToAgenda}
+                className="flex items-center gap-1.5 rounded-xl border border-[#46766B] bg-[#E8F3EE] px-3.5 py-2 text-xs font-bold text-[#46766B] transition hover:bg-[#DDEAE2] dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Volver a la Agenda</span>
+              </button>
+            )}
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{authenticated?.actor.email || 'Admin CREAR'}</p>
@@ -366,5 +379,21 @@ function AdminApp() {
 
 export default function App() {
   seedDemoData();
-  return <AccessGate admin={<AdminApp />} professional={<ProfessionalPortal />} />;
+  const authUser = useAuth();
+  const [showFullAdminSuite, setShowFullAdminSuite] = useState(false);
+
+  if (!authUser) {
+    return <LoginView />;
+  }
+
+  if (showFullAdminSuite && authUser.role === 'admin') {
+    return <AdminApp onBackToAgenda={() => setShowFullAdminSuite(false)} />;
+  }
+
+  return (
+    <TherapistPortal
+      currentUser={authUser}
+      onOpenAdminSuite={authUser.role === 'admin' ? () => setShowFullAdminSuite(true) : undefined}
+    />
+  );
 }

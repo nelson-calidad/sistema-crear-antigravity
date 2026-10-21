@@ -306,11 +306,57 @@ function doPost(e) {
     return json_({ ok: false, error: error.message }, 500);
   }
 }
-function crearAuthorize_(body) {
-  const configured = String(PropertiesService.getScriptProperties().getProperty('CREAR_PROXY_SECRET') || '');
-  if (configured && configured.length >= 32) {
-    if (String(body.proxySecret || '') !== configured) throw new Error('Acceso no autorizado.');
+function verifyGoogleToken_(token) {
+  if (!token) return null;
+  try {
+    const url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(token);
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return null;
+    const payload = JSON.parse(res.getContentText());
+    if (!payload.email_verified || String(payload.email_verified) !== 'true') return null;
+    return String(payload.email || '').toLowerCase();
+  } catch (err) {
+    return null;
   }
+}
+
+function getAuthorizedTeam_() {
+  const props = PropertiesService.getScriptProperties();
+  const adminEmailsRaw = props.getProperty('CREAR_ADMIN_EMAILS') || 'karina@crear.com,janina@crear.com,admin3@crear.com,admin4@crear.com';
+  const proAccountsRaw = props.getProperty('CREAR_PROFESSIONAL_ACCOUNTS') || 'ariadna@crear.com:ariadna,ivana@crear.com:ivana,dana@crear.com:dana,romy@crear.com:romy,barbie@crear.com:barbie,vero@crear.com:vero';
+  const admins = new Set(adminEmailsRaw.toLowerCase().split(',').map(function(s) { return s.trim(); }).filter(Boolean));
+  const professionals = new Map(proAccountsRaw.toLowerCase().split(',').map(function(s) { return s.trim().split(':'); }).filter(function(pair) { return pair[0] && pair[1]; }));
+  return { admins: admins, professionals: professionals };
+}
+
+function crearAuthorize_(body) {
+  const props = PropertiesService.getScriptProperties();
+  const configuredSecret = String(props.getProperty('CREAR_PROXY_SECRET') || '');
+  const team = getAuthorizedTeam_();
+
+  // 1. Verificación segura con Google Sign-In (Token JWT directo desde GitHub Pages)
+  if (body.credential) {
+    const verifiedEmail = verifyGoogleToken_(body.credential);
+    if (!verifiedEmail) throw new Error('Sesión de Google no válida o expirada.');
+    const role = team.admins.has(verifiedEmail) ? 'admin' : team.professionals.has(verifiedEmail) ? 'professional' : null;
+    if (!role) throw new Error('La cuenta ' + verifiedEmail + ' no está autorizada para acceder a CREAR.');
+    return { email: verifiedEmail, role: role, professionalId: team.professionals.get(verifiedEmail) || '' };
+  }
+
+  // 2. Verificación mediante Servidor Proxy con clave secreta compartida
+  if (configuredSecret && configuredSecret.length >= 32) {
+    if (String(body.proxySecret || '') === configuredSecret) {
+      const actor = body.actor || { role: 'admin', email: 'admin@crear.com' };
+      return {
+        email: String(actor.email || 'admin@crear.com').toLowerCase(),
+        role: actor.role === 'professional' ? 'professional' : 'admin',
+        professionalId: String(actor.professionalId || '')
+      };
+    }
+    throw new Error('Acceso no autorizado: clave secreta inválida.');
+  }
+
+  // 3. Modo de desarrollo / preparación local
   const actor = body.actor || { role: 'admin', email: 'admin@crear.com' };
   const email = String(actor.email || 'admin@crear.com').toLowerCase();
   const role = actor.role === 'professional' ? 'professional' : 'admin';
@@ -319,7 +365,33 @@ function crearAuthorize_(body) {
 function crearListAuthorized_(entity, actor) {
   if (entity === 'appointments') {
     const appointments = readAppointments_(ensureSheet_());
-    return { ok: true, appointments: actor.role === 'admin' ? appointments : appointments.filter(item => item.professionalId === actor.professionalId) };
+    if (actor.role === 'admin') return { ok: true, appointments: appointments };
+    // Para terapeutas: ven la ocupación de todos los consultorios,
+    // pero protegiendo la privacidad de pacientes ajenos (sin exponer datos privados ni diagnósticos)
+    const sanitized = appointments.map(function(item) {
+      if (item.professionalId === actor.professionalId) return item;
+      return {
+        id: item.id,
+        title: 'Consultorio ocupado',
+        kind: item.kind,
+        type: item.type,
+        status: item.status,
+        professionalId: item.professionalId,
+        proId: item.proId,
+        roomId: item.roomId,
+        date: item.date,
+        start: item.start,
+        end: item.end,
+        recurrence: item.recurrence,
+        selectedDays: item.selectedDays,
+        untilDate: item.untilDate,
+        excludedDates: item.excludedDates,
+        patient: '',
+        notes: '',
+        patientPhone: ''
+      };
+    });
+    return { ok: true, appointments: sanitized };
   }
   if (entity === 'professionals') {
     if (actor.role !== 'admin') throw new Error('Acceso administrativo requerido.');

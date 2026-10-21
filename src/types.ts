@@ -56,6 +56,27 @@ export interface Appointment {
   price: number;
 }
 
+export interface ConfiguredRoom {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  active: boolean;
+}
+
+export interface TherapistAvailability {
+  id: string;
+  therapistId: string;
+  therapistName?: string;
+  activeDays: number[];
+  startTime: string;
+  endTime: string;
+  acceptingPatients: boolean;
+  needsRecurringBlock: boolean;
+  notes: string;
+  updatedAt: string;
+}
+
 export interface Consultory {
   id: string;
   name: string; // "C.1", "C.2", etc.
