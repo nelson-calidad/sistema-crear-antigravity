@@ -74,9 +74,10 @@ interface SidebarProps {
   onCloseMobile?: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  onOpenPortal?: () => void;
 }
 
-export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, theme, onToggleTheme }: SidebarProps) => {
+export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, theme, onToggleTheme, onOpenPortal }: SidebarProps) => {
   const [isCollapsed, setIsCollapsed] = React.useState(() => readStoredValue('crear-sidebar-compact') === 'true');
   const [isHidden, setIsHidden] = React.useState(() => readStoredValue('crear-sidebar-hidden') === 'true');
 
@@ -136,6 +137,18 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
         </div>
 
         <nav className="flex-1 px-4 space-y-2">
+          {onOpenPortal && (
+            <button
+              onClick={onOpenPortal}
+              className={cn(
+                'flex items-center w-full p-3 rounded-2xl mb-3 border border-[#46766B] bg-[#E8F3EE] text-[#46766B] font-bold text-xs hover:bg-[#46766B] hover:text-white transition shadow-xs dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100',
+              )}
+              title="Ir a la Agenda de Turnos para Terapeutas"
+            >
+              <Calendar className="w-5 h-5 flex-shrink-0" />
+              {!isCollapsed && <span className="ml-3 truncate">Agenda Terapeutas</span>}
+            </button>
+          )}
           {menuItems.map((item) => (
             <SidebarItem
               key={item.id}

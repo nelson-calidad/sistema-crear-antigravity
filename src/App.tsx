@@ -61,9 +61,9 @@ const buildTabUrl = (tab: string) => {
   return `${url.pathname}${url.search}${url.hash}`;
 };
 
-function AdminApp({ onBackToAgenda }: { onBackToAgenda?: () => void } = {}) {
+function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void; initialTab?: string } = {}) {
   const authenticated = useSession();
-  const [activeTab, setActiveTab] = useState(() => getTabFromLocation());
+  const [activeTab, setActiveTab] = useState(() => initialTab || getTabFromLocation());
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [user] = useState(() => getSessionUser());
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -231,6 +231,7 @@ function AdminApp({ onBackToAgenda }: { onBackToAgenda?: () => void } = {}) {
         onCloseMobile={() => setMobileSidebarOpen(false)}
         theme={theme}
         onToggleTheme={toggleTheme}
+        onOpenPortal={onBackToAgenda}
       />
       
       <main className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
@@ -246,7 +247,17 @@ function AdminApp({ onBackToAgenda }: { onBackToAgenda?: () => void } = {}) {
             <div className="min-w-0 flex-1 px-1">
               <p className="text-[13px] font-black text-slate-900 dark:text-slate-100 truncate leading-none">{mobileTabLabel}</p>
             </div>
-
+            {onBackToAgenda && (
+              <button
+                type="button"
+                onClick={onBackToAgenda}
+                className="flex items-center gap-1 rounded-xl border border-[#46766B] bg-[#E8F3EE] px-2.5 py-1 text-xs font-bold text-[#46766B]"
+                title="Volver a la Agenda de Turnos"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Turnos</span>
+              </button>
+            )}
           </div>
 
           <div className="hidden md:flex items-center justify-end gap-4">
@@ -254,10 +265,11 @@ function AdminApp({ onBackToAgenda }: { onBackToAgenda?: () => void } = {}) {
               <button
                 type="button"
                 onClick={onBackToAgenda}
-                className="flex items-center gap-1.5 rounded-xl border border-[#46766B] bg-[#E8F3EE] px-3.5 py-2 text-xs font-bold text-[#46766B] transition hover:bg-[#DDEAE2] dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                className="flex items-center gap-2 rounded-2xl border border-[#46766B] bg-[#E8F3EE] px-4 py-2.5 text-xs font-bold text-[#46766B] transition hover:bg-[#46766B] hover:text-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                title="Volver a la Agenda de Turnos"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Volver a la Agenda</span>
+                <span>Volver a la Agenda de Turnos</span>
               </button>
             )}
             <div className="flex items-center gap-3">
@@ -381,19 +393,30 @@ export default function App() {
   seedDemoData();
   const authUser = useAuth();
   const [showFullAdminSuite, setShowFullAdminSuite] = useState(false);
+  const [adminInitialTab, setAdminInitialTab] = useState<string | undefined>();
 
   if (!authUser) {
     return <LoginView />;
   }
 
+  const handleOpenAdminSuite = (tab?: string) => {
+    setAdminInitialTab(tab || 'dashboard');
+    setShowFullAdminSuite(true);
+  };
+
   if (showFullAdminSuite && authUser.role === 'admin') {
-    return <AdminApp onBackToAgenda={() => setShowFullAdminSuite(false)} />;
+    return (
+      <AdminApp
+        initialTab={adminInitialTab}
+        onBackToAgenda={() => setShowFullAdminSuite(false)}
+      />
+    );
   }
 
   return (
     <TherapistPortal
       currentUser={authUser}
-      onOpenAdminSuite={authUser.role === 'admin' ? () => setShowFullAdminSuite(true) : undefined}
+      onOpenAdminSuite={authUser.role === 'admin' ? handleOpenAdminSuite : undefined}
     />
   );
 }

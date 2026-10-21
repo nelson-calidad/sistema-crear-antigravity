@@ -21,6 +21,12 @@ import {
   Info,
   ShieldCheck,
   ExternalLink,
+  LayoutDashboard,
+  Users,
+  Wallet,
+  Settings,
+  ClipboardList,
+  MessageCircle,
 } from 'lucide-react';
 import logo from '../assets/logo-crear.png';
 import type { AppointmentRecord, ConfiguredRoom, TherapistAvailability } from '../types';
@@ -40,7 +46,7 @@ import { occursOn, type Slot } from '../lib/scheduling';
 
 interface TherapistPortalProps {
   currentUser: AuthUser;
-  onOpenAdminSuite?: () => void;
+  onOpenAdminSuite?: (tab?: string) => void;
 }
 
 export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPortalProps) {
@@ -216,6 +222,19 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
 
           {/* User Profile & Logout */}
           <div className="flex items-center gap-2.5">
+            {currentUser.role === 'admin' && onOpenAdminSuite && (
+              <button
+                type="button"
+                onClick={() => onOpenAdminSuite('dashboard')}
+                className="flex items-center gap-1.5 rounded-2xl bg-[#A36224] px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#8A521D] active:scale-95"
+                title="Acceder al Panel Administrativo General con las 9 pantallas"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="hidden sm:inline">Panel Administrativo Completo</span>
+                <span className="sm:hidden">Panel Completo</span>
+              </button>
+            )}
+
             <div className="flex items-center gap-2 rounded-2xl border border-[#E5EAE5] bg-[#F9FBF9] py-1.5 px-3">
               <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#46766B] font-bold text-xs text-white">
                 {currentUser.name.slice(0, 2).toUpperCase()}
@@ -1067,7 +1086,7 @@ function AdminOverviewSection({
   currentDateStr: string;
   onEditAppointment: (app: AppointmentRecord) => void;
   onCancelAppointment: (id: string) => void;
-  onOpenFullAdmin?: () => void;
+  onOpenFullAdmin?: (tab?: string) => void;
 }) {
   const [filterDate, setFilterDate] = useState(currentDateStr);
 
@@ -1129,7 +1148,7 @@ function AdminOverviewSection({
 
         {onOpenFullAdmin && (
           <button
-            onClick={onOpenFullAdmin}
+            onClick={() => onOpenFullAdmin('dashboard')}
             className="flex items-center gap-2 rounded-2xl border border-[#A36224] bg-white px-4 py-2.5 text-xs font-bold text-[#A36224] shadow-xs hover:bg-[#F9EDE0]"
           >
             <span>Ver Panel Administrativo Completo</span>
@@ -1137,6 +1156,127 @@ function AdminOverviewSection({
           </button>
         )}
       </div>
+
+      {/* Selector de Pantallas Administrativas de CREAR */}
+      {onOpenFullAdmin && (
+        <div className="rounded-3xl border border-[#E5EAE5] bg-white p-5 shadow-xs sm:p-6">
+          <div className="flex items-center justify-between border-b border-[#F0F4F1] pb-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#A36224]">
+                Módulos del Sistema CREAR
+              </p>
+              <h3 className="text-base font-bold text-[#34433F]">
+                Acceso directo a las pantallas de gestión institucional
+              </h3>
+            </div>
+            <button
+              onClick={() => onOpenFullAdmin('dashboard')}
+              className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-[#A36224] hover:underline"
+            >
+              <span>Abrir vista general</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <button
+              type="button"
+              onClick={() => onOpenFullAdmin('dashboard')}
+              className="flex flex-col items-start rounded-2xl border border-[#E5EAE5] bg-[#FDFEFC] p-3.5 text-left transition hover:border-[#46766B] hover:bg-[#F4F9F6] group"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-[#46766B] group-hover:text-white transition">
+                <LayoutDashboard className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#34433F]">Inicio / Métricas</p>
+              <p className="text-[10px] text-[#6D7C76] line-clamp-1">Visión general y accesos</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenFullAdmin('rooms')}
+              className="flex flex-col items-start rounded-2xl border border-[#E5EAE5] bg-[#FDFEFC] p-3.5 text-left transition hover:border-[#46766B] hover:bg-[#F4F9F6] group"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-800 group-hover:bg-[#46766B] group-hover:text-white transition">
+                <DoorOpen className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#34433F]">Consultorios</p>
+              <p className="text-[10px] text-[#6D7C76] line-clamp-1">Salas, acuerdos y alquileres</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenFullAdmin('professionals')}
+              className="flex flex-col items-start rounded-2xl border border-[#E5EAE5] bg-[#FDFEFC] p-3.5 text-left transition hover:border-[#46766B] hover:bg-[#F4F9F6] group"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-800 group-hover:bg-[#46766B] group-hover:text-white transition">
+                <Users className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#34433F]">Profesionales</p>
+              <p className="text-[10px] text-[#6D7C76] line-clamp-1">Fichas, equipo y datos</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenFullAdmin('finance')}
+              className="flex flex-col items-start rounded-2xl border border-[#E5EAE5] bg-[#FDFEFC] p-3.5 text-left transition hover:border-[#46766B] hover:bg-[#F4F9F6] group"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-800 group-hover:bg-[#46766B] group-hover:text-white transition">
+                <Wallet className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#34433F]">Finanzas</p>
+              <p className="text-[10px] text-[#6D7C76] line-clamp-1">Aranceles, caja y balance</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenFullAdmin('admissions')}
+              className="flex flex-col items-start rounded-2xl border border-[#E5EAE5] bg-[#FDFEFC] p-3.5 text-left transition hover:border-[#46766B] hover:bg-[#F4F9F6] group"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 group-hover:bg-[#46766B] group-hover:text-white transition">
+                <MessageCircle className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#34433F]">Admisiones</p>
+              <p className="text-[10px] text-[#6D7C76] line-clamp-1">Consultas y entrevistas</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenFullAdmin('responsibilities')}
+              className="flex flex-col items-start rounded-2xl border border-[#E5EAE5] bg-[#FDFEFC] p-3.5 text-left transition hover:border-[#46766B] hover:bg-[#F4F9F6] group"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-800 group-hover:bg-[#46766B] group-hover:text-white transition">
+                <ClipboardList className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#34433F]">Responsabilidades</p>
+              <p className="text-[10px] text-[#6D7C76] line-clamp-1">Organización y tareas</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenFullAdmin('coverage')}
+              className="flex flex-col items-start rounded-2xl border border-[#E5EAE5] bg-[#FDFEFC] p-3.5 text-left transition hover:border-[#46766B] hover:bg-[#F4F9F6] group"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-800 group-hover:bg-[#46766B] group-hover:text-white transition">
+                <CalendarDays className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#34433F]">Guardias CREAR</p>
+              <p className="text-[10px] text-[#6D7C76] line-clamp-1">Planificador de guardia</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenFullAdmin('settings')}
+              className="flex flex-col items-start rounded-2xl border border-[#E5EAE5] bg-[#FDFEFC] p-3.5 text-left transition hover:border-[#46766B] hover:bg-[#F4F9F6] group"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100 text-stone-700 group-hover:bg-[#46766B] group-hover:text-white transition">
+                <Settings className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#34433F]">Configuración</p>
+              <p className="text-[10px] text-[#6D7C76] line-clamp-1">Ajustes y sincronización</p>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Date Filter for Admin view */}
       <div className="flex items-center gap-3">
