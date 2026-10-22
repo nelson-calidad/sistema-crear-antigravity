@@ -34,9 +34,10 @@ interface RoomsRealProps {
     app?: AppointmentRecord,
     options?: { date?: string; startTime?: string }
   ) => void;
+  onNavigate?: (tab: string) => void;
 }
 
-export function RoomsReal({ onOpenModal }: RoomsRealProps = {}) {
+export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
   const rooms = useRecords('rooms');
   const agreements = useRecords('agreements');
   const rentals = useRecords('rentals');
@@ -728,16 +729,20 @@ export function RoomsReal({ onOpenModal }: RoomsRealProps = {}) {
                   <button
                     type="button"
                     className="rounded-xl border border-[#46766B] bg-[#E8F3EE] px-3 py-1.5 text-xs font-semibold text-[#46766B] hover:bg-[#DDEAE2]"
-                    onClick={() =>
-                      setPayment({
-                        agreement: x,
-                        month: localDate().slice(0, 7),
-                        amount: x.amount,
-                        method: '',
-                      })
-                    }
+                    onClick={() => {
+                      if (onNavigate) {
+                        onNavigate('finance');
+                      } else {
+                        setPayment({
+                          agreement: x,
+                          month: localDate().slice(0, 7),
+                          amount: x.amount,
+                          method: '',
+                        });
+                      }
+                    }}
                   >
-                    Registrar pago
+                    {onNavigate ? 'Cobrar en Finanzas →' : 'Registrar pago'}
                   </button>
                 </div>
               </div>

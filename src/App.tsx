@@ -216,15 +216,15 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard onNewInquiry={() => navigateToTab('admissions')} onNavigate={navigateToTab} />;
-      case 'admissions': return <Admissions />;
-      case 'professionals': return <ProfessionalsGrid onAgenda={() => navigateToTab('agenda')} />;
-      case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} />;
-      case 'rooms': return <Rooms onOpenModal={handleOpenModal} />;
+      case 'admissions': return <Admissions onNavigate={navigateToTab} />;
+      case 'professionals': return <ProfessionalsGrid onAgenda={() => navigateToTab('agenda')} onOpenModal={handleOpenModal} />;
+      case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} onOpenTherapistView={onBackToAgenda} />;
+      case 'rooms': return <Rooms onOpenModal={handleOpenModal} onNavigate={navigateToTab} />;
       case 'responsibilities': return <Responsibilities />;
-      case 'coverage': return <CoveragePlanner />;
+      case 'coverage': return <CoveragePlanner onOpenModal={handleOpenModal} />;
       case 'finance': return <Finance />;
-      case 'settings': return <Settings />;
-      default: return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} />;
+      case 'settings': return <Settings onNavigate={navigateToTab} />;
+      default: return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} onOpenTherapistView={onBackToAgenda} />;
     }
   };
 
@@ -276,17 +276,6 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
               </button>
 
               <div className="flex items-center gap-1.5">
-                {onBackToAgenda && (
-                  <button
-                    type="button"
-                    onClick={onBackToAgenda}
-                    className="flex items-center gap-1 rounded-xl border border-[#46766B] bg-[#E8F3EE] px-2.5 py-1.5 text-[11px] font-bold text-[#46766B]"
-                    title="Abrir vista operativa de Agenda de Terapeutas"
-                  >
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>Mi Agenda</span>
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => void logoutUser()}

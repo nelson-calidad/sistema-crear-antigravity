@@ -1,20 +1,61 @@
 import { useMemo, useState } from 'react';
 import { Inquiry, Interview, inquiryStatuses, localDate, moneyFormat, save, uid, useRecords } from '../lib/crearStore';
 import { useProfessionals } from '../lib/professionalsStore';
+import { savePatient, usePatients } from '../lib/patientsStore';
 import { ROOMS } from '../constants';
 
 const empty = (): Inquiry => ({ id: uid(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), contact: '', phone: '', discipline: '', professionalId: '', origin: 'WhatsApp', responsible: '', status: 'Nueva consulta', nextAction: '', notes: '', archived: false });
 const emptyInterview = (inquiry: Inquiry): Interview => ({ id: uid(), inquiryId: inquiry.id, professionalId: inquiry.professionalId, roomId: '', date: localDate(), start: '14:00', end: '14:30', status: 'propuesta', reminderAt: '', reminderStatus: 'pendiente', paymentStatus: 'pendiente', amount: 0, paymentMethod: '', receivedBy: '', receipt: '', updatedAt: new Date().toISOString() });
 const field = 'w-full rounded-xl border border-[#E5EAE5] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#46766B]';
 const button = 'rounded-xl bg-[#46766B] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50';
-export function Admissions() {
+export function Admissions({ onNavigate }: { onNavigate?: (tab: string) => void } = {}) {
   const inquiries = useRecords('inquiries'); const interviews = useRecords('interviews');
   const [professionals] = useProfessionals();
+  const patients = usePatients();
   const [editing, setEditing] = useState<Inquiry | null>(null); const [interview, setInterview] = useState<Interview | null>(null);
   const [search, setSearch] = useState(''); const [status, setStatus] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const shown = useMemo(() => inquiries.rows.filter(row => !row.archived && (!status || row.status === status) && `${row.contact} ${row.phone} ${row.discipline}`.toLowerCase().includes(search.toLowerCase())), [inquiries.rows, search, status]);
-  async function commitInquiry() { if (!editing) return; if (!editing.contact.trim()) { setError('Ingresá el nombre de contacto.'); return; } setBusy(true); setError(''); try { await save('inquiries', { ...editing, updatedAt: new Date().toISOString() }); setEditing(null); } catch (e) { setError(String(e)); } finally { setBusy(false); } }
-  async function commitInterview() { if (!interview) return; if (!interview.professionalId || !interview.roomId || !interview.date || interview.start >= interview.end) { setError('Completá profesional, consultorio y horario válido.'); return; } if (interview.paymentStatus === 'cobrado' && interview.amount <= 0) { setError('Ingresá el importe cobrado.'); return; } setBusy(true); setError(''); try { await save('interviews', { ...interview, updatedAt: new Date().toISOString() }); await save('money', { id: 'interview-' + interview.id, date: interview.date, kind: 'ingreso', category: 'Entrevista inicial', description: `Entrevista ${inquiries.rows.find(row => row.id === interview.inquiryId)?.contact || interview.inquiryId}`, amount: interview.amount, method: interview.paymentMethod, person: interview.receivedBy, sourceId: interview.id, status: interview.paymentStatus === 'cobrado' ? 'pagado' : 'previsto', nature: '' }); const inquiry = inquiries.rows.find(row => row.id === interview.inquiryId); if (inquiry) await save('inquiries', { ...inquiry, status: interview.status === 'realizada' ? 'Entrevista realizada' : interview.status === 'confirmada' ? 'Entrevista confirmada' : 'Entrevista propuesta', updatedAt: new Date().toISOString() }); setInterview(null); } catch (e) { setError(String(e)); } finally { setBusy(false); } }
+  async function commitInquiry() {
+    if (!editing) return;
+    if (!editing.contact.trim()) { setError('Ingresá el nombre de contacto.'); return; }
+    setBusy(true); setError('');
+    try {
+      await save('inquiries', { ...editing, updatedAt: new Date().toISOString() });
+      // Si se asignó o derivó a una profesional, vincular al padrón único crear_patients sin duplicar
+      if (editing.professionalId && editing.contact.trim()) {
+        await savePatient({
+          name: editing.contact.trim(),
+          phone: editing.phone,
+          professionalId: editing.professionalId,
+          status: 'active',
+        });
+      }
+      setEditing(null);
+    } catch (e) { setError(String(e)); } finally { setBusy(false); }
+  }
+  async function commitInterview() {
+    if (!interview) return;
+    if (!interview.professionalId || !interview.roomId || !interview.date || interview.start >= interview.end) { setError('Completá profesional, consultorio y horario válido.'); return; }
+    if (interview.paymentStatus === 'cobrado' && interview.amount <= 0) { setError('Ingresá el importe cobrado.'); return; }
+    setBusy(true); setError('');
+    try {
+      await save('interviews', { ...interview, updatedAt: new Date().toISOString() });
+      const inquiry = inquiries.rows.find(row => row.id === interview.inquiryId);
+      await save('money', { id: 'interview-' + interview.id, date: interview.date, kind: 'ingreso', category: 'Entrevista inicial', description: `Entrevista ${inquiry?.contact || interview.inquiryId}`, amount: interview.amount, method: interview.paymentMethod, person: interview.receivedBy, sourceId: interview.id, status: interview.paymentStatus === 'cobrado' ? 'pagado' : 'previsto', nature: '' });
+      if (inquiry) {
+        await save('inquiries', { ...inquiry, professionalId: interview.professionalId || inquiry.professionalId, status: interview.status === 'realizada' ? 'Entrevista realizada' : interview.status === 'confirmada' ? 'Entrevista confirmada' : 'Entrevista propuesta', updatedAt: new Date().toISOString() });
+        if (interview.professionalId && inquiry.contact.trim()) {
+          await savePatient({
+            name: inquiry.contact.trim(),
+            phone: inquiry.phone,
+            professionalId: interview.professionalId,
+            status: 'active',
+          });
+        }
+      }
+      setInterview(null);
+    } catch (e) { setError(String(e)); } finally { setBusy(false); }
+  }
   const update = <K extends keyof Inquiry>(key: K, value: Inquiry[K]) => setEditing(current => current && { ...current, [key]: value });
   const updateInterview = <K extends keyof Interview>(key: K, value: Interview[K]) => setInterview(current => current && { ...current, [key]: value });
   const reminderText = (row: Inquiry, item: Interview) => `Hola, ${row.contact}. Te recordamos la entrevista en CREAR el ${item.date.split('-').reverse().join('/')} a las ${item.start}. ¿Nos confirmás si pueden asistir? Muchas gracias.`;
@@ -25,7 +66,39 @@ export function Admissions() {
     {error && !editing && !interview && <p role="status" className="text-[#46766B]">{error}</p>}
     <div className="grid gap-3 sm:grid-cols-3">{[['Pendientes de respuesta', inquiries.rows.filter(x => x.status.includes('Pendiente')).length], ['Entrevistas próximas', interviews.rows.filter(x => x.date >= localDate() && x.status !== 'cancelada').length], ['Sin próxima acción', inquiries.rows.filter(x => !x.archived && !x.nextAction && x.status !== 'Cerrada o cancelada').length]].map(([label, count]) => <div key={label} className="rounded-2xl border bg-white p-5"><p className="text-sm text-[#6D7C76]">{label}</p><strong className="text-3xl">{count}</strong></div>)}</div>
     <div className="flex flex-wrap gap-3"><input className={`${field} sm:w-72`} placeholder="Buscar nombre, teléfono o disciplina" value={search} onChange={e => setSearch(e.target.value)} /><select className={`${field} sm:w-64`} value={status} onChange={e => setStatus(e.target.value)}><option value="">Todos los estados</option>{inquiryStatuses.map(s => <option key={s}>{s}</option>)}</select></div>
-    {inquiries.loading ? <p>Cargando consultas...</p> : shown.length === 0 ? <p className="rounded-2xl border bg-white p-6 text-[#6D7C76]">Todavía no hay consultas para mostrar. Registrá la primera consulta para comenzar.</p> : <div className="grid gap-3">{shown.map(row => { const item = interviews.rows.find(x => x.inquiryId === row.id); return <article key={row.id} className="rounded-2xl border bg-white p-5"><div className="flex flex-wrap justify-between gap-3"><div><h2 className="font-semibold">{row.contact}</h2><p className="text-sm text-[#6D7C76]">{row.discipline || 'Disciplina sin definir'} · {row.phone || 'Sin teléfono'} · {row.status}</p><p className="text-sm">Próxima acción: {row.nextAction || 'Sin fecha'}</p>{item && <p className="text-sm">Entrevista: {item.date} {item.start} · Recordatorio {item.reminderStatus}</p>}</div><div className="flex flex-wrap items-start gap-2"><button className="rounded-xl border px-3 py-2 text-sm" onClick={() => setEditing(row)}>Editar</button><button className="rounded-xl border px-3 py-2 text-sm" onClick={() => setInterview(item || emptyInterview(row))}>Entrevista</button><button className="rounded-xl border px-3 py-2 text-sm" onClick={() => void save('inquiries', { ...row, archived: true }).catch(e => setError(String(e)))}>Archivar</button></div></div>{item && item.reminderStatus === 'pendiente' && <div className="mt-3 flex flex-wrap gap-2"><button className="rounded-xl bg-[#DDEAE2] px-3 py-2 text-sm" onClick={() => void copyReminder(row, item)}>Copiar recordatorio</button>{row.phone && <a className="rounded-xl border px-3 py-2 text-sm" target="_blank" rel="noreferrer" href={`https://wa.me/${row.phone.replace(/\D/g, '')}?text=${encodeURIComponent(reminderText(row, item))}`}>Abrir WhatsApp</a>}</div>}</article>; })}</div>}
+    {inquiries.loading ? <p>Cargando consultas...</p> : shown.length === 0 ? <p className="rounded-2xl border bg-white p-6 text-[#6D7C76]">Todavía no hay consultas para mostrar. Registrá la primera consulta para comenzar.</p> : <div className="grid gap-3">{shown.map(row => {
+      const item = interviews.rows.find(x => x.inquiryId === row.id);
+      const assignedPro = professionals.find(p => p.id === row.professionalId);
+      const linkedPatient = patients.find(p => p.name.toLowerCase().trim() === row.contact.toLowerCase().trim());
+      return <article key={row.id} className="rounded-2xl border bg-white p-5">
+        <div className="flex flex-wrap justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-semibold text-[#34433F]">{row.contact}</h2>
+              <span className="rounded-full bg-[#EEF2EE] px-2.5 py-0.5 text-xs font-medium text-[#46766B]">{row.status}</span>
+              {assignedPro && <span className="rounded-full bg-[#DDEAE2] px-2.5 py-0.5 text-xs font-semibold text-[#1D4E38]">Derivada a: {assignedPro.name}</span>}
+              {linkedPatient && <span className="rounded-full bg-sky-50 border border-sky-200 px-2.5 py-0.5 text-xs font-semibold text-sky-900">Paciente vinculado ({linkedPatient.id.slice(0, 8)})</span>}
+            </div>
+            <p className="mt-1 text-sm text-[#6D7C76]">{row.discipline || 'Disciplina sin definir'} · {row.phone || 'Sin teléfono'} · Origen: {row.origin}</p>
+            <p className="text-sm">Próxima acción: {row.nextAction || 'Sin fecha'}{row.responsible ? ` · Seguimiento: ${row.responsible}` : ''}</p>
+            {item && (
+              <p className="mt-1 text-sm font-medium text-[#34433F]">
+                Entrevista inicial: {item.date.split('-').reverse().join('/')} de {item.start} a {item.end} ({ROOMS.find(r => r.id === item.roomId)?.name.split('—')[0].trim() || item.roomId}) · Estado: {item.status} · Recordatorio: {item.reminderStatus}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-start gap-2">
+            <button className="rounded-xl border px-3 py-2 text-sm" onClick={() => setEditing(row)}>Editar / Derivar</button>
+            <button className="rounded-xl border px-3 py-2 text-sm" onClick={() => setInterview(item || emptyInterview(row))}>Entrevista</button>
+            {item && onNavigate && (
+              <button className="rounded-xl border border-[#46766B] bg-[#E8F3EE] px-3 py-2 text-sm font-semibold text-[#46766B]" onClick={() => onNavigate('agenda')}>Ver en Agenda</button>
+            )}
+            <button className="rounded-xl border px-3 py-2 text-sm" onClick={() => void save('inquiries', { ...row, archived: true }).catch(e => setError(String(e)))}>Archivar</button>
+          </div>
+        </div>
+        {item && item.reminderStatus === 'pendiente' && <div className="mt-3 flex flex-wrap gap-2"><button className="rounded-xl bg-[#DDEAE2] px-3 py-2 text-sm" onClick={() => void copyReminder(row, item)}>Copiar recordatorio</button>{row.phone && <a className="rounded-xl border px-3 py-2 text-sm" target="_blank" rel="noreferrer" href={`https://wa.me/${row.phone.replace(/\D/g, '')}?text=${encodeURIComponent(reminderText(row, item))}`}>Abrir WhatsApp</a>}</div>}
+      </article>;
+    })}</div>}
     {(editing || interview) && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3"><div className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[#F9F8F5] p-5 shadow-xl"><div className="mb-4 flex justify-between"><h2 className="text-xl font-semibold">{editing ? 'Consulta' : 'Entrevista inicial'}</h2><button onClick={() => { setEditing(null); setInterview(null); }}>Cerrar</button></div>
       {editing ? <div className="grid gap-3 sm:grid-cols-2"><label>Contacto<input className={field} value={editing.contact} onChange={e => update('contact', e.target.value)} /></label><label>Teléfono<input className={field} value={editing.phone} onChange={e => update('phone', e.target.value)} /></label><label>Disciplina<input className={field} value={editing.discipline} onChange={e => update('discipline', e.target.value)} /></label><label>Profesional<select className={field} value={editing.professionalId} onChange={e => update('professionalId', e.target.value)}><option value="">Sin asignar</option>{professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Origen<select className={field} value={editing.origin} onChange={e => update('origin', e.target.value)}>{['WhatsApp', 'Teléfono', 'Web', 'Presencial', 'Otro'].map(x => <option key={x}>{x}</option>)}</select></label><label>Responsable<input className={field} value={editing.responsible} onChange={e => update('responsible', e.target.value)} /></label><label>Estado<select className={field} value={editing.status} onChange={e => update('status', e.target.value as Inquiry['status'])}>{inquiryStatuses.map(x => <option key={x}>{x}</option>)}</select></label><label>Próxima acción<input type="date" className={field} value={editing.nextAction} onChange={e => update('nextAction', e.target.value)} /></label><label className="sm:col-span-2">Observaciones administrativas<textarea className={field} value={editing.notes} onChange={e => update('notes', e.target.value)} /></label></div> : interview && <div className="grid gap-3 sm:grid-cols-2"><label>Profesional<select className={field} value={interview.professionalId} onChange={e => updateInterview('professionalId', e.target.value)}><option value="">Seleccionar</option>{professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Consultorio<select className={field} value={interview.roomId} onChange={e => updateInterview('roomId', e.target.value)}><option value="">Seleccionar</option>{ROOMS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label><label>Fecha<input type="date" className={field} value={interview.date} onChange={e => updateInterview('date', e.target.value)} /></label><div className="flex gap-2"><label>Desde<input type="time" className={field} value={interview.start} onChange={e => updateInterview('start', e.target.value)} /></label><label>Hasta<input type="time" className={field} value={interview.end} onChange={e => updateInterview('end', e.target.value)} /></label></div><label>Estado<select className={field} value={interview.status} onChange={e => updateInterview('status', e.target.value as Interview['status'])}>{['propuesta', 'confirmada', 'realizada', 'cancelada', 'no asistió'].map(x => <option key={x}>{x}</option>)}</select></label><label>Recordatorio<input type="date" className={field} value={interview.reminderAt} onChange={e => updateInterview('reminderAt', e.target.value)} /></label><label>Seguimiento del recordatorio<select className={field} value={interview.reminderStatus} onChange={e => updateInterview('reminderStatus', e.target.value as Interview['reminderStatus'])}>{['pendiente', 'enviado', 'confirmación recibida', 'reprogramación solicitada'].map(x => <option key={x}>{x}</option>)}</select></label><label>Pago<select className={field} value={interview.paymentStatus} onChange={e => updateInterview('paymentStatus', e.target.value as Interview['paymentStatus'])}><option>pendiente</option><option>cobrado</option></select></label><label>Importe<input type="number" min="0" className={field} value={interview.amount} onChange={e => updateInterview('amount', Number(e.target.value))} /></label><label>Medio de pago<input className={field} value={interview.paymentMethod} onChange={e => updateInterview('paymentMethod', e.target.value)} /></label><label>Recibió<input className={field} value={interview.receivedBy} onChange={e => updateInterview('receivedBy', e.target.value)} /></label><label>Comprobante<input className={field} value={interview.receipt} onChange={e => updateInterview('receipt', e.target.value)} /></label><p className="sm:col-span-2 text-sm text-[#6D7C76]">Cobro a registrar: {moneyFormat(interview.amount)}. Puede quedar pendiente.</p></div>}
       {error && <p role="alert" className="my-3 text-red-700">{error}</p>}<div className="mt-5 flex justify-end"><button disabled={busy} className={button} onClick={() => void (editing ? commitInquiry() : commitInterview())}>{busy ? 'Guardando...' : 'Guardar'}</button></div>

@@ -91,7 +91,18 @@ function splitFullName(profile: Profile): { firstName: string; lastName: string 
   };
 }
 
-export function ProfilesReal({ onAgenda }: { onAgenda: () => void }) {
+export function ProfilesReal({
+  onAgenda,
+  onOpenModal,
+}: {
+  onAgenda: () => void;
+  onOpenModal?: (
+    room?: string,
+    pro?: string,
+    app?: AppointmentRecord,
+    options?: { date?: string; startTime?: string }
+  ) => void;
+}) {
   const { rows, error, refresh: refreshProfiles } = useRecords('profiles');
   const settings = useRecords('settings');
   const agreements = useRecords('agreements');
@@ -1041,9 +1052,9 @@ export function ProfilesReal({ onAgenda }: { onAgenda: () => void }) {
                       return (
                         <div
                           key={app.id}
-                          className="flex items-center justify-between rounded-xl border border-[#EAEFEA] bg-[#F9FBF9] px-3 py-2 text-xs"
+                          className="flex items-center justify-between gap-2 rounded-xl border border-[#EAEFEA] bg-[#F9FBF9] px-3 py-2 text-xs"
                         >
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <span className="font-bold text-[#34433F]">
                               {app.date.split('-').reverse().join('/')} · {app.start} a {app.end}
                             </span>
@@ -1054,11 +1065,30 @@ export function ProfilesReal({ onAgenda }: { onAgenda: () => void }) {
                                 : `Paciente: ${app.patient || app.title}`}
                             </span>
                           </div>
-                          {app.recurrence === 'weekly' && (
-                            <span className="rounded-md bg-[#DDEAE2] px-2 py-0.5 text-[10px] font-bold text-[#2F5E53]">
-                              Semanal
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {app.recurrence === 'weekly' && (
+                              <span className="rounded-md bg-[#DDEAE2] px-2 py-0.5 text-[10px] font-bold text-[#2F5E53]">
+                                Semanal
+                              </span>
+                            )}
+                            {onOpenModal && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const fullRoomName = ROOMS.find((r) => r.id === app.roomId)?.name;
+                                  const proName = selectedProfile.name;
+                                  setSelectedProfile(null);
+                                  onAgenda();
+                                  window.requestAnimationFrame(() =>
+                                    onOpenModal(fullRoomName, proName, app)
+                                  );
+                                }}
+                                className="rounded-lg border border-[#D7DFDA] bg-white px-2 py-1 text-[10px] font-bold text-[#46766B] hover:bg-[#E8F3EE]"
+                              >
+                                Editar en Agenda
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}

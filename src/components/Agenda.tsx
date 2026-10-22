@@ -52,6 +52,7 @@ type AgendaProps = {
   ) => void;
   appointments: AppointmentRecord[];
   focusDate?: string | null;
+  onOpenTherapistView?: () => void;
 };
 
 type CalendarColumn = {
@@ -209,7 +210,7 @@ const formatDateEs = (date: Date, pattern: string) =>
 
 const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
-export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) => {
+export const Agenda = ({ onOpenModal, appointments, focusDate, onOpenTherapistView }: AgendaProps) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'professionals' | 'rooms'>('professionals');
   const [timeMode, setTimeMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
@@ -686,9 +687,19 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
 
           {/* Botones de acción */}
           <div className="flex flex-wrap items-center gap-1.5 justify-end">
+            {onOpenTherapistView && (
+              <button
+                type="button"
+                onClick={onOpenTherapistView}
+                title="Abrir vista operativa simplificada (Portal de Terapeuta)"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#E8F3EE] text-[#46766B] border border-[#BFD2C8] rounded-lg font-bold text-[10px] hover:bg-[#46766B] hover:text-white transition-colors shadow-sm shrink-0 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+              >
+                <Users className="w-3.5 h-3.5" /> Vista Terapeuta
+              </button>
+            )}
             <button
               onClick={() => onOpenModal()}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-bold text-[10px] hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-sm shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#46766B] dark:bg-blue-500 text-white rounded-lg font-bold text-[10px] hover:bg-[#3B645B] dark:hover:bg-blue-600 transition-colors shadow-sm shrink-0"
             >
               <Plus className="w-3.5 h-3.5" /> Nuevo
             </button>
@@ -1042,10 +1053,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 end: endOfWeek(endOfMonth(selectedDate)),
               }).map((day) => {
                 const dayAppointments = sortByStart(
-                  appointments.filter((appointment) => {
-                    const appointmentDate = parseDay(appointment.date);
-                    return appointmentDate ? isSameDay(appointmentDate, day) : false;
-                  }),
+                  filteredAppointments.filter((appointment) => isAppointmentActiveOnDate(appointment, day)),
                 );
 
                 return (

@@ -607,6 +607,12 @@ function doPost(e) {
       appointmentLock.waitLock(10000);
       let rowNumber;
       try {
+        if (body.purge === true || body.hardDelete === true) {
+          const deleted = deleteAppointment_(sheet, String(body.id));
+          SpreadsheetApp.flush();
+          appendAuditLog_(actor, 'purge', 'appointments', String(body.id), 'Eliminación física de reserva');
+          return json_({ ok: true, action: 'purge', id: String(body.id), deleted });
+        }
         const existing = readAppointments_(sheet).find(item => item.id === String(body.id));
         if (!existing) throw new Error('No se encontró la reserva.');
         if (actor.role === 'professional' && existing.professionalId !== actor.professionalId) throw new Error('No podés cancelar turnos de otra profesional.');
@@ -1126,7 +1132,7 @@ function upsertAppointment_(sheet, appointment, allowUpdate) {
   const rowValues = objectToRow_(normalized);
 
   let targetRow = -1;
-  if (allowUpdate) {
+  if (allowUpdate || (normalized.id && String(normalized.id).trim() !== '')) {
     targetRow = rows.findIndex((row) => String(row[0]) === normalized.id) + 2;
   }
 
@@ -1146,14 +1152,15 @@ function deleteAppointment_(sheet, id) {
     return false;
   }
 
+  let deleted = false;
   for (let row = values.length; row >= 2; row -= 1) {
-    if (String(values[row - 1][0]) === id) {
+    if (String(values[row - 1][0]) === String(id)) {
       sheet.deleteRow(row);
-      return true;
+      deleted = true;
     }
   }
 
-  return false;
+  return deleted;
 }
 
 function objectToRow_(appointment) {

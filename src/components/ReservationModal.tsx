@@ -465,32 +465,15 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                   <option value="obra social">Obra social</option>
                 </select>
               </div>
-              {kind !== 'block' && (
+              {kind === 'block' && (
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Prestación</label>
-                  <select
-                    value={selectedServiceId}
-                    onChange={(e) => {
-                      const sid = e.target.value;
-                      setSelectedServiceId(sid);
-                      const srv = services.find((s) => s.id === sid);
-                      if (srv && formData.startTime) {
-                        setFormData((prev) => ({
-                          ...prev,
-                          endTime: addMinutesToTime(prev.startTime, srv.durationMinutes),
-                        }));
-                      }
-                    }}
-                    className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 dark:focus:ring-cyan-900 text-slate-900 dark:text-slate-100"
-                  >
-                    {services
-                      .filter((s) => s.active !== false)
-                      .map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} ({s.durationMinutes} min)
-                        </option>
-                      ))}
-                  </select>
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">{personLabel}</label>
+                  <input
+                    placeholder={personPlaceholder}
+                    value={formData.patient}
+                    onChange={(e) => setFormData({ ...formData, patient: e.target.value })}
+                    className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none text-slate-900 dark:text-slate-100"
+                  />
                 </div>
               )}
             </div>
@@ -706,18 +689,35 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mt-3">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Obra Social</label>
-                <select 
-                  value={coverageType}
-                  onChange={(e) => setCoverageType(e.target.value as any)}
-                  className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 text-slate-900 dark:text-slate-100"
-                >
-                  <option value="particular">Particular</option>
-                  <option value="obra social">Obra Social</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
+              {kind !== 'block' && (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Prestación</label>
+                  <select
+                    value={selectedServiceId}
+                    onChange={(e) => {
+                      const sid = e.target.value;
+                      setSelectedServiceId(sid);
+                      const srv = services.find((s) => s.id === sid);
+                      if (srv && formData.startTime) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          endTime: addMinutesToTime(prev.startTime, srv.durationMinutes),
+                        }));
+                      }
+                    }}
+                    className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 dark:focus:ring-cyan-900 text-slate-900 dark:text-slate-100"
+                  >
+                    {services
+                      .filter((s) => s.active !== false)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.durationMinutes} min)
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+              <div className={cn("space-y-1.5", kind === 'block' && "sm:col-span-2")}>
                 <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Estado Asistencia</label>
                 <select 
                   value={status}
@@ -733,49 +733,6 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                 </select>
               </div>
             </div>
-
-            {recurrence !== 'none' && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-1.5"
-              >
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Repetir hasta (Opcional)</label>
-                <div className="relative">
-                  <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-                  <input 
-                    type="date" 
-                    value={untilDate}
-                    onChange={(e) => setUntilDate(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none text-slate-900 dark:text-slate-100 color-scheme-light dark:color-scheme-dark"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            {recurrence === 'weekly' && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-cyan-50 dark:bg-cyan-950/20 rounded-2xl border border-cyan-100 dark:border-cyan-900/50 space-y-3"
-              >
-                <p className="text-[10px] font-black text-cyan-700 dark:text-cyan-400 uppercase tracking-widest leading-none">Seleccionar días de repetición</p>
-                <div className="flex justify-between">
-                  {DAY_LABELS.map((label, i) => (
-                    <button
-                      key={i}
-                      onClick={() => toggleDay(i)}
-                      className={cn(
-                        "w-8 h-8 rounded-full text-[10px] font-bold transition-all",
-                        selectedDays.includes(i) ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md shadow-cyan-200 dark:shadow-none" : "bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
 
             <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div className="space-y-1.5">

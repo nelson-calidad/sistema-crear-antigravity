@@ -17,9 +17,9 @@ import type {
 } from '../types';
 import { CREAR_TEAM } from '../lib/crearAuth';
 import { useProfessionals } from '../lib/professionalsStore';
-import { Plus, ShieldCheck, Layers, History, Users, Check } from 'lucide-react';
+import { Plus, ShieldCheck, Layers, History, Users, Check, ExternalLink } from 'lucide-react';
 
-export function SettingsReal() {
+export function SettingsReal({ onNavigate }: { onNavigate?: (tab: string) => void } = {}) {
   const { rows, error } = useRecords('settings');
   const [allProfessionals] = useProfessionals();
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -204,29 +204,37 @@ export function SettingsReal() {
           <div className={`${cardClass} flex flex-wrap items-center justify-between gap-3`}>
             <div>
               <h2 className="text-base font-bold text-[#34433F]">
-                Cuentas de Responsables y Terapeutas
+                Supervisión de Cuentas y Políticas de Acceso
               </h2>
               <p className="text-xs text-[#6D7C76]">
-                Cada usuaria puede ingresar con su cuenta institucional (ej. <code>ariadna@crear.com</code> + contraseña) o con su correo Gmail vinculado.
+                El alta y habilitación de terapeutas se realiza desde su ficha en <strong>Profesionales</strong>. Aquí se supervisa la seguridad global y las cuentas administrativas.
               </p>
             </div>
-            <Button
-              onClick={() =>
-                setEditingUser({
-                  name: '',
-                  email: '@crear.com',
-                  googleEmail: '',
-                  password: '',
-                  role: 'professional',
-                  professionalId: '',
-                  specialty: '',
-                  active: true,
-                })
-              }
-            >
-              <Plus className="mr-1.5 h-4 w-4 inline" />
-              Nueva cuenta
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {onNavigate && (
+                <Button tone="secondary" onClick={() => onNavigate('professionals')}>
+                  <ExternalLink className="mr-1.5 h-3.5 w-3.5 inline" />
+                  Gestionar fichas en Profesionales
+                </Button>
+              )}
+              <Button
+                onClick={() =>
+                  setEditingUser({
+                    name: '',
+                    email: '@crear.com',
+                    googleEmail: '',
+                    password: '',
+                    role: 'admin',
+                    professionalId: '',
+                    specialty: '',
+                    active: true,
+                  })
+                }
+              >
+                <Plus className="mr-1.5 h-4 w-4 inline" />
+                Cuenta administrativa
+              </Button>
+            </div>
           </div>
 
           {editingUser && (
@@ -433,7 +441,9 @@ export function SettingsReal() {
           ) : (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {patients.map((p) => {
-                const pro = CREAR_TEAM.find((t) => t.id === p.professionalId);
+                const pro =
+                  allProfessionals.find((t) => t.id === p.professionalId) ||
+                  CREAR_TEAM.find((t) => t.id === p.professionalId);
                 return (
                   <div
                     key={p.id}

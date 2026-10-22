@@ -39,15 +39,18 @@ export function HomeReal({ onNewInquiry, onNavigate }: { onNewInquiry: () => voi
   const unpaidInterviews = interviews.rows.filter(x => x.paymentStatus === 'pendiente' && x.status !== 'cancelada');
   const overdueRentals = rentals.rows.filter(x => x.paymentStatus === 'pendiente' && x.dueDate < today && x.status !== 'cancelled');
   const unpaidMonthly = agreements.rows.filter(x => x.status === 'activo' && !money.rows.some(row => row.id === `rent-${x.id}-${month}` && row.status === 'pagado'));
+  const activePros = professionals.filter((p) => p.status === 'Activo');
+  const occupiedRoomIdsToday = new Set(scheduled.filter((s) => s.roomId).map((s) => s.roomId));
   const errors = [inquiries.error, interviews.error, rentals.error, agreements.error, money.error].filter(Boolean);
   return <div className="space-y-7">
     <PageHeader title="Buen día, equipo CREAR" description={new Intl.DateTimeFormat('es-AR', { dateStyle: 'full', timeZone: 'America/Argentina/Jujuy' }).format(new Date())} action={<Button onClick={onNewInquiry}>Nueva consulta</Button>} />
     {errors.map((error, index) => <div key={index}><ErrorMessage>{error}</ErrorMessage></div>)}
-    <section><h2 className="mb-3 text-sm font-semibold text-[#596963]">Para atender hoy</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section><h2 className="mb-3 text-sm font-semibold text-[#596963]">Resumen ejecutivo de hoy</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <StatCard label="Ocupación hoy" value={`${occupiedRoomIdsToday.size}/${ROOMS.length} cons.`} detail={`${scheduled.length} actividad(es) agendada(s)`} tone="sage" onClick={() => onNavigate('agenda')} />
       <StatCard label="Consultas pendientes" value={pending.length} detail="Necesitan coordinación" tone="peach" onClick={() => onNavigate('admissions')} />
-      <StatCard label="Entrevistas de hoy" value={scheduled.length} detail="Ver agenda del día" tone="sage" onClick={() => onNavigate('agenda')} />
-      <StatCard label="Recordatorios" value={due.length} detail="Pendientes de contacto" tone="blue" onClick={() => onNavigate('admissions')} />
-      <StatCard label="Cobros pendientes" value={unpaidInterviews.length} detail="Entrevistas sin cobrar" tone="lavender" onClick={() => onNavigate('finance')} />
+      <StatCard label="Profesionales activas" value={activePros.length} detail="Ver equipo y fichas" tone="blue" onClick={() => onNavigate('professionals')} />
+      <StatCard label="Recordatorios" value={due.length} detail="Entrevistas a confirmar" tone="lavender" onClick={() => onNavigate('admissions')} />
+      <StatCard label="Alertas de cobro" value={unpaidInterviews.length + unpaidMonthly.length + overdueRentals.length} detail="Saldos pendientes en Finanzas" onClick={() => onNavigate('finance')} />
     </div></section>
     <section className={cardClass}><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Agenda de hoy</h2><p className="text-sm text-[#6D7C76]">Profesionales, horarios y espacios confirmados.</p></div><Button tone="quiet" onClick={() => onNavigate('agenda')}>Agenda <ChevronRight className="ml-1 h-4 w-4" /></Button></div>
       <div className="mt-4 divide-y divide-[#E5EAE5]">{scheduled.length ? scheduled.map(item => <button key={item.id} onClick={() => onNavigate('agenda')} className="grid w-full grid-cols-[64px_1fr] gap-3 py-3 text-left sm:grid-cols-[72px_1fr_auto]"><strong className="text-[#46766B]">{item.start}</strong><span><span className="block font-medium">{professionals.find(p => p.id === (item.professionalId || item.proId))?.name || item.title || 'Profesional'}</span><span className="text-sm text-[#6D7C76]">{item.kind === 'interview' ? 'Entrevista' : item.kind === 'block' ? 'Reserva consultorio' : (item.serviceName || 'Turno')} · {ROOMS.find(r => r.id === item.roomId)?.name || 'Sin consultorio'}</span></span><span className="hidden self-center rounded-full bg-[#DDEAE2] px-3 py-1 text-xs sm:block">{item.status}</span></button>) : <p className="py-7 text-center text-sm text-[#6D7C76]">No hay turnos ni reservas registradas para hoy.</p>}</div>
