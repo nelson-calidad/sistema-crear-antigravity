@@ -55,7 +55,7 @@ const TAB_QUERY_KEY = 'tab';
 
 const getTabFromLocation = () => {
   if (typeof window === 'undefined') {
-    return 'agenda';
+    return 'dashboard';
   }
 
   const tab = new URL(window.location.href).searchParams.get(TAB_QUERY_KEY);
@@ -138,13 +138,13 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
   const mobileTabLabel = (() => {
     switch (activeTab) {
       case 'dashboard': return 'Inicio';
-      case 'admissions': return 'Consultas';
+      case 'admissions': return 'Consultas y Admisiones';
+      case 'agenda': return 'Agenda';
       case 'rooms': return 'Consultorios';
+      case 'professionals': return 'Profesionales';
+      case 'finance': return 'Finanzas';
       case 'responsibilities': return 'Responsabilidades';
       case 'coverage': return 'Guardias CREAR';
-      case 'professionals': return 'Profesionales';
-      case 'agenda': return 'Agenda';
-      case 'finance': return 'Finanzas';
       case 'settings': return 'Configuración';
       default: return activeTab;
     }
@@ -224,7 +224,7 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
       case 'coverage': return <CoveragePlanner onOpenModal={handleOpenModal} />;
       case 'finance': return <Finance />;
       case 'settings': return <Settings onNavigate={navigateToTab} />;
-      default: return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} onOpenTherapistView={onBackToAgenda} />;
+      default: return <Dashboard onNewInquiry={() => navigateToTab('admissions')} onNavigate={navigateToTab} />;
     }
   };
 
@@ -331,17 +331,6 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
               </span>
             </div>
             <div className="flex items-center gap-3">
-              {onBackToAgenda && (
-                <button
-                  type="button"
-                  onClick={onBackToAgenda}
-                  className="flex items-center gap-2 rounded-2xl border border-[#46766B] bg-[#E8F3EE] px-3.5 py-2 text-xs font-bold text-[#46766B] transition hover:bg-[#46766B] hover:text-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-                  title="Abrir Agenda Operativa de Terapeutas"
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span>Agenda Operativa Terapeutas</span>
-                </button>
-              )}
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-sm font-bold text-slate-900 dark:text-slate-100">

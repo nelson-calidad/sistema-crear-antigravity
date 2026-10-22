@@ -85,13 +85,13 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
   React.useEffect(() => { writeStoredValue('crear-sidebar-hidden', String(isHidden)); }, [isHidden]);
   const menuItems = [
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
-    { id: 'admissions', label: 'Consultas', icon: MessageCircle },
+    { id: 'admissions', label: 'Consultas y Admisiones', icon: MessageCircle },
     { id: 'agenda', label: 'Agenda', icon: Calendar },
     { id: 'rooms', label: 'Consultorios', icon: DoorOpen },
-    { id: 'responsibilities', label: 'Responsabilidades', icon: ClipboardList },
-    { id: 'coverage', label: 'Guardias CREAR', icon: CalendarDays },
     { id: 'professionals', label: 'Profesionales', icon: Users },
     { id: 'finance', label: 'Finanzas', icon: Wallet },
+    { id: 'responsibilities', label: 'Responsabilidades', icon: ClipboardList },
+    { id: 'coverage', label: 'Guardias CREAR', icon: CalendarDays },
     { id: 'settings', label: 'Configuración', icon: Settings },
   ];
 
