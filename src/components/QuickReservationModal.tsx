@@ -56,7 +56,7 @@ export function QuickReservationModal({
   const defaultEnd = initialData?.end || addMinutesToTime(defaultStart, 45);
 
   const [bookingKind, setBookingKind] = useState<'session' | 'block'>(
-    initialData?.kind === 'block' ? 'block' : 'session'
+    initialData ? (initialData.kind === 'block' ? 'block' : 'session') : 'block'
   );
   const [roomId, setRoomId] = useState(initialData?.roomId || initialRoomId || rooms[0]?.id || 'c1');
   const [date, setDate] = useState(defaultDate);
@@ -230,8 +230,7 @@ export function QuickReservationModal({
       }
 
       if (!finalPatientName) {
-        setError('Seleccioná un paciente o agregá su nombre.');
-        return;
+        finalPatientName = 'Sesión reservada';
       }
     }
 
@@ -327,19 +326,8 @@ export function QuickReservationModal({
             </div>
           )}
 
-          {/* Selector: Turno con Paciente vs Reserva de Consultorio */}
+          {/* Selector: Reserva de Consultorio (rápida) vs Turno con Paciente */}
           <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-[#F2F5F3] p-1">
-            <button
-              type="button"
-              onClick={() => setBookingKind('session')}
-              className={`rounded-xl py-2 text-xs font-bold transition ${
-                bookingKind === 'session'
-                  ? 'bg-white text-[#34433F] shadow-xs'
-                  : 'text-[#6D7C76] hover:text-[#34433F]'
-              }`}
-            >
-              Turno de Paciente
-            </button>
             <button
               type="button"
               onClick={() => setBookingKind('block')}
@@ -349,7 +337,18 @@ export function QuickReservationModal({
                   : 'text-[#6D7C76] hover:text-[#34433F]'
               }`}
             >
-              Reserva Consultorio (Sin paciente)
+              Reserva Consultorio
+            </button>
+            <button
+              type="button"
+              onClick={() => setBookingKind('session')}
+              className={`rounded-xl py-2 text-xs font-bold transition ${
+                bookingKind === 'session'
+                  ? 'bg-white text-[#34433F] shadow-xs'
+                  : 'text-[#6D7C76] hover:text-[#34433F]'
+              }`}
+            >
+              Turno con Paciente
             </button>
           </div>
 

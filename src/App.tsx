@@ -5,15 +5,25 @@
 
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { X as CloseIcon, Check, Info, AlertCircle, ArrowLeft } from 'lucide-react';
+import {
+  X as CloseIcon,
+  Check,
+  Info,
+  AlertCircle,
+  Calendar,
+  Menu,
+  LogOut,
+  DoorOpen,
+  Users,
+  Wallet,
+  LayoutDashboard,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
 import { readStoredValue, writeStoredValue } from './lib/browserStorage';
 import logoCrear from './assets/logo-crear-mobile.jpg';
 import { isDemo, seedDemoData, useRecords } from './lib/crearStore';
-import { AccessGate } from './components/AccessGate';
-import { ProfessionalPortal } from './components/ProfessionalPortal';
-import { signOut, useSession } from './lib/session';
+import { useSession } from './lib/session';
 import { useAuth, logoutUser } from './lib/crearAuth';
 import { LoginView } from './components/LoginView';
 import { TherapistPortal } from './components/TherapistPortal';
@@ -236,50 +246,122 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
       
       <main className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
         {isDemo && <div className="shrink-0 bg-[#F6E9DB] px-3 py-2 text-center text-xs leading-4 text-[#34433F]">Modo de demostración local · datos ficticios guardados solo en este navegador.</div>}
-        <header className="bg-white dark:bg-[#0f172a] border-b border-slate-100 dark:border-slate-800 px-3 md:px-8 py-2 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0">
-          <div className="flex items-center justify-between gap-2 md:hidden w-full">
-            <button
-              onClick={() => setMobileSidebarOpen((open) => !open)}
-              className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm flex items-center justify-center shrink-0"
-            >
-              {mobileSidebarOpen ? <CloseIcon className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : <img src={logoCrear} alt="CREAR" className="w-full h-full object-contain p-0.5" />}
-            </button>
-            <div className="min-w-0 flex-1 px-1">
-              <p className="text-[13px] font-black text-slate-900 dark:text-slate-100 truncate leading-none">{mobileTabLabel}</p>
-            </div>
-            {onBackToAgenda && (
+        <header className="bg-white dark:bg-[#0f172a] border-b border-slate-100 dark:border-slate-800 px-3 md:px-8 py-2.5 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0">
+          {/* Cabecera Móvil con botón desplegable de los 9 módulos y barra de acceso rápido */}
+          <div className="flex flex-col gap-2 md:hidden w-full">
+            <div className="flex items-center justify-between gap-2 w-full">
               <button
                 type="button"
-                onClick={onBackToAgenda}
-                className="flex items-center gap-1 rounded-xl border border-[#46766B] bg-[#E8F3EE] px-2.5 py-1 text-xs font-bold text-[#46766B]"
-                title="Volver a la Agenda de Turnos"
+                onClick={() => setMobileSidebarOpen((open) => !open)}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 shadow-xs shrink-0"
+                aria-label="Abrir menú de módulos"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                <span>Turnos</span>
+                {mobileSidebarOpen ? (
+                  <CloseIcon className="w-4 h-4 text-slate-900 dark:text-slate-100" />
+                ) : (
+                  <Menu className="w-4 h-4 text-[#46766B] dark:text-slate-100" />
+                )}
+                <img src={logoCrear} alt="CREAR" className="w-5 h-5 object-contain rounded-sm" />
+                <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+                  {mobileTabLabel}
+                </span>
               </button>
-            )}
+
+              <div className="flex items-center gap-1.5">
+                {onBackToAgenda && (
+                  <button
+                    type="button"
+                    onClick={onBackToAgenda}
+                    className="flex items-center gap-1 rounded-xl border border-[#46766B] bg-[#E8F3EE] px-2.5 py-1.5 text-[11px] font-bold text-[#46766B]"
+                    title="Abrir vista operativa de Agenda de Terapeutas"
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Mi Agenda</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void logoutUser()}
+                  title="Cerrar sesión"
+                  className="flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-200 hover:bg-rose-50 hover:text-rose-700"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Accesos prioritarios en celular: Inicio, Agenda, Consultorios, Profesionales, Finanzas + Menú */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar">
+              {[
+                { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
+                { id: 'agenda', label: 'Agenda', icon: Calendar },
+                { id: 'rooms', label: 'Consultorios', icon: DoorOpen },
+                { id: 'professionals', label: 'Profesionales', icon: Users },
+                { id: 'finance', label: 'Finanzas', icon: Wallet },
+              ].map((quick) => {
+                const Icon = quick.icon;
+                const isActive = activeTab === quick.id;
+                return (
+                  <button
+                    key={quick.id}
+                    type="button"
+                    onClick={() => navigateToTab(quick.id)}
+                    className={`flex shrink-0 items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition ${
+                      isActive
+                        ? 'bg-[#46766B] text-white shadow-xs'
+                        : 'bg-[#F2F5F3] dark:bg-slate-800 text-[#52635D] dark:text-slate-300'
+                    }`}
+                  >
+                    <Icon className="h-3 w-3" />
+                    <span>{quick.label}</span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(true)}
+                className="flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-[#34433F] dark:text-slate-200"
+              >
+                <span>+ Módulos (9)</span>
+              </button>
+            </div>
           </div>
 
-          <div className="hidden md:flex items-center justify-end gap-4">
-            {onBackToAgenda && (
-              <button
-                type="button"
-                onClick={onBackToAgenda}
-                className="flex items-center gap-2 rounded-2xl border border-[#46766B] bg-[#E8F3EE] px-4 py-2.5 text-xs font-bold text-[#46766B] transition hover:bg-[#46766B] hover:text-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-                title="Volver a la Agenda de Turnos"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Volver a la Agenda de Turnos</span>
-              </button>
-            )}
+          <div className="hidden md:flex items-center justify-between w-full gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black tracking-tight text-[#34433F] dark:text-slate-100">
+                Panel Administrativo Institucional — {mobileTabLabel}
+              </span>
+            </div>
             <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{authenticated?.actor.email || 'Admin CREAR'}</p>
-                <p className="text-[10px] font-medium text-slate-400 uppercase">{getBackendLabel()}</p>
+              {onBackToAgenda && (
+                <button
+                  type="button"
+                  onClick={onBackToAgenda}
+                  className="flex items-center gap-2 rounded-2xl border border-[#46766B] bg-[#E8F3EE] px-3.5 py-2 text-xs font-bold text-[#46766B] transition hover:bg-[#46766B] hover:text-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                  title="Abrir Agenda Operativa de Terapeutas"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span>Agenda Operativa Terapeutas</span>
+                </button>
+              )}
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {authenticated?.actor.name || authenticated?.actor.email || 'Responsable CREAR'}
+                  </p>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase">{getBackendLabel()}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void logoutUser()}
+                  title="Cerrar sesión"
+                  className="flex items-center gap-1.5 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-white font-bold text-xs hover:bg-slate-700"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Salir</span>
+                </button>
               </div>
-              <button type="button" onClick={() => void logoutUser()} title="Cerrar sesión" className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
-                {user?.photoURL ? <img src={user.photoURL} alt="avatar" /> : 'AD'}
-              </button>
             </div>
           </div>
         </header>
@@ -412,11 +494,20 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  // Redirección automática en la ruta raíz según el rol verificado
+  // Redirección automática en el enlace único según el rol verificado en el servidor
   useEffect(() => {
-    if (!authUser) return;
+    if (!authUser) {
+      if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        setRouteHash('');
+      }
+      return;
+    }
     const currentHash = window.location.hash;
-    if (!currentHash || currentHash === '#' || currentHash === '#/') {
+    // Al iniciar sesión o entrar por el enlace principal, llevar directamente a la experiencia de su rol:
+    // - Responsable (admin) -> Dashboard administrativo original (#/admin)
+    // - Terapeuta -> Mi Agenda (#/terapeutas)
+    if (!currentHash || currentHash === '#' || currentHash === '#/' || (authUser.role === 'admin' && currentHash === '')) {
       const target = authUser.role === 'admin' ? '#/admin' : '#/terapeutas';
       window.history.replaceState(null, '', target);
       setRouteHash(target);

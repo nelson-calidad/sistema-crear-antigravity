@@ -318,7 +318,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
               }`}
             >
               <Clock className="h-4 w-4" />
-              <span>Mis turnos</span>
+              <span>Mis reservas</span>
               {myAppointments.length > 0 && (
                 <span
                   className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
@@ -890,34 +890,34 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
         <button
           type="button"
           onClick={() => handleOpenBooking()}
-          className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold text-[#46766B]"
+          className="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[10px] font-bold text-[#46766B]"
         >
           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#46766B] text-white">
             <Plus className="h-4 w-4" />
           </div>
-          <span>Nuevo</span>
+          <span>Nueva reserva</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('my-bookings')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[10px] font-bold ${
             activeTab === 'my-bookings' ? 'text-[#46766B]' : 'text-[#889892]'
           }`}
         >
           <Clock className="h-5 w-5" />
-          <span>Mis turnos</span>
+          <span>Mis reservas</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('availability')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[10px] font-bold ${
             activeTab === 'availability' ? 'text-[#46766B]' : 'text-[#889892]'
           }`}
         >
           <CalendarDays className="h-5 w-5" />
-          <span>Disponibilidad</span>
+          <span>Mi disponibilidad</span>
         </button>
 
         <button

@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from 'react';
-import { SHEETS_ENDPOINT, signOut as sessionSignOut, syncSessionFromAuth } from './session';
+import {
+  clearSessionExpiredNotice,
+  markSessionExpired,
+  SHEETS_ENDPOINT,
+  signOut as sessionSignOut,
+  syncSessionFromAuth,
+} from './session';
 import type { AuthorizedUserRecord } from '../types';
 
 export type UserRole = 'admin' | 'therapist';
@@ -52,7 +58,13 @@ const LOCAL_USERS_CACHE_KEY = 'crear.users.cache';
 let currentUser: AuthUser | null = (() => {
   try {
     const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : null;
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (!parsed || !parsed.email || (!parsed.sessionToken && !parsed.token)) {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -78,7 +90,14 @@ export function getCurrentUser(): AuthUser | null {
   return currentUser;
 }
 
+export function handleExpiredSession(reason?: string) {
+  markSessionExpired(reason);
+  currentUser = null;
+  notify();
+}
+
 function setSessionUser(user: AuthUser) {
+  clearSessionExpiredNotice();
   currentUser = user;
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
   syncSessionFromAuth();

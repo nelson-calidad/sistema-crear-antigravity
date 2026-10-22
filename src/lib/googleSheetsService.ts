@@ -7,7 +7,7 @@ import type {
   ServiceCatalogItem,
   TherapistAvailability,
 } from '../types';
-import { DEFAULT_INITIAL_USERS, getCurrentUser } from './crearAuth';
+import { DEFAULT_INITIAL_USERS, getCurrentUser, handleExpiredSession } from './crearAuth';
 import { conflictOnDate, type Slot } from './scheduling';
 
 // Google Apps Script Web App URL
@@ -81,14 +81,12 @@ function emitAppointments(rows: AppointmentRecord[]) {
 
 function getActorPayload() {
   const user = getCurrentUser();
-  if (!user) {
-    return { email: 'karina@crear.com', role: 'admin', professionalId: '' };
-  }
+  if (!user) return undefined;
   return {
     email: user.email,
     name: user.name,
     role: user.role === 'admin' ? 'admin' : 'professional',
-    professionalId: user.role === 'admin' ? '' : user.professionalId || user.id,
+    professionalId: user.professionalId || (user.role === 'admin' ? '' : user.id),
   };
 }
 
@@ -100,7 +98,7 @@ export async function callSheetsApi<T>(body: Record<string, unknown>): Promise<T
   const actor = getActorPayload();
   const payload: Record<string, unknown> = {
     ...body,
-    actor,
+    ...(actor ? { actor } : {}),
   };
 
   if (user?.sessionToken) {
@@ -125,7 +123,16 @@ export async function callSheetsApi<T>(body: Record<string, unknown>): Promise<T
 
   const result = await response.json();
   if (!result.ok) {
-    throw new Error(result.error || 'Error al comunicarse con Google Sheets.');
+    const errMsg = String(result.error || 'Error al comunicarse con Google Sheets.');
+    if (
+      errMsg.includes('sesión expiró') ||
+      errMsg.includes('Sesión de Google no válida') ||
+      errMsg.includes('Autenticación requerida') ||
+      errMsg.includes('fue desactivada')
+    ) {
+      handleExpiredSession(errMsg);
+    }
+    throw new Error(errMsg);
   }
 
   return result as T;
@@ -236,9 +243,9 @@ export async function bookAppointmentInSheets(
   const id = appointment.id || crypto.randomUUID();
   const isUpdate = Boolean(appointment.id);
   const resolvedProId =
-    actor.role === 'professional'
+    actor?.role === 'professional'
       ? actor.professionalId
-      : appointment.professionalId || appointment.proId || actor.professionalId;
+      : appointment.professionalId || appointment.proId || actor?.professionalId || '';
 
   const resolvedKind = appointment.kind || appointment.type || 'session';
   const roomObj = DEFAULT_ROOMS.find((r) => r.id === (appointment.roomId || 'c1'));
@@ -314,7 +321,7 @@ export async function bookAppointmentInSheets(
     excludedDates: appointment.excludedDates || [],
     updatedAt: nowIso,
     createdAt: appointment.createdAt || nowIso,
-    createdBy: actor.email,
+    createdBy: actor?.email || '',
     syncPending: true,
     syncState: 'saving',
     syncError: undefined,

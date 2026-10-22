@@ -56,9 +56,14 @@ export function SettingsReal() {
     setMessage('');
     try {
       await Promise.all(
-        ['thirdAdmin', 'buildingRent'].map((id) => save('settings', { id, value: value(id) }))
+        ['thirdAdmin', 'fourthAdmin', 'buildingRent', 'googleClientId'].map((id) =>
+          save('settings', { id, value: value(id) })
+        )
       );
-      setMessage('Configuración general guardada.');
+      if (value('googleClientId').trim()) {
+        localStorage.setItem('crear.google.clientId', value('googleClientId').trim());
+      }
+      setMessage('Configuración general guardada en Google Sheets.');
     } catch (e) {
       setMessage(String(e));
     } finally {
@@ -489,9 +494,14 @@ export function SettingsReal() {
         <div className="space-y-4">
           <section className={`${cardClass} grid gap-5 sm:grid-cols-2`}>
             <Field
-              label="Nombre de la tercera administradora"
+              label="Nombre de la tercera responsable"
               value={value('thirdAdmin')}
               onChange={(e) => setDraft({ ...draft, thirdAdmin: e.target.value })}
+            />
+            <Field
+              label="Nombre de la cuarta responsable"
+              value={value('fourthAdmin')}
+              onChange={(e) => setDraft({ ...draft, fourthAdmin: e.target.value })}
             />
             <Field
               label="Alquiler mensual del inmueble"
@@ -500,8 +510,14 @@ export function SettingsReal() {
               value={value('buildingRent', '770000')}
               onChange={(e) => setDraft({ ...draft, buildingRent: e.target.value })}
             />
-            <p className="text-sm leading-6 text-[#6D7C76] sm:col-span-2">
-              El importe funciona como referencia editable. Cada pago se registra en Finanzas para que forme parte del resultado mensual.
+            <Field
+              label="Google OAuth Client ID (para botón Ingresar con Google)"
+              placeholder="Ej.: 1234567890-abc.apps.googleusercontent.com"
+              value={value('googleClientId')}
+              onChange={(e) => setDraft({ ...draft, googleClientId: e.target.value })}
+            />
+            <p className="text-xs leading-5 text-[#6D7C76] sm:col-span-2">
+              El Client ID de Google es público y permite activar la ventana emergente de Google Identity Services. Los tokens emitidos por Google son verificados criptográficamente en el servidor de Apps Script contra las cuentas autorizadas en <code>crear_users</code>.
             </p>
           </section>
           <Button disabled={saving} onClick={() => void commitGeneral()}>

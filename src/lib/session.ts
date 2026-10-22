@@ -10,6 +10,30 @@ export const SHEETS_ENDPOINT =
   (import.meta.env.VITE_SHEETS_ENDPOINT_URL as string | undefined) || DEFAULT_SHEETS_URL;
 
 const SESSION_STORAGE_KEY = 'crear.session.user';
+const SESSION_EXPIRED_NOTICE_KEY = 'crear.session.expired.notice';
+
+export function getSessionExpiredNotice(): string {
+  if (typeof window === 'undefined') return '';
+  return sessionStorage.getItem(SESSION_EXPIRED_NOTICE_KEY) || '';
+}
+
+export function clearSessionExpiredNotice() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(SESSION_EXPIRED_NOTICE_KEY);
+}
+
+export function markSessionExpired(reason?: string) {
+  session = null;
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    sessionStorage.setItem(
+      SESSION_EXPIRED_NOTICE_KEY,
+      reason || 'Tu sesión venció o requiere nueva validación. Volvé a ingresar para continuar.'
+    );
+    window.google?.accounts.id.disableAutoSelect();
+  }
+  publish();
+}
 
 function readStoredSession(): Session {
   if (typeof window === 'undefined') return null;
@@ -18,8 +42,10 @@ function readStoredSession(): Session {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !parsed.email) return null;
+    const token = parsed.sessionToken || parsed.token || '';
+    if (!token) return null;
     return {
-      token: parsed.sessionToken || parsed.token || 'active-session',
+      token,
       actor: {
         email: parsed.email,
         name: parsed.name,
@@ -73,15 +99,11 @@ export function signOut() {
 export async function apiRequest<T>(body: Record<string, unknown>, customToken?: string): Promise<T> {
   const current = getSession();
   const sessionToken = customToken || current?.token || '';
-  const actor = current?.actor || {
-    email: 'karina@crear.com',
-    role: 'admin' as const,
-    professionalId: '',
-  };
+  const actor = current?.actor;
 
   const payload: Record<string, unknown> = {
     ...body,
-    actor,
+    ...(actor ? { actor } : {}),
   };
 
   if (sessionToken && sessionToken !== 'active-session') {
@@ -108,7 +130,16 @@ export async function apiRequest<T>(body: Record<string, unknown>, customToken?:
   }));
 
   if (!response.ok || result.ok === false) {
-    throw new Error(result.error || `Error del servidor (${response.status}).`);
+    const errMsg = String(result.error || `Error del servidor (${response.status}).`);
+    if (
+      errMsg.includes('sesión expiró') ||
+      errMsg.includes('Sesión de Google no válida') ||
+      errMsg.includes('Autenticación requerida') ||
+      errMsg.includes('fue desactivada')
+    ) {
+      markSessionExpired(errMsg);
+    }
+    throw new Error(errMsg);
   }
 
   return result as T;
