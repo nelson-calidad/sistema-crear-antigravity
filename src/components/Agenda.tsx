@@ -48,7 +48,7 @@ import { useProfessionals } from '../lib/professionalsStore';
 import { forceRefreshAppointments } from '../lib/appointmentsStore';
 
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
-const HOUR_HEIGHT = 110;
+const HOUR_HEIGHT = 68;
 const DEFAULT_SESSION_DURATION = 45;
 const UNASSIGNED_COLUMN = {
   id: 'unassigned',
@@ -383,7 +383,7 @@ export const Agenda = ({
 
   const getHeightFromInterval = (start: string, end: string) => {
     const duration = parseTimeToMinutes(end) - parseTimeToMinutes(start);
-    return Math.max((duration / 60) * HOUR_HEIGHT, 54);
+    return Math.max((duration / 60) * HOUR_HEIGHT, 34);
   };
 
   const isUnassigned = (appointment: AppointmentRecord) =>
@@ -526,115 +526,27 @@ export const Agenda = ({
   }, [selectedDateAppointments, timeMode]);
 
   return (
-    <div className="flex h-full flex-col gap-4 min-h-0 antialiased">
+    <div className="flex h-full flex-col gap-2 min-h-0 antialiased">
       {/* =========================================================================
-          CABECERA REORGANIZADA: FILA 1 (TÍTULO Y ACCIONES ADMINISTRATIVAS)
+          TOOLBAR ULTRA-COMPACTA: MÁXIMO AIRE PARA LA GRILLA DE HORARIOS
           ========================================================================= */}
-      <div className="rounded-3xl border border-[#E5EAE5] bg-white p-4 sm:p-5 shadow-xs shrink-0 space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Bloque 1: Título y contexto institucional */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#E8F3EE] text-[#46766B]">
-              <CalendarIcon className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-[#264A40]">
-                  Agenda Institucional
-                </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Sincronizada
-                </span>
+      <div className="rounded-2xl border border-[#E5EAE5] bg-white px-3 py-2 shadow-2xs shrink-0 flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          {/* Bloque Izquierdo: Título compacto + Navegación temporal + Modos */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex items-center gap-1.5 mr-1">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E8F3EE] text-[#46766B]">
+                <CalendarIcon className="h-3.5 w-3.5" />
               </div>
-              <p className="text-xs text-[#657570]">
-                {timeMode === 'weekly'
-                  ? `Semana del ${formatDateEs(startOfWeek(selectedDate, { weekStartsOn: 1 }), "d 'de' MMMM")} al ${formatDateEs(endOfWeek(selectedDate, { weekStartsOn: 1 }), "d 'de' MMMM, yyyy")}`
-                  : timeMode === 'monthly'
-                  ? titleCase(formatDateEs(selectedDate, 'MMMM yyyy'))
-                  : titleCase(formatDateEs(selectedDate, "EEEE, d 'de' MMMM yyyy"))}
-              </p>
-            </div>
-          </div>
-
-          {/* Bloque 2: Acciones administrativas principales */}
-          <div className="flex flex-wrap items-center gap-2">
-            {onOpenTherapistView && (
-              <button
-                type="button"
-                onClick={onOpenTherapistView}
-                title="Cambiar temporalmente a la perspectiva de terapeutas"
-                className="flex items-center gap-1.5 rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] px-3 py-2 text-xs font-semibold text-[#46766B] hover:bg-[#E8F3EE] transition"
-              >
-                <Users className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Ver como terapeuta</span>
-              </button>
-            )}
-
-            {/* Grupo de exportación a PDF */}
-            <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5 shadow-xs">
-              <button
-                type="button"
-                onClick={handleDailyPdf}
-                title="Imprimir / Exportar agenda del día a PDF"
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
-              >
-                <Printer className="h-3.5 w-3.5 inline mr-1" />
-                <span className="hidden md:inline">Día</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleWeeklyPdf}
-                title="Imprimir / Exportar disponibilidad semanal a PDF"
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
-              >
-                <span className="hidden md:inline">Semana</span>
-                <span className="md:hidden text-[11px] font-bold">Sem</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleMonthlyPdf}
-                title="Imprimir / Exportar mes a PDF"
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
-              >
-                <span className="hidden md:inline">Mes</span>
-              </button>
+              <span className="text-sm font-bold text-[#264A40] hidden sm:inline">Agenda</span>
             </div>
 
-            {/* Botón Refrescar */}
-            <button
-              type="button"
-              onClick={() => void handleRefresh()}
-              disabled={isRefreshing}
-              title="Refrescar datos desde Google Sheets"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
-            >
-              <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin text-[#46766B]')} />
-            </button>
-
-            {/* Botón Nueva Reserva Principal */}
-            <button
-              type="button"
-              onClick={() => onOpenModal()}
-              className="flex items-center gap-1.5 rounded-xl bg-[#46766B] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#3B645B] transition"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Nueva Reserva</span>
-            </button>
-          </div>
-        </div>
-
-        {/* =========================================================================
-            CABECERA REORGANIZADA: FILA 2 (FILTROS Y SELECTORES ESPACIOSOS)
-            ========================================================================= */}
-        <div className="flex flex-col gap-3 pt-3 border-t border-[#F0F4F2] xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Navegación temporal: Hoy, Anterior, Siguiente */}
-            <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
+            {/* Navegación temporal: Hoy, Ant, Sig, Selector de fecha */}
+            <div className="flex items-center rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
               <button
                 type="button"
                 onClick={() => setSelectedDate(new Date())}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#46766B] hover:bg-white transition"
+                className="rounded-md px-2 py-1 text-xs font-bold text-[#46766B] hover:bg-white transition"
               >
                 Hoy
               </button>
@@ -649,9 +561,9 @@ export const Agenda = ({
                   )
                 }
                 title="Anterior"
-                className="rounded-lg p-1.5 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
+                className="rounded-md p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
@@ -664,9 +576,9 @@ export const Agenda = ({
                   )
                 }
                 title="Siguiente"
-                className="rounded-lg p-1.5 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
+                className="rounded-md p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
               <input
                 type="date"
@@ -675,14 +587,14 @@ export const Agenda = ({
                   const parsed = parseDay(e.target.value);
                   if (parsed) setSelectedDate(parsed);
                 }}
-                className="bg-transparent border-none text-xs font-semibold text-[#34433F] outline-none px-2 py-1 cursor-pointer"
+                className="bg-transparent border-none text-xs font-semibold text-[#34433F] outline-none px-1.5 py-0.5 cursor-pointer max-w-[115px]"
               />
             </div>
 
-            {/* Modos de tiempo: Día | Semana | Mes */}
-            <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
+            {/* Modos de tiempo: Día | Sem | Mes */}
+            <div className="flex items-center rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
               {(['daily', 'weekly', 'monthly'] as const).map((mode) => {
-                const labels = { daily: 'Día', weekly: 'Semana', monthly: 'Mes' };
+                const labels = { daily: 'Día', weekly: 'Sem', monthly: 'Mes' };
                 const isActive = timeMode === mode;
                 return (
                   <button
@@ -690,9 +602,9 @@ export const Agenda = ({
                     type="button"
                     onClick={() => setTimeMode(mode)}
                     className={cn(
-                      'rounded-lg px-3 py-1.5 text-xs font-bold transition',
+                      'rounded-md px-2 py-1 text-xs font-bold transition',
                       isActive
-                        ? 'bg-[#46766B] text-white shadow-xs'
+                        ? 'bg-[#46766B] text-white shadow-2xs'
                         : 'text-[#6D7C76] hover:text-[#34433F]'
                     )}
                   >
@@ -702,47 +614,52 @@ export const Agenda = ({
               })}
             </div>
 
-            {/* Alternar perspectiva: Por Consultorio | Por Profesional */}
+            {/* Alternar perspectiva: Consultorios | Terapeutas */}
             {(timeMode === 'daily' || timeMode === 'weekly') && (
-              <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
+              <div className="flex items-center rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
                 <button
                   type="button"
                   onClick={() => setViewMode('rooms')}
+                  title="Ver por consultorios (C1, C2, C3)"
                   className={cn(
-                    'flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition',
+                    'flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold transition',
                     viewMode === 'rooms'
-                      ? 'bg-white text-[#264A40] shadow-xs border border-[#E5EAE5]'
+                      ? 'bg-white text-[#264A40] shadow-2xs border border-[#E5EAE5]'
                       : 'text-[#6D7C76] hover:text-[#34433F]'
                   )}
                 >
-                  <DoorOpen className="h-3.5 w-3.5 text-[#46766B]" />
-                  <span>Por Consultorio</span>
+                  <DoorOpen className="h-3 w-3 text-[#46766B]" />
+                  <span>Consultorios</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('professionals')}
+                  title="Ver por profesionales"
                   className={cn(
-                    'flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition',
+                    'flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold transition',
                     viewMode === 'professionals'
-                      ? 'bg-white text-[#264A40] shadow-xs border border-[#E5EAE5]'
+                      ? 'bg-white text-[#264A40] shadow-2xs border border-[#E5EAE5]'
                       : 'text-[#6D7C76] hover:text-[#34433F]'
                   )}
                 >
-                  <Users className="h-3.5 w-3.5 text-[#7E6BA8]" />
-                  <span>Por Profesional</span>
+                  <Users className="h-3 w-3 text-[#7E6BA8]" />
+                  <span>Profesionales</span>
                 </button>
               </div>
             )}
+          </div>
 
-            {/* Filtro por Profesional */}
-            <div className="flex items-center gap-1.5 rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] px-2.5 py-1">
-              <User className="h-3.5 w-3.5 text-[#7E6BA8]" />
+          {/* Bloque Centro-Derecha: Filtros desplegables y Acciones */}
+          <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+            {/* Filtro Profesional */}
+            <div className="flex items-center gap-1 rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] px-2 py-0.5">
+              <User className="h-3 w-3 text-[#7E6BA8]" />
               <select
                 value={filterProId}
                 onChange={(e) => setFilterProId(e.target.value)}
-                className="bg-transparent border-none text-xs font-semibold text-[#34433F] outline-none cursor-pointer pr-4"
+                className="bg-transparent border-none text-[11px] font-semibold text-[#34433F] outline-none cursor-pointer pr-1 max-w-[125px] truncate"
               >
-                <option value="all">Todas las profesionales</option>
+                <option value="all">Todas las prof.</option>
                 {professionals.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -751,15 +668,15 @@ export const Agenda = ({
               </select>
             </div>
 
-            {/* Filtro por Consultorio */}
-            <div className="flex items-center gap-1.5 rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] px-2.5 py-1">
-              <MapPin className="h-3.5 w-3.5 text-[#46766B]" />
+            {/* Filtro Consultorio */}
+            <div className="flex items-center gap-1 rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] px-2 py-0.5">
+              <MapPin className="h-3 w-3 text-[#46766B]" />
               <select
                 value={filterRoomId}
                 onChange={(e) => setFilterRoomId(e.target.value)}
-                className="bg-transparent border-none text-xs font-semibold text-[#34433F] outline-none cursor-pointer pr-4"
+                className="bg-transparent border-none text-[11px] font-semibold text-[#34433F] outline-none cursor-pointer pr-1 max-w-[115px] truncate"
               >
-                <option value="all">Todos los consultorios</option>
+                <option value="all">Todos los cons.</option>
                 {ROOMS.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name.split('—')[0].trim()}
@@ -768,52 +685,91 @@ export const Agenda = ({
               </select>
             </div>
 
-            {/* Toggle de cancelados */}
+            {/* Toggle cancelados */}
             <button
               type="button"
               onClick={() => setShowCancelled((v) => !v)}
               className={cn(
-                'rounded-xl border px-3 py-1.5 text-xs font-semibold transition',
+                'rounded-lg border px-2 py-1 text-[11px] font-semibold transition',
                 showCancelled
                   ? 'border-rose-300 bg-rose-50 text-rose-800'
                   : 'border-[#D5DDD7] bg-[#FAF8F5] text-[#6D7C76] hover:text-[#34433F]'
               )}
+              title={showCancelled ? 'Ocultar turnos cancelados' : 'Mostrar turnos cancelados'}
             >
-              {showCancelled ? 'Ocultar cancelados' : 'Ver cancelados'}
+              {showCancelled ? 'Canc. visibles' : 'Canc.'}
             </button>
-          </div>
 
-          {/* Chips de estadísticas suaves (Turnos, Sesiones, Entrevistas, Disponibilidad) */}
-          <div className="hidden lg:flex flex-wrap items-center gap-1.5 text-xs font-semibold">
-            <span className="rounded-xl border border-[#CFE2D8] bg-[#F4FAF7] px-2.5 py-1 text-[#2C5E50]">
-              Turnos: <strong>{appointmentKindSummary.total}</strong>
+            {/* Chip de resumen rápido */}
+            <span className="hidden xl:inline-flex items-center gap-1 rounded-lg bg-[#E8F3EE] px-2 py-1 text-[11px] font-bold text-[#264A40]">
+              <span>{appointmentKindSummary.total} turnos</span>
+              <span className="opacity-50">·</span>
+              <span>{resourceAvailability.free} libres</span>
             </span>
-            <span className="rounded-xl border border-[#C8E4EF] bg-[#EDF6FA] px-2.5 py-1 text-[#1D546B]">
-              Sesiones: <strong>{appointmentKindSummary.session}</strong>
-            </span>
-            <span className="rounded-xl border border-[#F2D7B8] bg-[#FEF6EC] px-2.5 py-1 text-[#7A4515]">
-              Entrevistas: <strong>{appointmentKindSummary.interview}</strong>
-            </span>
-            <span className="rounded-xl border border-[#DFD3F2] bg-[#F5F1FA] px-2.5 py-1 text-[#4F3677]">
-              Bloques: <strong>{appointmentKindSummary.block}</strong>
-            </span>
-            <span className="rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] px-2.5 py-1 text-[#52635D]">
-              {resourceAvailability.label}: <strong>{resourceAvailability.free}/{resourceAvailability.total}</strong>
-            </span>
+
+            {/* Exportar PDF */}
+            <div className="flex items-center rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
+              <button
+                type="button"
+                onClick={handleDailyPdf}
+                title="Exportar agenda diaria a PDF"
+                className="rounded px-1.5 py-1 text-[11px] font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
+              >
+                <Printer className="h-3 w-3 inline mr-0.5" />
+                <span>PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleWeeklyPdf}
+                title="Disponibilidad semanal PDF"
+                className="rounded px-1.5 py-1 text-[10px] font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition hidden sm:inline"
+              >
+                Sem
+              </button>
+              <button
+                type="button"
+                onClick={handleMonthlyPdf}
+                title="Agenda mensual PDF"
+                className="rounded px-1.5 py-1 text-[10px] font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition hidden sm:inline"
+              >
+                Mes
+              </button>
+            </div>
+
+            {/* Botón Refrescar */}
+            <button
+              type="button"
+              onClick={() => void handleRefresh()}
+              disabled={isRefreshing}
+              title="Sincronizar con Google Sheets"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
+            >
+              <RefreshCw className={cn('h-3 w-3', isRefreshing && 'animate-spin text-[#46766B]')} />
+            </button>
+
+            {/* Botón Nueva Reserva */}
+            <button
+              type="button"
+              onClick={() => onOpenModal()}
+              className="flex items-center gap-1 rounded-lg bg-[#46766B] px-2.5 py-1 text-xs font-bold text-white shadow-2xs hover:bg-[#3B645B] transition"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Nueva</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* =========================================================================
-          GRILLA PRINCIPAL ESPACIOSA Y DELICADA
+          GRILLA PRINCIPAL PROTAGONISTA: MÁXIMO ESPACIO ÚTIL
           ========================================================================= */}
-      <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#E5EAE5] bg-white p-3 sm:p-5 shadow-xs overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-[#E5EAE5] bg-white p-2 sm:p-2.5 shadow-2xs overflow-hidden">
         {timeMode === 'daily' || timeMode === 'weekly' ? (
           <>
             {/* VISTA MÓVIL (Touch, selector semanal horizontal y tarjetas delicadas) */}
-            <div className="md:hidden flex flex-col gap-3 overflow-y-auto flex-1 pr-1">
+            <div className="md:hidden flex flex-col gap-2.5 overflow-y-auto flex-1 pr-1">
               {/* Barra de 7 días touch para celular */}
-              <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar shrink-0">
+              <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar shrink-0">
                 {Array.from({ length: 7 }).map((_, i) => {
                   const d = addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), i);
                   const isSelected = isSameDay(d, selectedDate);
@@ -824,18 +780,18 @@ export const Agenda = ({
                       type="button"
                       onClick={() => setSelectedDate(d)}
                       className={cn(
-                        'flex flex-col items-center justify-center min-w-[44px] flex-1 py-2 rounded-2xl border transition',
+                        'flex flex-col items-center justify-center min-w-[42px] flex-1 py-1.5 rounded-xl border transition',
                         isSelected
-                          ? 'border-[#46766B] bg-[#DDEAE2] text-[#1D3E35] font-bold shadow-xs'
+                          ? 'border-[#46766B] bg-[#DDEAE2] text-[#1D3E35] font-bold shadow-2xs'
                           : isToday
                           ? 'border-[#BEDCEB] bg-[#EDF6FA] text-[#205272]'
                           : 'border-[#E5EAE5] bg-white text-[#52635D]'
                       )}
                     >
-                      <span className="text-[10px] uppercase font-bold opacity-80">
+                      <span className="text-[9px] uppercase font-bold opacity-80">
                         {formatDateEs(d, 'EEE')}
                       </span>
-                      <span className="text-sm font-black leading-tight mt-0.5">
+                      <span className="text-xs font-black leading-tight mt-0.5">
                         {formatDateEs(d, 'd')}
                       </span>
                     </button>
@@ -845,22 +801,22 @@ export const Agenda = ({
 
               {/* Lista de turnos del día para celular */}
               {visibleAppointments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#CFE2D8] bg-[#F4FAF7] p-8 text-center my-auto">
-                  <div className="h-10 w-10 rounded-2xl bg-[#E8F3EE] flex items-center justify-center text-[#46766B] mb-2">
-                    <CheckCircle2 className="h-5 w-5" />
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#CFE2D8] bg-[#F4FAF7] p-6 text-center my-auto">
+                  <div className="h-8 w-8 rounded-xl bg-[#E8F3EE] flex items-center justify-center text-[#46766B] mb-2">
+                    <CheckCircle2 className="h-4 w-4" />
                   </div>
-                  <p className="text-sm font-bold text-[#264A40]">Espacio libre para este día</p>
-                  <p className="text-xs text-[#657570] mt-1">No hay turnos ni bloques programados.</p>
+                  <p className="text-xs font-bold text-[#264A40]">Espacio libre para este día</p>
+                  <p className="text-[11px] text-[#657570] mt-0.5">No hay turnos ni bloques programados.</p>
                   <button
                     type="button"
                     onClick={() => onOpenModal()}
-                    className="mt-3 rounded-xl bg-[#46766B] px-3.5 py-2 text-xs font-bold text-white shadow-xs"
+                    className="mt-2.5 rounded-lg bg-[#46766B] px-3 py-1.5 text-xs font-bold text-white shadow-2xs"
                   >
                     + Crear reserva
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {visibleAppointments.map((app) => {
                     const pro = professionals.find(
                       (p) => p.id === (app.professionalId || app.proId)
@@ -874,36 +830,36 @@ export const Agenda = ({
                         key={app.id}
                         onClick={() => onOpenModal(room?.name, pro?.name, app)}
                         className={cn(
-                          'rounded-2xl border p-3.5 transition shadow-xs cursor-pointer',
+                          'rounded-xl border p-2.5 transition shadow-2xs cursor-pointer',
                           cardStyle
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-mono text-xs font-bold">
-                                {app.start} a {app.end}
+                                {app.start} - {app.end}
                               </span>
                               {app.recurrence === 'weekly' && (
-                                <span className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-bold">
+                                <span className="rounded-md bg-white/70 px-1 py-0.2 text-[9px] font-bold">
                                   Semanal
                                 </span>
                               )}
-                              <span className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold">
+                              <span className="rounded-md bg-white/70 px-1 py-0.2 text-[9px] font-semibold">
                                 {getTypeLabel(kind)}
                               </span>
                             </div>
-                            <h4 className="mt-1 font-bold text-sm leading-tight text-[#264A40]">
+                            <h4 className="mt-1 font-bold text-xs leading-tight text-[#264A40] truncate">
                               {getAppointmentName(app)}
                             </h4>
-                            <div className="mt-1 flex items-center gap-2 text-xs opacity-90">
+                            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] opacity-90 truncate">
                               <span>Prof. {pro?.name || 'Sin profesional'}</span>
                               <span>•</span>
                               <span>{room?.name.split('—')[0].trim() || 'Sin consultorio'}</span>
                             </div>
                           </div>
                           <div
-                            className={cn('h-2.5 w-2.5 rounded-full shrink-0 mt-1', getStatusColor(app.status))}
+                            className={cn('h-2 w-2 rounded-full shrink-0 mt-1', getStatusColor(app.status))}
                             title={app.status}
                           />
                         </div>
@@ -914,12 +870,12 @@ export const Agenda = ({
               )}
             </div>
 
-            {/* VISTA DESKTOP / TABLET (Columnas con aire visual, cabeceras ordenadas y slots espaciosos) */}
+            {/* VISTA DESKTOP / TABLET (Columnas optimizadas, cabecera de consultorios y slots compactos) */}
             <div className="hidden md:flex flex-col flex-1 min-h-0">
               {/* Cabeceras de columnas */}
-              <div className="flex border-b border-[#E5EAE5] pb-3 shrink-0">
-                <div className="w-16 shrink-0 flex items-center justify-center font-bold text-xs text-[#7B8C85]">
-                  <Clock className="h-4 w-4" />
+              <div className="flex border-b border-[#E5EAE5] pb-2 shrink-0">
+                <div className="w-12 shrink-0 flex items-center justify-center font-bold text-xs text-[#7B8C85]">
+                  <Clock className="h-3.5 w-3.5" />
                 </div>
                 <div
                   className={cn(
@@ -932,34 +888,34 @@ export const Agenda = ({
                   )}
                 >
                   {columns.map((col) => (
-                    <div key={col.id} className="px-3 text-center">
+                    <div key={col.id} className="px-2 text-center">
                       {viewMode === 'rooms' && timeMode === 'daily' ? (
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#46766B]">
-                              <DoorOpen className="h-4 w-4" />
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#E8F3EE] text-[#46766B] shrink-0">
+                              <DoorOpen className="h-3.5 w-3.5" />
                             </span>
-                            <div className="text-left">
-                              <p className="text-xs font-bold text-[#264A40] leading-tight">
+                            <div className="text-left truncate">
+                              <p className="text-xs font-bold text-[#264A40] leading-tight truncate">
                                 {col.name.split('—')[0].trim()}
                               </p>
-                              <p className="text-[10px] text-[#657570] leading-tight">
+                              <p className="text-[9px] text-[#657570] leading-tight truncate">
                                 {col.name.split('—')[1]?.trim() || 'Consultorio CREAR'}
                               </p>
                             </div>
                           </div>
-                          <span className="rounded-full bg-[#E8F3EE] px-2 py-0.5 text-[10px] font-bold text-[#326456]">
+                          <span className="rounded-full bg-[#E8F3EE] px-1.5 py-0.5 text-[9px] font-bold text-[#326456] shrink-0">
                             {getAppointmentsForColumn(col.id).length} turnos
                           </span>
                         </div>
                       ) : (
-                        <div>
-                          <div className="w-8 h-8 rounded-xl mx-auto mb-1 flex items-center justify-center bg-[#E8F3EE] text-[#46766B] font-bold text-xs">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span className="w-5 h-5 rounded-md flex items-center justify-center bg-[#E8F3EE] text-[#46766B] font-bold text-[10px]">
                             {col.name[0]}
-                          </div>
+                          </span>
                           <p className="text-xs font-bold text-[#264A40] truncate">{col.name}</p>
                           <span className="text-[10px] text-[#657570]">
-                            {getAppointmentsForColumn(col.id).length} turnos
+                            ({getAppointmentsForColumn(col.id).length})
                           </span>
                         </div>
                       )}
@@ -968,24 +924,24 @@ export const Agenda = ({
                 </div>
               </div>
 
-              {/* Grilla temporal con scroll espacioso */}
+              {/* Grilla temporal con altura ajustada (HOUR_HEIGHT = 68) */}
               <div
                 ref={dailyTimelineRef}
-                className="flex-1 overflow-y-auto relative custom-scrollbar mt-1"
+                className="flex-1 overflow-y-auto relative custom-scrollbar mt-0.5"
               >
                 <div className="flex" style={{ minHeight: `${HOURS.length * HOUR_HEIGHT}px` }}>
                   {/* Columna de Horas */}
-                  <div className="w-16 shrink-0 border-r border-[#E5EAE5] sticky left-0 z-20 bg-white/95 backdrop-blur-xs select-none">
+                  <div className="w-12 shrink-0 border-r border-[#E5EAE5] sticky left-0 z-20 bg-white/95 backdrop-blur-xs select-none">
                     {HOURS.map((hour) => (
                       <div
                         key={hour}
-                        className="relative border-b border-[#F0F4F2] flex flex-col items-center justify-between py-1 text-right pr-2"
+                        className="relative border-b border-[#F0F4F2] flex flex-col items-center justify-between py-0.5 text-right pr-1"
                         style={{ height: `${HOUR_HEIGHT}px` }}
                       >
-                        <span className="text-xs font-mono font-bold text-[#7B8C85]">
+                        <span className="text-[11px] font-mono font-bold text-[#7B8C85]">
                           {hour.toString().padStart(2, '0')}:00
                         </span>
-                        <span className="text-[10px] font-mono text-[#A3B3AC]">
+                        <span className="text-[9px] font-mono text-[#A3B3AC]">
                           {hour.toString().padStart(2, '0')}:30
                         </span>
                       </div>
@@ -1010,7 +966,7 @@ export const Agenda = ({
                       return (
                         <div
                           key={col.id}
-                          className="relative h-full transition-colors hover:bg-[#FAF9F6]/50"
+                          className="relative h-full transition-colors hover:bg-[#FAF9F6]/40"
                         >
                           {/* Líneas divisorias de horas con clic para reservar */}
                           {HOURS.map((hour) => (
@@ -1022,13 +978,13 @@ export const Agenda = ({
                               title="Hacé clic para crear una reserva en este horario"
                             >
                               <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-[#F4F7F5]" />
-                              <span className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-[10px] font-bold text-[#46766B] bg-[#E8F3EE] px-2 py-0.5 rounded-md pointer-events-none transition-opacity">
+                              <span className="absolute right-1.5 top-1 opacity-0 group-hover:opacity-100 text-[9px] font-bold text-[#46766B] bg-[#E8F3EE] px-1.5 py-0.5 rounded pointer-events-none transition-opacity">
                                 + Reservar
                               </span>
                             </div>
                           ))}
 
-                          {/* Renderizado de Bloques de Turnos */}
+                          {/* Renderizado de Bloques de Turnos Sintéticos y Legibles */}
                           {columnAppointments.map((app) => {
                             const pro = professionals.find(
                               (p) => p.id === (app.professionalId || app.proId)
@@ -1036,7 +992,7 @@ export const Agenda = ({
                             const room = ROOMS.find((r) => r.id === app.roomId);
                             const appointmentHeight = Math.max(
                               getHeightFromInterval(app.start, app.end || app.start),
-                              36
+                              32
                             );
                             const appLayout = layoutInfo.get(app.id) || {
                               colIndex: 0,
@@ -1056,40 +1012,42 @@ export const Agenda = ({
                                   e.stopPropagation();
                                   onOpenModal(room?.name, pro?.name, app);
                                 }}
+                                title={`${app.start} - ${app.end} · ${getAppointmentName(app)} (${getTypeLabel(kind)}) · Prof. ${getProfessionalName(app)} · ${getRoomName(app)} · Estado: ${app.status}`}
                                 style={{
                                   top: `${getPositionFromTime(app.start)}px`,
                                   height: `${appointmentHeight}px`,
-                                  width: `calc(${widthPercent}% - 6px)`,
-                                  left: `calc(${leftPercent}% + 3px)`,
+                                  width: `calc(${widthPercent}% - 4px)`,
+                                  left: `calc(${leftPercent}% + 2px)`,
                                   zIndex: 10 + appLayout.colIndex,
                                 }}
                                 className={cn(
-                                  'absolute rounded-2xl border p-2.5 transition shadow-xs hover:shadow-md cursor-pointer flex flex-col justify-between overflow-hidden',
+                                  'absolute rounded-xl border p-1.5 transition shadow-2xs hover:shadow-md cursor-pointer flex flex-col justify-between overflow-hidden',
                                   cardStyles
                                 )}
                               >
-                                <div>
-                                  <div className="flex items-center justify-between gap-1 text-[11px] font-bold">
-                                    <span className="font-mono">{app.start} - {app.end}</span>
+                                <div className="min-w-0">
+                                  <div className="flex items-center justify-between gap-1 leading-none">
+                                    <span className="font-mono text-[10px] font-bold truncate">
+                                      {app.start} - {app.end}
+                                    </span>
                                     <div
-                                      className={cn('h-2 w-2 rounded-full shrink-0', getStatusColor(app.status))}
+                                      className={cn('h-1.5 w-1.5 rounded-full shrink-0', getStatusColor(app.status))}
                                       title={app.status}
                                     />
                                   </div>
-                                  <h4 className="font-bold text-xs leading-tight text-[#264A40] mt-0.5 line-clamp-1">
+                                  <h4 className="font-bold text-[11px] leading-tight text-[#264A40] mt-0.5 truncate">
                                     {getAppointmentName(app)}
                                   </h4>
                                 </div>
 
-                                {appointmentHeight >= 55 && (
-                                  <div className="flex items-center justify-between text-[10px] opacity-85 pt-1 border-t border-current/15 mt-1">
+                                {appointmentHeight >= 44 && (
+                                  <div className="flex items-center justify-between text-[9px] opacity-80 pt-0.5 border-t border-current/10 leading-none truncate">
                                     <span className="truncate">
                                       {viewMode === 'rooms' ? `Prof. ${getProfessionalName(app)}` : getRoomName(app)}
                                     </span>
                                     {app.recurrence === 'weekly' && (
-                                      <span className="flex items-center gap-0.5 shrink-0">
-                                        <Repeat className="h-2.5 w-2.5" />
-                                        <span>Sem</span>
+                                      <span className="flex items-center gap-0.5 shrink-0 ml-1">
+                                        <Repeat className="h-2 w-2" />
                                       </span>
                                     )}
                                   </div>

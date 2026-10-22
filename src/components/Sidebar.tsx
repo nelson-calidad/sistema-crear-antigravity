@@ -19,12 +19,14 @@ import {
   Moon,
   MessageCircle,
   ClipboardList,
-  DoorOpen
+  DoorOpen,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { readStoredValue, writeStoredValue } from '../lib/browserStorage';
 import { motion, AnimatePresence } from 'motion/react';
 import logoCrear from '../assets/logo-crear-mobile.jpg';
+import { useAuth, logoutUser } from '../lib/crearAuth';
 
 interface SidebarItemProps {
   key?: string;
@@ -40,27 +42,27 @@ const SidebarItem = ({ icon: Icon, label, active, collapsed, onClick }: SidebarI
     id={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
     onClick={onClick}
     className={cn(
-      'flex items-center w-full p-3 rounded-2xl transition-all duration-200 group relative border',
+      'flex items-center w-full p-2.5 rounded-xl transition-all duration-200 group relative border',
       active
         ? 'bg-[#DDEAE2] text-[#34433F] border-[#D2E2D9] shadow-sm dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700'
         : 'text-[#6D7C76] hover:bg-[#F1F3EF] hover:text-[#34433F] border-transparent dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-100',
     )}
   >
-    <Icon className={cn('w-5 h-5 flex-shrink-0', active ? 'text-slate-900 dark:text-slate-100' : 'group-hover:text-slate-700 dark:group-hover:text-slate-300')} />
+    <Icon className={cn('w-4 h-4 flex-shrink-0', active ? 'text-[#34433F] dark:text-slate-100' : 'group-hover:text-slate-700 dark:group-hover:text-slate-300')} />
     <AnimatePresence>
       {!collapsed && (
         <motion.span
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -10 }}
-          className="ml-3 font-medium whitespace-nowrap overflow-hidden"
+          className="ml-2.5 text-xs font-semibold whitespace-nowrap overflow-hidden"
         >
           {label}
         </motion.span>
       )}
     </AnimatePresence>
     {collapsed && (
-      <div className="absolute left-full ml-2 px-2 py-1 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs rounded-lg border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity shadow-xl">
+      <div className="absolute left-full ml-2 px-2 py-1 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs rounded-lg border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity shadow-xl whitespace-nowrap">
         {label}
       </div>
     )}
@@ -78,11 +80,22 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, theme, onToggleTheme, onOpenPortal }: SidebarProps) => {
-  const [isCollapsed, setIsCollapsed] = React.useState(() => readStoredValue('crear-sidebar-compact') === 'true');
+  const authUser = useAuth();
+  const [isCollapsed, setIsCollapsed] = React.useState(() => {
+    if (activeTab === 'agenda') return true;
+    return readStoredValue('crear-sidebar-compact') === 'true';
+  });
   const [isHidden, setIsHidden] = React.useState(() => readStoredValue('crear-sidebar-hidden') === 'true');
 
   React.useEffect(() => { writeStoredValue('crear-sidebar-compact', String(isCollapsed)); }, [isCollapsed]);
   React.useEffect(() => { writeStoredValue('crear-sidebar-hidden', String(isHidden)); }, [isHidden]);
+
+  // Si entra a Agenda, colapsar automáticamente para maximizar el ancho de la grilla
+  React.useEffect(() => {
+    if (activeTab === 'agenda') {
+      setIsCollapsed(true);
+    }
+  }, [activeTab]);
   const menuItems = [
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'admissions', label: 'Consultas y Admisiones', icon: MessageCircle },
@@ -119,7 +132,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
         </button>
       </div>}
       <motion.div
-        animate={{ width: isHidden ? '0px' : isCollapsed ? '80px' : '260px' }}
+        animate={{ width: isHidden ? '0px' : isCollapsed ? '68px' : '230px' }}
         className={cn(
           'h-screen overflow-hidden bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800 flex flex-col relative',
           'fixed md:static inset-y-0 left-0 w-[280px] max-w-[85vw] md:w-auto z-50 md:z-auto',
@@ -127,16 +140,16 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
           'transition-transform duration-200 md:transition-none',
         )}
       >
-        <div className="px-4 pt-5 pb-4 flex items-center mb-2">
+        <div className="px-3 pt-3.5 pb-2 flex items-center mb-1">
           <div className={cn(
             'overflow-hidden flex items-center justify-center transition-all duration-200 bg-white rounded-xl dark:bg-white',
-            isCollapsed ? 'w-10 h-10 p-1' : 'w-full h-16 p-2'
+            isCollapsed ? 'w-10 h-10 p-1' : 'w-full h-12 p-1.5'
           )}>
             <img src={logoCrear} alt="Logo CREAR" className="w-full h-full object-contain" />
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-2.5 space-y-1 overflow-y-auto">
           {menuItems.map((item) => (
             <SidebarItem
               key={item.id}
@@ -149,28 +162,54 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
           ))}
         </nav>
 
-        <div className="p-4 mt-auto">
-          <div className="flex gap-2 w-full mb-2">
+        <div className="p-2.5 mt-auto border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30">
+          {authUser && (
+            <div className={cn(
+              "flex items-center gap-2 mb-2 p-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 shadow-xs",
+              isCollapsed ? "justify-center" : "justify-between"
+            )}>
+              <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#46766B] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                  {authUser.name?.charAt(0) || 'U'}
+                </div>
+                {!isCollapsed && (
+                  <div className="overflow-hidden min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate leading-tight">{authUser.name}</p>
+                    <p className="text-[10px] text-slate-400 capitalize truncate">{authUser.role}</p>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => logoutUser()}
+                title="Cerrar sesión"
+                className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition flex-shrink-0"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          <div className="flex gap-1 w-full">
             <button
               onClick={onToggleTheme}
-              className="flex-1 flex items-center justify-center p-3 text-slate-500 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors border border-transparent hover:border-slate-200/70 dark:hover:border-slate-700"
+              className="flex-1 flex items-center justify-center p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
               title={`Activar modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
             >
-              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
             <button
               onClick={() => setIsHidden(true)}
-              className="hidden flex-1 items-center justify-center rounded-2xl border border-transparent p-3 text-slate-500 transition-colors hover:border-slate-200/70 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800/50 dark:hover:text-slate-100 md:flex"
+              className="hidden flex-1 items-center justify-center p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 md:flex rounded-xl"
               title="Ocultar menú"
               aria-label="Ocultar menú"
             >
-              <PanelLeftClose className="w-5 h-5" />
+              <PanelLeftClose className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="flex-1 flex items-center justify-center p-3 text-slate-500 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors border border-transparent hover:border-slate-200/70 dark:hover:border-slate-700"
+              className="flex-1 flex items-center justify-center p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+              title={isCollapsed ? 'Expandir menú' : 'Colapsar menú'}
             >
-              {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+              {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>
           </div>
         </div>

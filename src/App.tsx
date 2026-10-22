@@ -254,7 +254,10 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
       
       <main className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
         {isDemo && <div className="shrink-0 bg-[#F6E9DB] px-3 py-2 text-center text-xs leading-4 text-[#34433F]">Modo de demostración local · datos ficticios guardados solo en este navegador.</div>}
-        <header className="bg-white dark:bg-[#0f172a] border-b border-slate-100 dark:border-slate-800 px-3 md:px-8 py-2.5 md:py-0 flex flex-col gap-2 md:h-20 md:flex-row md:items-center md:justify-between flex-shrink-0">
+        <header className={cn(
+          "bg-white dark:bg-[#0f172a] border-b border-slate-100 dark:border-slate-800 flex flex-col gap-2 md:flex-row md:items-center md:justify-between flex-shrink-0 transition-all",
+          activeTab === 'agenda' ? "px-3 md:px-4 py-1.5 md:py-0 md:h-11" : "px-3 md:px-6 py-2 md:py-0 md:h-14"
+        )}>
           {/* Cabecera Móvil con botón desplegable de los 9 módulos y barra de acceso rápido */}
           <div className="flex flex-col gap-2 md:hidden w-full">
             <div className="flex items-center justify-between gap-2 w-full">
@@ -326,33 +329,31 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
 
           <div className="hidden md:flex items-center justify-between w-full gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-black tracking-tight text-[#34433F] dark:text-slate-100">
-                Panel Administrativo Institucional — {mobileTabLabel}
+              <span className={cn("font-bold tracking-tight text-[#34433F] dark:text-slate-100", activeTab === 'agenda' ? 'text-xs' : 'text-sm')}>
+                Panel Administrativo — {mobileTabLabel}
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    {authenticated?.actor.name || authenticated?.actor.email || 'Responsable CREAR'}
-                  </p>
-                  <p className="text-[10px] font-medium text-slate-400 uppercase">{getBackendLabel()}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void logoutUser()}
-                  title="Cerrar sesión"
-                  className="flex items-center gap-1.5 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-white font-bold text-xs hover:bg-slate-700"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  <span>Salir</span>
-                </button>
+            <div className="flex items-center gap-2.5">
+              <div className="text-right">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight">
+                  {authenticated?.actor.name || authenticated?.actor.email || 'Responsable CREAR'}
+                </p>
+                <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">{getBackendLabel()}</p>
               </div>
+              <button
+                type="button"
+                onClick={() => void logoutUser()}
+                title="Cerrar sesión"
+                className="flex items-center gap-1 rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-white font-medium text-xs transition"
+              >
+                <LogOut className="h-3 w-3" />
+                <span>Salir</span>
+              </button>
             </div>
           </div>
         </header>
 
-        <section className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 custom-scrollbar">
+        <section className={cn("flex-1 overflow-y-auto custom-scrollbar", activeTab === 'agenda' ? "p-1.5 sm:p-2 md:p-2.5" : "p-3 sm:p-5 md:p-8")}>
           <Suspense fallback={loadingFallback}><div key={activeTab} className="h-full animate-[fadeIn_.18s_ease-out]">{renderContent()}</div></Suspense>
         </section>
       </main>
