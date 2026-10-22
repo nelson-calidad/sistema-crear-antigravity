@@ -227,8 +227,15 @@ export async function list<K extends Entity>(entity: K): Promise<EntityMap[K][]>
     const data = await apiRequest<{ ok: true; records: EntityMap[K][] }>({ action: 'list', entity });
     const rows = Array.isArray(data.records) ? data.records : [];
     let finalRows = rows;
-    if (entity === 'rooms' && rows.length === 0) {
-      finalRows = DEFAULT_ROOMS_SEED as unknown as EntityMap[K][];
+    if (entity === 'rooms') {
+      const incoming = rows as unknown as Room[];
+      const mergedMap = new Map<string, Room>();
+      DEFAULT_ROOMS_SEED.forEach((r) => mergedMap.set(r.id, r));
+      incoming.forEach((r) => {
+        const prev = mergedMap.get(r.id);
+        mergedMap.set(r.id, prev ? { ...prev, ...r } : r);
+      });
+      finalRows = Array.from(mergedMap.values()) as unknown as EntityMap[K][];
     } else if (entity === 'profiles') {
       const incoming = rows as unknown as Profile[];
       const mergedMap = new Map<string, Profile>();

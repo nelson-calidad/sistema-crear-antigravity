@@ -304,7 +304,7 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
           {agreements.error}
         </p>
       )}
-      {error && !room && !agreement && !rental && !payment && (
+      {error && !room && !agreement && !rental && (
         <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">
           {error}
         </p>
@@ -1227,68 +1227,6 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                 onClick={() => void commitRental()}
               >
                 {busy ? 'Guardando...' : 'Guardar alquiler'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Registrar pago de acuerdo mensual */}
-      {payment && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3">
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-[#34433F]">Pago de alquiler mensual</h2>
-              <button
-                type="button"
-                className="text-sm font-semibold text-[#6D7C76]"
-                onClick={() => setPayment(null)}
-              >
-                Cerrar
-              </button>
-            </div>
-            <div className="space-y-3 text-sm">
-              <label className="block">
-                Mes
-                <input
-                  type="month"
-                  className={input}
-                  value={payment.month}
-                  onChange={(e) => setPayment({ ...payment, month: e.target.value })}
-                />
-              </label>
-              <label className="block">
-                Importe
-                <input
-                  type="number"
-                  min="0"
-                  className={input}
-                  value={payment.amount}
-                  onChange={(e) => setPayment({ ...payment, amount: Number(e.target.value) })}
-                />
-              </label>
-              <label className="block">
-                Medio de pago
-                <input
-                  className={input}
-                  value={payment.method}
-                  onChange={(e) => setPayment({ ...payment, method: e.target.value })}
-                />
-              </label>
-            </div>
-            {error && (
-              <p role="alert" className="mt-2 text-sm text-red-700">
-                {error}
-              </p>
-            )}
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                disabled={busy}
-                className="rounded-xl bg-[#46766B] px-4 py-2 text-sm font-semibold text-white"
-                onClick={() => void commitPayment()}
-              >
-                {busy ? 'Guardando...' : 'Registrar pago'}
               </button>
             </div>
           </div>

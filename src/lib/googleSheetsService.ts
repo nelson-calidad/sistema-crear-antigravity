@@ -476,12 +476,24 @@ export async function fetchRoomsFromSheets(): Promise<ConfiguredRoom[]> {
     });
 
     if (res.records && res.records.length > 0) {
-      return res.records.map((r) => ({
-        id: r.id,
-        name: r.name,
-        description: r.description || '',
-        active: r.active !== false,
-      }));
+      const map = new Map<string, ConfiguredRoom>();
+      DEFAULT_ROOMS.forEach((d) => map.set(d.id, { ...d }));
+      res.records.forEach((r) => {
+        const base = map.get(r.id) || {
+          id: r.id,
+          name: r.name,
+          description: r.description || '',
+          active: true,
+        };
+        map.set(r.id, {
+          ...base,
+          id: r.id,
+          name: r.name || base.name,
+          description: r.description !== undefined ? r.description : base.description,
+          active: r.active !== false,
+        });
+      });
+      return Array.from(map.values());
     }
   } catch (err) {
     console.warn('Error leyendo rooms de Google Sheets, usando base:', err);
