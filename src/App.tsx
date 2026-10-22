@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { cn } from './lib/utils';
 import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
 import { readStoredValue, writeStoredValue } from './lib/browserStorage';
 import logoCrear from './assets/logo-crear-mobile.jpg';

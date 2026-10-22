@@ -24,10 +24,10 @@ import { localDate, moneyFormat, useRecords } from '../lib/crearStore';
 import { subscribeToAppointments } from '../lib/appointmentsStore';
 import { buildUnifiedOccupancyAppointments, getActiveOccupancyForDate } from '../lib/occupancy';
 import { useProfessionals } from '../lib/professionalsStore';
-import { loadCoverageData, type CoverageShift } from '../lib/coverageStore';
-import { loadActivitiesData, type ActivityRecord } from '../lib/activitiesStore';
+import { loadCoverageData } from '../lib/coverageStore';
+import { loadActivitiesData } from '../lib/activitiesStore';
 import { logoutUser, useAuth } from '../lib/crearAuth';
-import type { AppointmentRecord } from '../types';
+import type { AppointmentRecord, CoverageShift, ActivityRecord } from '../types';
 import { ROOMS } from '../constants';
 import { ErrorMessage } from './ui';
 
@@ -347,7 +347,9 @@ export function HomeReal({ onNewInquiry, onNavigate }: HomeRealProps) {
       {errors.length > 0 && (
         <div className="space-y-2">
           {errors.map((error, index) => (
-            <ErrorMessage key={index}>{error}</ErrorMessage>
+            <div key={index}>
+              <ErrorMessage>{error}</ErrorMessage>
+            </div>
           ))}
         </div>
       )}
