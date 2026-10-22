@@ -30,7 +30,7 @@ function appendAuditLog_(actor, action, entity, targetId, summary) {
     };
     sheet.appendRow([id, JSON.stringify(entry), entry.timestamp]);
   } catch (e) {}
-}
+} 
 function crearUpsert_(body, actor) {
   if (!body.record || !body.record.id) throw new Error('Registro inválido.');
   const entity = String(body.entity);
@@ -84,17 +84,21 @@ function crearUpsert_(body, actor) {
       ensureUsersSeeded_();
       const uValues = sheet.getDataRange().getValues();
       const uIndex = uValues.findIndex((row, i) => i > 0 && String(row[0]) === String(record.id));
-      let existingPassword = '';
+      let existingHash = '';
       if (uIndex >= 0) {
-        try { existingPassword = JSON.parse(String(uValues[uIndex][1])).password || ''; } catch (e) {}
+        try {
+          const parsedExisting = JSON.parse(String(uValues[uIndex][1]));
+          existingHash = parsedExisting.passwordHash || (parsedExisting.password ? hashPassword_(parsedExisting.password) : '');
+        } catch (e) {}
       }
+      const nextPasswordHash = record.password ? hashPassword_(record.password) : existingHash;
       const userRecord = {
         id: String(record.id),
         googleSub: String(record.googleSub || ''),
         name: String(record.name || '').trim(),
         email: String(record.email || '').trim().toLowerCase(),
         googleEmail: String(record.googleEmail || '').trim().toLowerCase(),
-        password: record.password ? String(record.password) : existingPassword,
+        passwordHash: nextPasswordHash,
         role: record.role === 'admin' ? 'admin' : 'professional',
         professionalId: String(record.professionalId || ''),
         specialty: String(record.specialty || ''),
@@ -147,24 +151,32 @@ function crearCheckConflict_(sheet, incoming) {
   const agreements = crearList_('agreements').records;
   const interviews = crearList_('interviews').records;
   const rentals = crearList_('rentals').records;
+  const roomNames = { c1: 'Consultorio 1', c2: 'Consultorio 2', c3: 'Consultorio 3' };
+  const roomLabel = roomNames[incoming.roomId] || incoming.roomId || 'Consultorio';
   for (let offset = 0; offset < days; offset++) {
     const date = new Date(startDate + 'T12:00:00'); date.setDate(date.getDate() + offset);
     const day = Utilities.formatDate(date, 'America/Argentina/Jujuy', 'yyyy-MM-dd');
     if (!crearOccurs_(incoming, day)) continue;
     const weekday = date.getDay();
     const agreement = agreements.find(item => item.status === 'activo' && String(item.days) === String(weekday) && item.start < incoming.end && item.end > incoming.start && (item.roomId === incoming.roomId && item.professionalId !== incoming.professionalId || item.professionalId === incoming.professionalId && item.roomId !== incoming.roomId));
-    if (agreement) throw new Error('Conflicto con una reserva fija de consultorio.');
+    if (agreement) throw new Error('Conflicto de horario en ' + roomLabel + ' (' + agreement.start + ' a ' + agreement.end + '): reserva fija de consultorio.');
     const interview = interviews.find(item => item.status !== 'cancelada' && item.date === day && item.start < incoming.end && item.end > incoming.start && (item.roomId === incoming.roomId || item.professionalId === incoming.professionalId));
-    if (interview) throw new Error('Conflicto con una entrevista inicial.');
+    if (interview) throw new Error('Conflicto de horario en ' + roomLabel + ' (' + interview.start + ' a ' + interview.end + '): entrevista inicial.');
     const rental = rentals.find(item => item.status !== 'cancelled' && item.roomId === incoming.roomId && crearOccurs_(item, day) && item.start < incoming.end && item.end > incoming.start);
-    if (rental) throw new Error('El consultorio está alquilado en esa franja.');
+    if (rental) throw new Error('El ' + roomLabel + ' está alquilado en la franja ' + rental.start + ' a ' + rental.end + '.');
     for (const existing of rows) {
       if (String(existing.id) === String(incoming.id) || existing.status === 'cancelled' || !crearOccurs_(existing, day)) continue;
       if (!(incoming.start < existing.end && incoming.end > existing.start)) continue;
       const samePro = incoming.professionalId && incoming.professionalId === existing.professionalId;
       const sameRoom = incoming.roomId && incoming.roomId === existing.roomId;
       const nestedSamePro = samePro && ((incoming.kind === 'block' && existing.kind !== 'block') || (existing.kind === 'block' && incoming.kind !== 'block'));
-      if (sameRoom && !nestedSamePro || samePro && !nestedSamePro) throw new Error('Conflicto de horario: el consultorio o la profesional ya tienen una reserva.');
+      if (sameRoom && !nestedSamePro) {
+        throw new Error('Conflicto de horario: ' + roomLabel + ' no disponible el ' + day + ' de ' + existing.start + ' a ' + existing.end + '.');
+      }
+      if (samePro && !nestedSamePro) {
+        const existingRoomLabel = roomNames[existing.roomId] || existing.roomId || 'otro consultorio';
+        throw new Error('Conflicto de horario: la profesional ya tiene una reserva en ' + existingRoomLabel + ' de ' + existing.start + ' a ' + existing.end + '.');
+      }
     }
   }
 }
@@ -237,17 +249,27 @@ const PROFESSIONALS_HEADER = [
 ];
 const PROFESSIONALS_SEED = [{ id: 'ariadna', name: 'Ariadna', specialty: 'Psicología' }, { id: 'ivana', name: 'Ivana', specialty: 'Educación especial' }, { id: 'dana', name: 'Dana', specialty: 'Psicopedagogía' }, { id: 'romy', name: 'Romy', specialty: 'Psicomotricidad' }, { id: 'barbie', name: 'Barbie', specialty: 'Terapia ocupacional' }, { id: 'vero', name: 'Vero', specialty: 'Fonoaudiología' }];
 
+function hashPassword_(plain) {
+  if (!plain) return '';
+  const bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    'crear-pwd-salt-v1:' + String(plain),
+    Utilities.Charset.UTF_8
+  );
+  return Utilities.base64EncodeWebSafe(bytes);
+}
+
 const DEFAULT_USERS_SEED_ = [
-  { id: 'user-karina', name: 'Karina', email: 'karina@crear.com', googleEmail: '', password: 'crear2026', role: 'admin', professionalId: '', specialty: 'Coordinación General', active: true, createdAt: '2026-01-01' },
-  { id: 'user-janina', name: 'Janina', email: 'janina@crear.com', googleEmail: '', password: 'crear2026', role: 'admin', professionalId: '', specialty: 'Coordinación General', active: true, createdAt: '2026-01-01' },
-  { id: 'user-admin3', name: 'Responsable 3', email: 'admin3@crear.com', googleEmail: '', password: 'crear2026', role: 'admin', professionalId: '', specialty: 'Coordinación General', active: true, createdAt: '2026-01-01' },
-  { id: 'user-admin4', name: 'Responsable 4', email: 'admin4@crear.com', googleEmail: '', password: 'crear2026', role: 'admin', professionalId: '', specialty: 'Coordinación General', active: true, createdAt: '2026-01-01' },
-  { id: 'user-ariadna', name: 'Ariadna', email: 'ariadna@crear.com', googleEmail: '', password: 'ariadna2026', role: 'professional', professionalId: 'ariadna', specialty: 'Psicología', active: true, createdAt: '2026-01-01' },
-  { id: 'user-ivana', name: 'Ivana', email: 'ivana@crear.com', googleEmail: '', password: 'ivana2026', role: 'professional', professionalId: 'ivana', specialty: 'Educación especial', active: true, createdAt: '2026-01-01' },
-  { id: 'user-dana', name: 'Dana', email: 'dana@crear.com', googleEmail: '', password: 'dana2026', role: 'professional', professionalId: 'dana', specialty: 'Psicopedagogía', active: true, createdAt: '2026-01-01' },
-  { id: 'user-romy', name: 'Romy', email: 'romy@crear.com', googleEmail: '', password: 'romy2026', role: 'professional', professionalId: 'romy', specialty: 'Psicomotricidad', active: true, createdAt: '2026-01-01' },
-  { id: 'user-barbie', name: 'Barbie', email: 'barbie@crear.com', googleEmail: '', password: 'barbie2026', role: 'professional', professionalId: 'barbie', specialty: 'Terapia ocupacional', active: true, createdAt: '2026-01-01' },
-  { id: 'user-vero', name: 'Vero', email: 'vero@crear.com', googleEmail: '', password: 'vero2026', role: 'professional', professionalId: 'vero', specialty: 'Fonoaudiología', active: true, createdAt: '2026-01-01' }
+  { id: 'user-florencia', name: 'Florencia', email: 'florencia@crear.com', googleEmail: '', role: 'admin', professionalId: '', specialty: 'Coordinación General', active: true, createdAt: '2026-01-01' },
+  { id: 'user-janina', name: 'Janina', email: 'janina@crear.com', googleEmail: '', role: 'admin', professionalId: '', specialty: 'Coordinación General', active: true, createdAt: '2026-01-01' },
+  { id: 'user-admin3', name: 'Responsable 3', email: 'admin3@crear.com', googleEmail: '', role: 'admin', professionalId: '', specialty: 'Coordinación General', active: true, createdAt: '2026-01-01' },
+  { id: 'user-admin4', name: 'Responsable 4', email: 'admin4@crear.com', googleEmail: '', role: 'admin', professionalId: '', specialty: 'Coordinación General', active: true, createdAt: '2026-01-01' },
+  { id: 'user-ariadna', name: 'Ariadna', email: 'ariadna@crear.com', googleEmail: '', role: 'professional', professionalId: 'ariadna', specialty: 'Psicología', active: true, createdAt: '2026-01-01' },
+  { id: 'user-ivana', name: 'Ivana', email: 'ivana@crear.com', googleEmail: '', role: 'professional', professionalId: 'ivana', specialty: 'Educación especial', active: true, createdAt: '2026-01-01' },
+  { id: 'user-dana', name: 'Dana', email: 'dana@crear.com', googleEmail: '', role: 'professional', professionalId: 'dana', specialty: 'Psicopedagogía', active: true, createdAt: '2026-01-01' },
+  { id: 'user-romy', name: 'Romy', email: 'romy@crear.com', googleEmail: '', role: 'professional', professionalId: 'romy', specialty: 'Psicomotricidad', active: true, createdAt: '2026-01-01' },
+  { id: 'user-barbie', name: 'Barbie', email: 'barbie@crear.com', googleEmail: '', role: 'professional', professionalId: 'barbie', specialty: 'Terapia ocupacional', active: true, createdAt: '2026-01-01' },
+  { id: 'user-vero', name: 'Vero', email: 'vero@crear.com', googleEmail: '', role: 'professional', professionalId: 'vero', specialty: 'Fonoaudiología', active: true, createdAt: '2026-01-01' }
 ];
 
 const DEFAULT_SERVICES_SEED_ = [
@@ -544,7 +566,14 @@ function handleLoginPassword_(body) {
   if (!matched || matched.active === false) {
     throw new Error('La cuenta no está autorizada o se encuentra inactiva.');
   }
-  if (String(matched.password || '') !== rawPassword) {
+  const incomingHash = hashPassword_(rawPassword);
+  const storedHash = String(matched.passwordHash || '');
+  const legacyPlain = String(matched.password || '');
+  if (!storedHash && !legacyPlain) {
+    throw new Error('Esta cuenta aún no tiene contraseña personal configurada. Ingresá con tu cuenta de Google o pedile a las responsables que te asignen una clave individual.');
+  }
+  const isValid = storedHash ? storedHash === incomingHash : legacyPlain === rawPassword;
+  if (!isValid) {
     throw new Error('Contraseña incorrecta.');
   }
   const sessionToken = signSessionToken_(matched);
@@ -663,25 +692,6 @@ function crearAuthorize_(body) {
     return { email: verifiedEmail, role: role, professionalId: team.professionals.get(verifiedEmail) || '' };
   }
 
-  // 3. Verificación por usuario en hoja crear_users (con comprobación de rol real en el servidor)
-  if (body.actor && body.actor.email) {
-    ensureUsersSeeded_();
-    const actorEmail = String(body.actor.email || '').toLowerCase().trim();
-    const users = crearList_('users').records;
-    const dbUser = users.find(function(u) {
-      return String(u.email || '').toLowerCase() === actorEmail || String(u.googleEmail || '').toLowerCase() === actorEmail;
-    });
-    if (!dbUser || dbUser.active === false) {
-      throw new Error('Cuenta no autorizada o inactiva en CREAR.');
-    }
-    return {
-      email: dbUser.email,
-      name: dbUser.name,
-      role: dbUser.role === 'admin' ? 'admin' : 'professional',
-      professionalId: dbUser.professionalId || ''
-    };
-  }
-
   throw new Error('Autenticación requerida para operar en CREAR.');
 }
 
@@ -742,7 +752,7 @@ function crearListAuthorized_(entity, actor) {
         specialty: u.specialty || '',
         active: u.active !== false,
         createdAt: u.createdAt || '',
-        hasPassword: Boolean(u.password)
+        hasPassword: Boolean(u.passwordHash || u.password)
       };
     });
     return { ok: true, records: rawUsers };

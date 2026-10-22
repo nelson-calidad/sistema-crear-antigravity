@@ -120,11 +120,16 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
     startTime?: string;
   }>({});
 
-  const [notice, setNotice] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+  const [notice, setNotice] = useState<{
+    tone: 'saving' | 'success' | 'error';
+    message: string;
+  } | null>(null);
 
-  const pushNotice = (tone: 'success' | 'error', message: string) => {
+  const pushNotice = (tone: 'saving' | 'success' | 'error', message: string, duration = 3500) => {
     setNotice({ tone, message });
-    setTimeout(() => setNotice(null), 3000);
+    if (tone !== 'saving') {
+      setTimeout(() => setNotice(null), duration);
+    }
   };
 
   useEffect(() => {
@@ -189,12 +194,23 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
 
   const handleSaveAppointment = async (record: Partial<AppointmentRecord>) => {
     try {
-      await bookAppointmentInSheets(record, (bgErr) => {
-        pushNotice('error', bgErr.message || 'Conflicto en servidor: no se pudo guardar.');
+      await bookAppointmentInSheets(record, {
+        onSaving: () => {
+          pushNotice('saving', 'Guardando...');
+        },
+        onConfirmed: () => {
+          pushNotice('success', 'Reserva confirmada');
+        },
+        onError: (bgErr) => {
+          pushNotice('error', `Error al guardar: ${bgErr.message || 'Conflicto en servidor.'}`, 5500);
+        },
       });
-      pushNotice('success', 'Guardado correctamente');
     } catch (err) {
-      pushNotice('error', err instanceof Error ? err.message : 'No se pudo guardar.');
+      pushNotice(
+        'error',
+        `Error al guardar: ${err instanceof Error ? err.message : 'No se pudo guardar.'}`,
+        5000
+      );
       throw err;
     }
   };
@@ -355,22 +371,26 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
         </div>
       </header>
 
-      {/* Notificación flotante rápida */}
+      {/* Notificación flotante con 3 estados: Guardando / Reserva confirmada / Error al guardar */}
       {notice && (
-        <div className="fixed bottom-16 sm:bottom-5 right-4 z-50 animate-[fadeIn_.15s_ease-out]">
+        <div className="fixed bottom-16 sm:bottom-5 right-3 left-3 sm:left-auto z-50 animate-[fadeIn_.15s_ease-out]">
           <div
-            className={`flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold shadow-lg ${
-              notice.tone === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                : 'border-rose-200 bg-rose-50 text-rose-900'
+            className={`flex items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-bold shadow-lg ${
+              notice.tone === 'saving'
+                ? 'border-amber-200 bg-amber-50 text-amber-900'
+                : notice.tone === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                  : 'border-rose-200 bg-rose-50 text-rose-900'
             }`}
           >
-            {notice.tone === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            {notice.tone === 'saving' ? (
+              <Clock className="h-4 w-4 shrink-0 animate-spin text-amber-600" />
+            ) : notice.tone === 'success' ? (
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
             ) : (
-              <AlertCircle className="h-4 w-4 text-rose-600" />
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
             )}
-            <span>{notice.message}</span>
+            <span className="truncate">{notice.message}</span>
           </div>
         </div>
       )}
@@ -458,6 +478,35 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Pestañas táctiles de Consultorio para Celulares (sin compresión ni scroll horizontal) */}
+            <div className="flex sm:hidden items-center gap-1.5 overflow-x-auto pb-0.5">
+              <button
+                type="button"
+                onClick={() => setSelectedRoomFilter('all')}
+                className={`min-h-10 shrink-0 rounded-2xl px-3.5 py-2 text-xs font-bold transition ${
+                  selectedRoomFilter === 'all'
+                    ? 'bg-[#46766B] text-white shadow-xs'
+                    : 'border border-[#DDE3DF] bg-white text-[#52635D]'
+                }`}
+              >
+                Todos ({rooms.length})
+              </button>
+              {rooms.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setSelectedRoomFilter(r.id)}
+                  className={`min-h-10 shrink-0 rounded-2xl px-3.5 py-2 text-xs font-bold transition ${
+                    selectedRoomFilter === r.id
+                      ? 'bg-[#46766B] text-white shadow-xs'
+                      : 'border border-[#DDE3DF] bg-white text-[#52635D]'
+                  }`}
+                >
+                  {r.name.split('—')[0].trim()}
+                </button>
+              ))}
             </div>
 
             {/* VISTA DIARIA POR CONSULTORIO */}
@@ -554,12 +603,33 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                                           Semanal
                                         </span>
                                       )}
-                                      {booking.syncPending && (
-                                        <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[9px] font-semibold">
-                                          Sincronizando...
+                                      {booking.syncState === 'saving' || booking.syncPending ? (
+                                        <span className="rounded-md bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 text-[10px] font-bold">
+                                          Guardando...
+                                        </span>
+                                      ) : booking.syncState === 'error' ? (
+                                        <span className="rounded-md bg-rose-100 text-rose-900 border border-rose-300 px-1.5 py-0.5 text-[10px] font-bold">
+                                          Error al guardar
+                                        </span>
+                                      ) : (
+                                        <span className="rounded-md bg-emerald-100/90 text-emerald-900 px-1.5 py-0.5 text-[10px] font-bold">
+                                          Reserva confirmada
                                         </span>
                                       )}
                                     </div>
+
+                                    {booking.syncState === 'error' && booking.syncError && (
+                                      <div className="mt-1.5 rounded-xl bg-rose-50 border border-rose-200 px-2.5 py-1.5 text-[11px] font-bold text-rose-800 flex items-center justify-between gap-2">
+                                        <span>{booking.syncError}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleSaveAppointment(booking)}
+                                          className="rounded-lg bg-rose-700 px-2 py-0.5 text-[10px] text-white"
+                                        >
+                                          Reintentar
+                                        </button>
+                                      </div>
+                                    )}
 
                                     {/* REGLA DE PRIVACIDAD ESTRICTA SEGÚN QUIÉN MIRA */}
                                     {!canSeeDetails ? (
@@ -591,7 +661,12 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                                           </p>
                                         )}
                                         <p className="text-[10px] opacity-80">
-                                          {isAdmin ? `Titular: ${therapistName} · ` : ''}Estado: Confirmado
+                                          {isAdmin ? `Titular: ${therapistName} · ` : ''}
+                                          {booking.syncState === 'saving' || booking.syncPending
+                                            ? 'Estado: Guardando en Google Sheets...'
+                                            : booking.syncState === 'error'
+                                              ? 'Estado: Error al guardar'
+                                              : 'Estado: Reserva confirmada'}
                                         </p>
                                       </div>
                                     )}
@@ -629,36 +704,43 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
               </div>
             )}
 
-            {/* VISTA SEMANAL */}
+            {/* VISTA SEMANAL ADAPTATIVA (Vertical en celular sin scroll horizontal / 6 columnas en escritorio) */}
             {viewMode === 'week' && (
-              <div className="overflow-x-auto rounded-3xl border border-[#E5EAE5] bg-white p-4 shadow-xs">
-                <div className="grid grid-cols-6 gap-2.5 min-w-[760px]">
+              <div className="rounded-3xl border border-[#E5EAE5] bg-white p-3 sm:p-4 shadow-xs">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-6 md:gap-2.5">
                   {weekDates.map((dateStr) => {
                     const dayBookings = activeAppointmentsOnDate(dateStr)
                       .filter((app) => selectedRoomFilter === 'all' || app.roomId === selectedRoomFilter)
                       .sort((a, b) => a.start.localeCompare(b.start));
 
-                    const dayTitle = `${formatWeekdayLabel(dateStr).slice(0, 3)} ${formatArDate(dateStr).slice(0, 5)}`;
+                    const dayTitle = `${formatWeekdayLabel(dateStr)} ${formatArDate(dateStr).slice(0, 5)}`;
 
                     return (
                       <div
                         key={dateStr}
-                        className="flex flex-col rounded-2xl border border-[#EAEFEA] bg-[#FDFFFD] p-2.5"
+                        className="flex flex-col rounded-2xl border border-[#EAEFEA] bg-[#FDFFFD] p-3"
                       >
                         <div className="flex items-center justify-between border-b border-[#EAEFEA] pb-2 mb-2">
                           <span className="text-xs font-bold capitalize text-[#34433F]">{dayTitle}</span>
                           <button
                             type="button"
                             onClick={() => handleOpenBooking(undefined, dateStr)}
-                            className="rounded-lg bg-[#E8F3EE] p-1 text-[#46766B] hover:bg-[#DDEAE2]"
+                            className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#46766B] hover:bg-[#DDEAE2]"
+                            title="Reservar en este día"
                           >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus className="h-4 w-4" />
                           </button>
                         </div>
 
                         <div className="space-y-2 flex-1">
                           {dayBookings.length === 0 ? (
-                            <p className="py-6 text-center text-[11px] text-[#889892]">Libre</p>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenBooking(undefined, dateStr)}
+                              className="w-full rounded-xl border border-dashed border-[#E2EAE4] py-4 text-center text-[11px] font-semibold text-[#889892] hover:border-[#46766B] hover:text-[#46766B]"
+                            >
+                              Sin reservas · + Agregar
+                            </button>
                           ) : (
                             dayBookings.map((app) => {
                               const therapist = CREAR_TEAM.find((t) => t.id === app.professionalId);
@@ -672,17 +754,19 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                                 <div
                                   key={app.id}
                                   onClick={() => canSee && handleEditBooking(app)}
-                                  className={`rounded-xl border p-2 text-[11px] ${pastel} ${
+                                  className={`rounded-xl border p-2.5 text-xs ${pastel} ${
                                     canSee ? 'cursor-pointer hover:opacity-90' : ''
                                   }`}
                                 >
-                                  <div className="flex items-center justify-between font-mono text-[10px] font-bold">
+                                  <div className="flex items-center justify-between font-mono text-[11px] font-bold">
                                     <span>
                                       {app.start}–{app.end}
                                     </span>
-                                    <span>{roomObj?.name.split('—')[0].replace('Consultorio ', 'C')}</span>
+                                    <span className="rounded-md bg-white/75 px-1.5 py-0.5 text-[10px]">
+                                      {roomObj?.name.split('—')[0].replace('Consultorio ', 'Cons. ') || app.roomId}
+                                    </span>
                                   </div>
-                                  <p className="mt-0.5 font-bold truncate">
+                                  <p className="mt-1 font-bold truncate">
                                     {canSee
                                       ? app.kind === 'block'
                                         ? `Reserva — ${therapistName}`
@@ -690,7 +774,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                                       : `Ocupado — ${therapistName}`}
                                   </p>
                                   {canSee && app.serviceName && (
-                                    <p className="text-[10px] opacity-80 truncate">{app.serviceName}</p>
+                                    <p className="text-[11px] opacity-85 truncate">{app.serviceName}</p>
                                   )}
                                 </div>
                               );

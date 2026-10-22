@@ -167,6 +167,8 @@ export async function fetchAppointmentsFromSheets(): Promise<AppointmentRecord[]
       createdAt: row.createdAt || '',
       updatedAt: row.updatedAt || '',
       syncPending: false,
+      syncState: 'confirmed' as const,
+      syncError: undefined,
     }));
 
     emitAppointments(rows);
@@ -211,14 +213,25 @@ export function subscribeToSheetsAppointments(
   };
 }
 
+export interface SyncFeedbackCallbacks {
+  onSaving?: (record: AppointmentRecord) => void;
+  onConfirmed?: (record: AppointmentRecord) => void;
+  onError?: (err: Error, record: AppointmentRecord) => void;
+}
+
 /**
  * Registra o modifica una reserva con ACTUALIZACIÓN INSTANTÁNEA (Optimistic UI)
- * y guardado en segundo plano en Google Sheets con LockService.
+ * y tres estados explícitos: Guardando -> Reserva confirmada -> Error al guardar.
  */
 export async function bookAppointmentInSheets(
   appointment: Partial<AppointmentRecord>,
-  onBackgroundError?: (err: Error) => void
+  onBackgroundError?: ((err: Error) => void) | SyncFeedbackCallbacks
 ): Promise<AppointmentRecord> {
+  const callbacks: SyncFeedbackCallbacks =
+    typeof onBackgroundError === 'function'
+      ? { onError: (err) => onBackgroundError(err) }
+      : onBackgroundError || {};
+
   const actor = getActorPayload();
   const id = appointment.id || crypto.randomUUID();
   const isUpdate = Boolean(appointment.id);
@@ -228,6 +241,8 @@ export async function bookAppointmentInSheets(
       : appointment.professionalId || appointment.proId || actor.professionalId;
 
   const resolvedKind = appointment.kind || appointment.type || 'session';
+  const roomObj = DEFAULT_ROOMS.find((r) => r.id === (appointment.roomId || 'c1'));
+  const roomLabel = roomObj ? roomObj.name.split('—')[0].trim() : appointment.roomId || 'Consultorio';
 
   // Validación rápida local (0ms) respetando bloques propios (nestedSamePro)
   const candidate: Slot = {
@@ -262,8 +277,11 @@ export async function bookAppointmentInSheets(
 
   const localConflict = conflictOnDate(candidate, existingSlots, appointment.date || '');
   if (localConflict) {
+    const conflictRoom =
+      DEFAULT_ROOMS.find((r) => r.id === localConflict.roomId)?.name.split('—')[0].trim() ||
+      roomLabel;
     throw new Error(
-      `Conflicto de horario: el consultorio o profesional ya tiene una reserva (${localConflict.start} a ${localConflict.end}).`
+      `Conflicto de horario: ${conflictRoom} no está disponible de ${localConflict.start} a ${localConflict.end}.`
     );
   }
 
@@ -298,16 +316,18 @@ export async function bookAppointmentInSheets(
     createdAt: appointment.createdAt || nowIso,
     createdBy: actor.email,
     syncPending: true,
+    syncState: 'saving',
+    syncError: undefined,
   };
 
-  // 1. Actualización instantánea en interfaz (0ms)
-  const snapshotBefore = [...cachedAppointments];
+  // 1. Estado 1: Guardando... (No se presenta como confirmada hasta recibir respuesta del servidor)
   const optimisticNext = isUpdate
     ? cachedAppointments.map((item) => (item.id === id ? payloadRecord : item))
     : [payloadRecord, ...cachedAppointments];
   emitAppointments(optimisticNext);
+  callbacks.onSaving?.(payloadRecord);
 
-  // 2. Sincronización en segundo plano hacia Google Sheets
+  // 2. Sincronización real hacia Google Sheets
   void callSheetsApi<{ ok: true; id: string }>({
     action: isUpdate ? 'update' : 'create',
     entity: 'appointments',
@@ -315,17 +335,34 @@ export async function bookAppointmentInSheets(
     appointment: payloadRecord,
   })
     .then(() => {
-      // Marcar como sincronizado y refrescar desde Sheets
+      // Estado 2: Reserva confirmada por el servidor
+      const confirmedRecord: AppointmentRecord = {
+        ...payloadRecord,
+        syncPending: false,
+        syncState: 'confirmed',
+        syncError: undefined,
+      };
       const confirmedList = cachedAppointments.map((item) =>
-        item.id === id ? { ...item, syncPending: false } : item
+        item.id === id ? confirmedRecord : item
       );
       emitAppointments(confirmedList);
+      callbacks.onConfirmed?.(confirmedRecord);
       void fetchAppointmentsFromSheets();
     })
     .catch((err) => {
-      // Revertir si hubo conflicto concurrente en el servidor
-      emitAppointments(snapshotBefore);
-      onBackgroundError?.(err instanceof Error ? err : new Error(String(err)));
+      // Estado 3: Error al guardar (impedir pérdida silenciosa, mostrar error claro en la reserva)
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const erroredRecord: AppointmentRecord = {
+        ...payloadRecord,
+        syncPending: false,
+        syncState: 'error',
+        syncError: errorMsg,
+      };
+      const erroredList = cachedAppointments.map((item) =>
+        item.id === id ? erroredRecord : item
+      );
+      emitAppointments(erroredList);
+      callbacks.onError?.(err instanceof Error ? err : new Error(errorMsg), erroredRecord);
     });
 
   return payloadRecord;

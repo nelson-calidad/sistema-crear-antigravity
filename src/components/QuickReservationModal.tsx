@@ -252,10 +252,10 @@ export function QuickReservationModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4 backdrop-blur-xs antialiased animate-[fadeIn_.12s_ease-out]">
-      <div className="w-full max-w-lg overflow-hidden rounded-t-3xl sm:rounded-3xl border border-[#E5EAE5] bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4 backdrop-blur-xs antialiased animate-[fadeIn_.12s_ease-out] overflow-y-auto">
+      <div className="w-full max-w-lg max-h-[94dvh] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-[#E5EAE5] bg-white shadow-2xl">
         {/* Header Minimalista */}
-        <div className="flex items-center justify-between border-b border-[#EAEFEA] bg-[#F9FBF9] px-5 py-3.5">
+        <div className="flex shrink-0 items-center justify-between border-b border-[#EAEFEA] bg-[#F9FBF9] px-4 sm:px-5 py-3">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#DDEAE2] text-[#46766B]">
               <Calendar className="h-4 w-4" />
@@ -279,7 +279,7 @@ export function QuickReservationModal({
         </div>
 
         {/* Formulario Rápido Clic y Clic */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[84dvh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 pb-6 space-y-3.5 overflow-y-auto overscroll-contain flex-1">
           {error && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
@@ -291,7 +291,10 @@ export function QuickReservationModal({
             <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
               <span>
-                Consultorio ocupado de <strong>{conflict.start} a {conflict.end}</strong>.
+                <strong>
+                  {rooms.find((r) => r.id === (conflict.roomId || roomId))?.name.split('—')[0].trim() || 'Consultorio'}
+                </strong>{' '}
+                no disponible de <strong>{conflict.start} a {conflict.end}</strong>.
               </span>
             </div>
           )}
@@ -376,33 +379,35 @@ export function QuickReservationModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <input
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-2.5 py-2.5 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
+                className="min-h-11 w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-3 py-2 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
               />
-              <input
-                type="time"
-                required
-                value={startTime}
-                onChange={(e) => {
-                  const nextStart = e.target.value;
-                  setStartTime(nextStart);
-                  const chosen = activeServices.find((s) => s.id === selectedServiceId);
-                  setEndTime(addMinutesToTime(nextStart, bookingKind === 'block' ? 60 : chosen?.durationMinutes || 45));
-                }}
-                className="w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-2.5 py-2.5 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
-              />
-              <input
-                type="time"
-                required
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-2.5 py-2.5 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
-              />
+              <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+                <input
+                  type="time"
+                  required
+                  value={startTime}
+                  onChange={(e) => {
+                    const nextStart = e.target.value;
+                    setStartTime(nextStart);
+                    const chosen = activeServices.find((s) => s.id === selectedServiceId);
+                    setEndTime(addMinutesToTime(nextStart, bookingKind === 'block' ? 60 : chosen?.durationMinutes || 45));
+                  }}
+                  className="min-h-11 w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-3 py-2 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
+                />
+                <input
+                  type="time"
+                  required
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="min-h-11 w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-3 py-2 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
+                />
+              </div>
             </div>
           </div>
 

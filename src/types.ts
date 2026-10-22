@@ -159,6 +159,8 @@ export interface AppointmentRecord {
   createdAt?: string;
   updatedAt?: string;
   syncPending?: boolean;
+  syncState?: 'saving' | 'confirmed' | 'error';
+  syncError?: string;
 }
 
 export type ActivityStatus = 'Sin asignar' | 'Pendiente' | 'En proceso' | 'Bloqueada' | 'Completada' | 'No cumplida' | 'Cancelada';

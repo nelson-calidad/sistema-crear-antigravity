@@ -322,11 +322,20 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
               proId: professionalId,
               createdBy: user.uid
             };
-            await saveAppointment(appointmentData, modalContext.appointment?.id);
+            await saveAppointment(appointmentData, modalContext.appointment?.id, {
+              onSaving: () => {
+                pushToast('info', 'Guardando...', 'Sincronizando con Google Sheets.');
+              },
+              onConfirmed: () => {
+                pushToast('success', 'Reserva confirmada', 'El turno quedó guardado en Google Sheets.');
+              },
+              onError: (err) => {
+                pushToast('error', 'Error al guardar', err.message || 'No se pudo confirmar en Google Sheets.');
+              },
+            });
             setAgendaFocusDate(appointmentData.date);
             setIsModalOpen(false); // Close immediately after save returns
             navigateToTab('agenda', { replace: true });
-            pushToast('success', 'Turno guardado', 'La reserva se realizó correctamente.');
           } catch (error) {
             pushToast('error', 'No se pudo guardar', error instanceof Error ? error.message : 'No se pudo guardar la reserva.');
           } finally {

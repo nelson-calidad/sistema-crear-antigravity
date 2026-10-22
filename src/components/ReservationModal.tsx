@@ -23,9 +23,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn, isAppointmentActiveOnDate, parseDay } from '../lib/utils';
 
 import { ROOMS } from '../constants';
-import { AppointmentRecord } from '../types';
+import { AppointmentRecord, ServiceCatalogItem } from '../types';
 import { useProfessionals } from '../lib/professionalsStore';
 import { usePatients } from '../lib/patientsStore';
+import { DEFAULT_SERVICES, fetchServicesFromSheets } from '../lib/googleSheetsService';
 
 interface ReservationModalProps {
   isOpen: boolean;
@@ -106,6 +107,12 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
   const [patientPhone, setPatientPhone] = useState('');
   const [selectedProId, setSelectedProId] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [services, setServices] = useState<ServiceCatalogItem[]>(DEFAULT_SERVICES);
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(DEFAULT_SERVICES[0].id);
+
+  useEffect(() => {
+    void fetchServicesFromSheets().then(setServices).catch(() => {});
+  }, []);
   const [formData, setFormData] = useState({
     patient: '',
     date: new Date().toISOString().split('T')[0],
@@ -174,6 +181,9 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
       setUntilDate(initialData.untilDate || '');
       setStatus(initialData.status || 'scheduled');
       setPatientPhone(initialData.patientPhone || '');
+      if (initialData.serviceId) {
+        setSelectedServiceId(initialData.serviceId);
+      }
       setFormData({
         patient: initialData.patient || initialData.title || '',
         date: initialData.date || new Date().toISOString().split('T')[0],
@@ -250,6 +260,8 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
       return;
     }
 
+    const chosenService = services.find((s) => s.id === selectedServiceId);
+
     onSave({
       ...formData,
       kind,
@@ -258,6 +270,8 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
       professionalId: selectedProId || undefined,
       proId: selectedProId,
       roomId: selectedRoomId,
+      serviceId: kind === 'block' ? '' : chosenService?.id || '',
+      serviceName: kind === 'block' ? '' : chosenService?.name || '',
       recurrence,
       selectedDays: recurrence === 'weekly' ? selectedDays : [],
       untilDate: recurrence !== 'none' ? untilDate : undefined,
@@ -421,16 +435,46 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
               ))}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Cobertura</label>
-              <select
-                value={coverageType}
-                onChange={(e) => setCoverageType(e.target.value as 'obra social' | 'particular')}
-                className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 dark:focus:ring-cyan-900 text-slate-900 dark:text-slate-100"
-              >
-                <option value="particular">Particular</option>
-                <option value="obra social">Obra social</option>
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Cobertura</label>
+                <select
+                  value={coverageType}
+                  onChange={(e) => setCoverageType(e.target.value as 'obra social' | 'particular')}
+                  className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 dark:focus:ring-cyan-900 text-slate-900 dark:text-slate-100"
+                >
+                  <option value="particular">Particular</option>
+                  <option value="obra social">Obra social</option>
+                </select>
+              </div>
+              {kind !== 'block' && (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Prestación</label>
+                  <select
+                    value={selectedServiceId}
+                    onChange={(e) => {
+                      const sid = e.target.value;
+                      setSelectedServiceId(sid);
+                      const srv = services.find((s) => s.id === sid);
+                      if (srv && formData.startTime) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          endTime: addMinutesToTime(prev.startTime, srv.durationMinutes),
+                        }));
+                      }
+                    }}
+                    className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 dark:focus:ring-cyan-900 text-slate-900 dark:text-slate-100"
+                  >
+                    {services
+                      .filter((s) => s.active !== false)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.durationMinutes} min)
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">

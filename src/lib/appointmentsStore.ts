@@ -5,6 +5,7 @@ import {
   cancelAppointmentInSheets,
   fetchAppointmentsFromSheets,
   subscribeToSheetsAppointments,
+  type SyncFeedbackCallbacks,
 } from './googleSheetsService';
 
 export const refreshAppointments = fetchAppointmentsFromSheets;
@@ -28,11 +29,18 @@ export function subscribeToAppointments(
   );
 }
 
-export async function saveAppointment(data: Partial<AppointmentRecord>, id?: string) {
-  await bookAppointmentInSheets({
-    ...data,
-    id: id || data.id,
-  });
+export async function saveAppointment(
+  data: Partial<AppointmentRecord>,
+  id?: string,
+  callbacks?: SyncFeedbackCallbacks
+) {
+  await bookAppointmentInSheets(
+    {
+      ...data,
+      id: id || data.id,
+    },
+    callbacks
+  );
 }
 
 export async function deleteAppointment(id: string) {

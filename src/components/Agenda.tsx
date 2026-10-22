@@ -214,11 +214,17 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
   const [viewMode, setViewMode] = useState<'professionals' | 'rooms'>('professionals');
   const [timeMode, setTimeMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [filterProId, setFilterProId] = useState<string>('all');
+  const [filterRoomId, setFilterRoomId] = useState<string>('all');
+  const [showCancelled, setShowCancelled] = useState<boolean>(false);
 
   const filteredAppointments = useMemo(() => {
-    if (filterProId === 'all') return appointments;
-    return appointments.filter(app => (app.professionalId || app.proId) === filterProId);
-  }, [appointments, filterProId]);
+    return appointments.filter((app) => {
+      if (!showCancelled && app.status === 'cancelled') return false;
+      if (filterProId !== 'all' && (app.professionalId || app.proId) !== filterProId) return false;
+      if (filterRoomId !== 'all' && app.roomId !== filterRoomId) return false;
+      return true;
+    });
+  }, [appointments, filterProId, filterRoomId, showCancelled]);
 
   const weeklyAppointmentsByDay = useMemo(() => {
     if (timeMode !== 'weekly') return new Map<string, AppointmentRecord[]>();
@@ -514,7 +520,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
               <select 
                 value={filterProId}
                 onChange={(e) => setFilterProId(e.target.value)}
-                className="bg-transparent border-none text-[10px] font-bold text-slate-700 dark:text-slate-200 focus:ring-0 outline-none pr-7 py-1"
+                className="bg-transparent border-none text-[10px] font-bold text-slate-700 dark:text-slate-200 focus:ring-0 outline-none pr-6 py-1"
               >
                 <option value="all" className="bg-white dark:bg-slate-800">Todos los Prof.</option>
                 {professionals.map(p => (
@@ -522,6 +528,50 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                 ))}
               </select>
             </div>
+
+            {/* Selector de Consultorio (Filtro Global) */}
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 shadow-sm">
+              <div className="pl-2 pr-1">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <select
+                value={filterRoomId}
+                onChange={(e) => setFilterRoomId(e.target.value)}
+                className="bg-transparent border-none text-[10px] font-bold text-slate-700 dark:text-slate-200 focus:ring-0 outline-none pr-6 py-1"
+              >
+                <option value="all" className="bg-white dark:bg-slate-800">Todos los Cons.</option>
+                {ROOMS.map((r) => (
+                  <option key={r.id} value={r.id} className="bg-white dark:bg-slate-800">
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Selector directo de Fecha */}
+            <input
+              type="date"
+              value={format(selectedDate, 'yyyy-MM-dd')}
+              onChange={(e) => {
+                const parsed = parseDay(e.target.value);
+                if (parsed) setSelectedDate(parsed);
+              }}
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-200 shadow-sm outline-none"
+            />
+
+            {/* Mostrar / Ocultar Cancelados */}
+            <button
+              type="button"
+              onClick={() => setShowCancelled((v) => !v)}
+              className={cn(
+                'px-2 py-1 rounded-lg border text-[9px] font-bold uppercase tracking-wider transition-all shadow-sm',
+                showCancelled
+                  ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300'
+                  : 'bg-white border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
+              )}
+            >
+              {showCancelled ? 'Ocultar cancelados' : 'Ver cancelados'}
+            </button>
 
             <div className="flex bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-lg gap-0.5 border border-slate-200/70 dark:border-slate-700/50 shrink-0">
               <button
@@ -719,7 +769,9 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                               </p>
                               <p className="font-black text-[17px] truncate leading-tight">{getAppointmentName(app)}</p>
                               <div className="mt-2 grid gap-0.5 text-[11px] font-semibold opacity-85">
-                                <p className="truncate">{getTypeLabel(app.kind || app.type)} · Prof. {pro?.name || 'Sin profesional'}</p>
+                                <p className="truncate">
+                                  {app.serviceName || getTypeLabel(app.kind || app.type)} · Prof. {pro?.name || 'Sin profesional'}
+                                </p>
                                 <p className="truncate">Consultorio {room?.name || 'Sin asignar'}</p>
                               </div>
                             </div>
@@ -927,7 +979,7 @@ export const Agenda = ({ onOpenModal, appointments, focusDate }: AgendaProps) =>
                                  </span>
                                 <span className="min-w-0 text-right text-[7px] font-black tracking-[0.08em] uppercase opacity-80 leading-tight bg-white/40 dark:bg-black/20 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50 dark:border-slate-800/50 flex items-center gap-1">
                                   {app.recurrence && app.recurrence !== 'none' && <Repeat className="w-2 h-2" />}
-                                  <span>{getTypeLabel(app.kind || app.type)}</span>
+                                  <span>{app.serviceName || getTypeLabel(app.kind || app.type)}</span>
                                   <span className="block truncate opacity-70 ml-auto">{getCoverageLabel(app)}</span>
                                 </span>
                               </div>

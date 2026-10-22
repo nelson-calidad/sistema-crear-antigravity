@@ -243,7 +243,7 @@ export function SettingsReal() {
                 />
                 <Field
                   label="Contraseña de acceso"
-                  placeholder={editingUser.id ? 'Dejar vacío para mantener actual' : 'ej. crear2026'}
+                  placeholder={editingUser.id ? 'Dejar vacío para mantener actual' : 'Ingresar clave individual segura'}
                   value={editingUser.password || ''}
                   onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
                 />
