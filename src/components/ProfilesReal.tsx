@@ -1022,6 +1022,45 @@ export function ProfilesReal({
                 />
               </label>
 
+              {/* Acuerdo económico mensual vinculado */}
+              {(() => {
+                const proAgreement = agreements.rows.find(
+                  (a) => a.professionalId === selectedProfile.id && a.status === 'activo'
+                );
+                const roomName = proAgreement
+                  ? rooms.find((r) => r.id === proAgreement.roomId)?.name.split('—')[0].trim() ||
+                    proAgreement.roomId
+                  : '';
+                return (
+                  <div className="rounded-2xl border border-[#DDEAE2] bg-[#F4F8F5] p-3.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <strong className="text-[#2F5E53] font-bold">
+                        Acuerdo económico mensual vinculado
+                      </strong>
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-[#46766B] shadow-2xs">
+                        {proAgreement ? 'Canon mensual fijo' : 'Canon general'}
+                      </span>
+                    </div>
+                    {proAgreement ? (
+                      <div className="mt-1.5 space-y-0.5 text-[#40524C]">
+                        <p>
+                          <strong>Monto mensual acordado:</strong> ${Number(proAgreement.amount || 0).toLocaleString('es-AR')}{' '}
+                          (independiente de cantidad de pacientes) · <strong>Vence día:</strong> {proAgreement.dueDay}
+                        </p>
+                        <p className="text-[#6D7C76]">
+                          Espacio reservado: {roomName} · Horario: {proAgreement.start} a {proAgreement.end}
+                          {proAgreement.startDate ? ` (vigente desde ${proAgreement.startDate})` : ''}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-[#6D7C76]">
+                        Monto estándar registrado: ${Number(selectedProfile.rent || 65000).toLocaleString('es-AR')}/mes. Podés configurar un acuerdo personalizado desde Consultorios.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Listado en vivo de Reservas y Turnos vinculados en la Agenda */}
               <div className="rounded-2xl border border-[#E5EAE5] bg-white p-4 space-y-2.5">
                 <div className="flex items-center justify-between">

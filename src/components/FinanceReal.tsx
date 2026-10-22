@@ -46,13 +46,25 @@ export function FinanceReal() {
       .filter((item) => item.status === 'activo')
       .map((item) => {
         const moneyId = `rent-${item.id}-${month}`;
-        const paidRow = rows.find((row) => row.id === moneyId && row.status === 'pagado');
+        const matchingPaidRows = rows.filter(
+          (row) =>
+            (row.id === moneyId || row.sourceId === item.id || row.id.startsWith(`rent-${item.id}-${month}`)) &&
+            row.status === 'pagado'
+        );
+        const paidAmount = matchingPaidRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+        const agreedAmount = Number(item.amount || 0);
+        const pendingAmount = Math.max(agreedAmount - paidAmount, 0);
+        const isPaid = paidAmount >= agreedAmount && agreedAmount > 0;
+        const isPartial = paidAmount > 0 && paidAmount < agreedAmount;
         return {
           agreement: item,
           moneyId,
-          isPaid: Boolean(paidRow),
-          paidAmount: paidRow ? Number(paidRow.amount) : 0,
-          agreedAmount: Number(item.amount || 0),
+          isPaid,
+          isPartial,
+          paidAmount,
+          agreedAmount,
+          pendingAmount,
+          matchingPaidRows,
         };
       });
   }, [agreements.rows, rows, month]);
@@ -63,14 +75,33 @@ export function FinanceReal() {
       .filter((item) => item.status !== 'cancelled' && item.date?.startsWith(month))
       .map((item) => {
         const moneyId = `occasional-rental-${item.id}`;
-        const paidRow = rows.find((row) => row.id === moneyId && row.status === 'pagado');
-        const isPaid = item.paymentStatus === 'cobrado' || Boolean(paidRow);
+        const matchingPaidRows = rows.filter(
+          (row) =>
+            (row.id === moneyId ||
+              row.sourceId === item.id ||
+              row.id.startsWith(`occasional-rental-${item.id}`) ||
+              row.id.startsWith(`rental-${item.id}`)) &&
+            row.status === 'pagado'
+        );
+        const paidAmount =
+          matchingPaidRows.length > 0
+            ? matchingPaidRows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+            : item.paymentStatus === 'cobrado'
+              ? Number(item.amount || 0)
+              : 0;
+        const agreedAmount = Number(item.amount || 0);
+        const pendingAmount = Math.max(agreedAmount - paidAmount, 0);
+        const isPaid = paidAmount >= agreedAmount && agreedAmount > 0;
+        const isPartial = paidAmount > 0 && paidAmount < agreedAmount;
         return {
           rental: item,
           moneyId,
           isPaid,
-          agreedAmount: Number(item.amount || 0),
-          paidAmount: isPaid ? Number(paidRow?.amount ?? item.amount ?? 0) : 0,
+          isPartial,
+          paidAmount,
+          agreedAmount,
+          pendingAmount,
+          matchingPaidRows,
         };
       });
   }, [rentals.rows, rows, month]);
@@ -82,13 +113,18 @@ export function FinanceReal() {
       .map((item) => {
         const moneyId = `interview-${item.id}`;
         const paidRow = rows.find((row) => row.id === moneyId && row.status === 'pagado');
+        const agreedAmount = Number(item.amount || 0);
         const isPaid = item.paymentStatus === 'cobrado' || Boolean(paidRow);
+        const paidAmount = isPaid ? Number(paidRow?.amount ?? item.amount ?? 0) : 0;
+        const pendingAmount = Math.max(agreedAmount - paidAmount, 0);
         return {
           interview: item,
           moneyId,
           isPaid,
-          agreedAmount: Number(item.amount || 0),
-          paidAmount: isPaid ? Number(paidRow?.amount ?? item.amount ?? 0) : 0,
+          isPartial: false,
+          agreedAmount,
+          paidAmount,
+          pendingAmount,
         };
       });
   }, [interviews.rows, rows, month]);
@@ -103,15 +139,9 @@ export function FinanceReal() {
     monthlyRentalsWithStatus.reduce((s, x) => s + x.paidAmount, 0) +
     monthlyInterviewsWithStatus.reduce((s, x) => s + x.paidAmount, 0);
 
-  const rentPending = activeAgreementsWithStatus
-    .filter((x) => !x.isPaid)
-    .reduce((sum, x) => sum + x.agreedAmount, 0);
-  const occasionalPending = monthlyRentalsWithStatus
-    .filter((x) => !x.isPaid)
-    .reduce((sum, x) => sum + x.agreedAmount, 0);
-  const interviewsPending = monthlyInterviewsWithStatus
-    .filter((x) => !x.isPaid)
-    .reduce((sum, x) => sum + x.agreedAmount, 0);
+  const rentPending = activeAgreementsWithStatus.reduce((sum, x) => sum + x.pendingAmount, 0);
+  const occasionalPending = monthlyRentalsWithStatus.reduce((sum, x) => sum + x.pendingAmount, 0);
+  const interviewsPending = monthlyInterviewsWithStatus.reduce((sum, x) => sum + x.pendingAmount, 0);
 
   const totalPendingBalance = rentPending + occasionalPending + interviewsPending;
 
@@ -120,45 +150,74 @@ export function FinanceReal() {
 
   const openAgreementCollection = (agreement: Agreement) => {
     const proName = resolveProName(agreement.professionalId);
-    const existing = rows.find((r) => r.id === `rent-${agreement.id}-${month}`);
-    setForm(
-      existing
-        ? { ...existing, status: 'pagado' }
-        : {
-            id: `rent-${agreement.id}-${month}`,
-            date: localDate(),
-            kind: 'ingreso',
-            category: 'Alquiler mensual',
-            description: `Alquiler ${month} · ${proName}`,
-            amount: Number(agreement.amount || 0),
-            method: 'Transferencia',
-            person: proName,
-            sourceId: agreement.id,
-            status: 'pagado',
-            nature: '',
-          }
+    const existingMatches = rows.filter(
+      (r) =>
+        (r.id === `rent-${agreement.id}-${month}` ||
+          r.sourceId === agreement.id ||
+          r.id.startsWith(`rent-${agreement.id}-${month}`)) &&
+        r.status === 'pagado'
     );
+    const paidSoFar = existingMatches.reduce((s, r) => s + Number(r.amount || 0), 0);
+    const agreedTotal = Number(agreement.amount || 0);
+    const remaining = Math.max(agreedTotal - paidSoFar, 0);
+
+    const nextId =
+      existingMatches.length === 0
+        ? `rent-${agreement.id}-${month}`
+        : `rent-${agreement.id}-${month}-p${existingMatches.length + 1}-${uid().slice(0, 4)}`;
+
+    setForm({
+      id: nextId,
+      date: localDate(),
+      kind: 'ingreso',
+      category: 'Alquiler mensual',
+      description:
+        existingMatches.length === 0
+          ? `Alquiler ${month} · ${proName}`
+          : `Alquiler ${month} (saldo pendiente) · ${proName}`,
+      amount: remaining > 0 ? remaining : agreedTotal,
+      method: 'Transferencia',
+      person: proName,
+      sourceId: agreement.id,
+      status: 'pagado',
+      nature: '',
+    });
   };
 
   const openRentalCollection = (rental: Rental) => {
-    const existing = rows.find((r) => r.id === `occasional-rental-${rental.id}`);
-    setForm(
-      existing
-        ? { ...existing, status: 'pagado' }
-        : {
-            id: `occasional-rental-${rental.id}`,
-            date: localDate(),
-            kind: 'ingreso',
-            category: 'Alquiler ocasional',
-            description: `${rental.period === 'hora' ? 'Alquiler por hora' : 'Alquiler por jornada'} · ${rental.occupant}`,
-            amount: Number(rental.amount || 0),
-            method: rental.method || 'Transferencia',
-            person: rental.occupant,
-            sourceId: rental.id,
-            status: 'pagado',
-            nature: '',
-          }
+    const existingMatches = rows.filter(
+      (r) =>
+        (r.id === `occasional-rental-${rental.id}` ||
+          r.sourceId === rental.id ||
+          r.id.startsWith(`occasional-rental-${rental.id}`) ||
+          r.id.startsWith(`rental-${rental.id}`)) &&
+        r.status === 'pagado'
     );
+    const paidSoFar = existingMatches.reduce((s, r) => s + Number(r.amount || 0), 0);
+    const agreedTotal = Number(rental.amount || 0);
+    const remaining = Math.max(agreedTotal - paidSoFar, 0);
+
+    const nextId =
+      existingMatches.length === 0
+        ? `occasional-rental-${rental.id}`
+        : `occasional-rental-${rental.id}-p${existingMatches.length + 1}-${uid().slice(0, 4)}`;
+
+    setForm({
+      id: nextId,
+      date: localDate(),
+      kind: 'ingreso',
+      category: 'Alquiler ocasional',
+      description:
+        existingMatches.length === 0
+          ? `${rental.period === 'hora' ? 'Alquiler por hora' : 'Alquiler por jornada'} · ${rental.occupant}`
+          : `Subalquiler (saldo pendiente) · ${rental.occupant}`,
+      amount: remaining > 0 ? remaining : agreedTotal,
+      method: rental.method || 'Transferencia',
+      person: rental.occupant,
+      sourceId: rental.id,
+      status: 'pagado',
+      nature: '',
+    });
   };
 
   const openInterviewCollection = (interview: Interview) => {
@@ -195,10 +254,26 @@ export function FinanceReal() {
       // Si corresponde a un subalquiler o entrevista y se marca pagado, sincronizar su estado de cobro por su ID único
       if (form.status === 'pagado' && form.sourceId) {
         const linkedRental = rentals.rows.find((r) => r.id === form.sourceId);
-        if (linkedRental && linkedRental.paymentStatus !== 'cobrado') {
+        if (linkedRental) {
+          const previousPaid = rows
+            .filter(
+              (r) =>
+                r.id !== form.id &&
+                (r.id === `occasional-rental-${linkedRental.id}` ||
+                  r.sourceId === linkedRental.id ||
+                  r.id.startsWith(`occasional-rental-${linkedRental.id}`) ||
+                  r.id.startsWith(`rental-${linkedRental.id}`)) &&
+                r.status === 'pagado'
+            )
+            .reduce((s, r) => s + Number(r.amount || 0), 0);
+          const newTotalPaid = previousPaid + Number(form.amount || 0);
+          const agreedTotal = Number(linkedRental.amount || 0);
+          const nextPaymentStatus =
+            newTotalPaid >= agreedTotal ? 'cobrado' : newTotalPaid > 0 ? 'parcial' : 'pendiente';
+
           await save('rentals', {
             ...linkedRental,
-            paymentStatus: 'cobrado',
+            paymentStatus: nextPaymentStatus,
             method: form.method || linkedRental.method,
             updatedAt: new Date().toISOString(),
           });
@@ -267,77 +342,127 @@ export function FinanceReal() {
           </div>
 
           <div className="mt-4 divide-y divide-[#E5EAE5]">
-            {activeAgreementsWithStatus.map(({ agreement, isPaid, agreedAmount, paidAmount }) => {
-              const roomName = ROOMS.find((r) => r.id === agreement.roomId)?.name.split('—')[0].trim() || agreement.roomId;
-              return (
-                <div key={agreement.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <strong className="text-[#34433F]">{resolveProName(agreement.professionalId)}</strong>
-                      <span className="rounded-full bg-[#EEF2EE] px-2.5 py-0.5 text-xs font-medium text-[#46766B]">
-                        Acuerdo mensual fijo · {roomName}
-                      </span>
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                          isPaid ? 'bg-[#DDEAE2] text-[#1D4E38]' : 'bg-[#F6E9DB] text-[#8A521D]'
-                        }`}
-                      >
-                        {isPaid ? 'Cobrado' : 'Saldo pendiente'}
-                      </span>
+            {activeAgreementsWithStatus.map(
+              ({ agreement, isPaid, isPartial, agreedAmount, paidAmount, pendingAmount }) => {
+                const roomName =
+                  ROOMS.find((r) => r.id === agreement.roomId)?.name.split('—')[0].trim() ||
+                  agreement.roomId;
+                return (
+                  <div
+                    key={agreement.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong className="text-[#34433F]">
+                          {resolveProName(agreement.professionalId)}
+                        </strong>
+                        <span className="rounded-full bg-[#EEF2EE] px-2.5 py-0.5 text-xs font-medium text-[#46766B]">
+                          Acuerdo mensual fijo · {roomName}
+                        </span>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                            isPaid
+                              ? 'bg-[#DDEAE2] text-[#1D4E38]'
+                              : isPartial
+                                ? 'bg-[#FEF3C7] text-[#92400E]'
+                                : 'bg-[#F6E9DB] text-[#8A521D]'
+                          }`}
+                        >
+                          {isPaid ? 'Cobrado' : isPartial ? 'Parcialmente cobrado' : 'Pendiente'}
+                        </span>
+                        {agreement.dueDay && (
+                          <span className="text-[11px] text-[#7A8A84]">
+                            Vence día {agreement.dueDay}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-[#6D7C76]">
+                        Importe acordado: {moneyFormat(agreedAmount)} · Cobrado: {moneyFormat(paidAmount)} ·{' '}
+                        <span className={pendingAmount > 0 ? 'font-semibold text-[#8A521D]' : ''}>
+                          Saldo pendiente: {moneyFormat(pendingAmount)}
+                        </span>
+                      </p>
                     </div>
-                    <p className="mt-0.5 text-xs text-[#6D7C76]">
-                      Importe acordado: {moneyFormat(agreedAmount)} · Cobrado: {moneyFormat(paidAmount)} · Saldo:{' '}
-                      {moneyFormat(Math.max(agreedAmount - paidAmount, 0))}
-                    </p>
+                    <div>
+                      {!isPaid ? (
+                        <Button
+                          tone="secondary"
+                          className="min-h-9 px-3 py-1 text-xs font-semibold"
+                          onClick={() => openAgreementCollection(agreement)}
+                        >
+                          {isPartial ? 'Cobrar saldo pendiente' : 'Registrar cobro'}
+                        </Button>
+                      ) : (
+                        <span className="inline-flex items-center text-xs font-semibold text-[#1D4E38]">
+                          ✓ Al día
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {!isPaid && (
-                    <Button
-                      tone="secondary"
-                      className="min-h-9 px-3 py-1 text-xs"
-                      onClick={() => openAgreementCollection(agreement)}
-                    >
-                      Registrar cobro
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
+                );
+              }
+            )}
 
-            {monthlyRentalsWithStatus.map(({ rental, isPaid, agreedAmount, paidAmount }) => {
-              const roomName = ROOMS.find((r) => r.id === rental.roomId)?.name.split('—')[0].trim() || rental.roomId;
-              return (
-                <div key={rental.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <strong className="text-[#34433F]">{rental.occupant}</strong>
-                      <span className="rounded-full bg-[#F1F3EF] px-2.5 py-0.5 text-xs font-medium text-[#52635D]">
-                        Subalquiler ({roomName} · {rental.date})
-                      </span>
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                          isPaid ? 'bg-[#DDEAE2] text-[#1D4E38]' : 'bg-[#F6E9DB] text-[#8A521D]'
-                        }`}
-                      >
-                        {isPaid ? 'Cobrado' : 'Saldo pendiente'}
-                      </span>
+            {monthlyRentalsWithStatus.map(
+              ({ rental, isPaid, isPartial, agreedAmount, paidAmount, pendingAmount }) => {
+                const roomName =
+                  ROOMS.find((r) => r.id === rental.roomId)?.name.split('—')[0].trim() ||
+                  rental.roomId;
+                return (
+                  <div
+                    key={rental.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong className="text-[#34433F]">{rental.occupant}</strong>
+                        <span className="rounded-full bg-[#F1F3EF] px-2.5 py-0.5 text-xs font-medium text-[#52635D]">
+                          {rental.audience === 'tercero' ? 'Subalquiler externo' : 'Alquiler consultorio'} ({roomName} · {rental.date})
+                        </span>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                            isPaid
+                              ? 'bg-[#DDEAE2] text-[#1D4E38]'
+                              : isPartial
+                                ? 'bg-[#FEF3C7] text-[#92400E]'
+                                : 'bg-[#F6E9DB] text-[#8A521D]'
+                          }`}
+                        >
+                          {isPaid ? 'Cobrado' : isPartial ? 'Parcialmente cobrado' : 'Pendiente'}
+                        </span>
+                        {rental.dueDate && (
+                          <span className="text-[11px] text-[#7A8A84]">
+                            Vence: {rental.dueDate}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-[#6D7C76]">
+                        Importe acordado: {moneyFormat(agreedAmount)} · Cobrado: {moneyFormat(paidAmount)} ·{' '}
+                        <span className={pendingAmount > 0 ? 'font-semibold text-[#8A521D]' : ''}>
+                          Saldo pendiente: {moneyFormat(pendingAmount)}
+                        </span>
+                      </p>
                     </div>
-                    <p className="mt-0.5 text-xs text-[#6D7C76]">
-                      Importe acordado: {moneyFormat(agreedAmount)} · Cobrado: {moneyFormat(paidAmount)} · Saldo:{' '}
-                      {moneyFormat(Math.max(agreedAmount - paidAmount, 0))}
-                    </p>
+                    <div>
+                      {!isPaid ? (
+                        <Button
+                          tone="secondary"
+                          className="min-h-9 px-3 py-1 text-xs font-semibold"
+                          onClick={() => openRentalCollection(rental)}
+                        >
+                          {isPartial ? 'Cobrar saldo pendiente' : 'Registrar cobro'}
+                        </Button>
+                      ) : (
+                        <span className="inline-flex items-center text-xs font-semibold text-[#1D4E38]">
+                          ✓ Cobrado
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {!isPaid && (
-                    <Button
-                      tone="secondary"
-                      className="min-h-9 px-3 py-1 text-xs"
-                      onClick={() => openRentalCollection(rental)}
-                    >
-                      Registrar cobro
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
+                );
+              }
+            )}
           </div>
         </section>
       )}

@@ -49,12 +49,6 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
   const [agreement, setAgreement] = useState<Agreement | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [payment, setPayment] = useState<{
-    agreement: Agreement;
-    month: string;
-    amount: number;
-    method: string;
-  } | null>(null);
   const [rental, setRental] = useState<Rental | null>(null);
   const [availabilityDate, setAvailabilityDate] = useState(localDate());
   const [selectedRoomTab, setSelectedRoomTab] = useState<string>('all');
@@ -103,35 +97,6 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
     }
   }
 
-  async function commitPayment() {
-    if (!payment || payment.amount <= 0) {
-      setError('Ingresá un importe mayor que cero.');
-      return;
-    }
-    setBusy(true);
-    setError('');
-    try {
-      await save('money', {
-        id: `rent-${payment.agreement.id}-${payment.month}`,
-        date: localDate(),
-        kind: 'ingreso',
-        category: 'Alquiler mensual',
-        description: `Alquiler ${payment.month} · ${resolveProName(payment.agreement.professionalId)}`,
-        amount: payment.amount,
-        method: payment.method,
-        person: '',
-        sourceId: payment.agreement.id,
-        status: 'pagado',
-        nature: '',
-      });
-      setPayment(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function commitRental() {
     if (!rental) return;
     if (rental.start >= rental.end || !rental.occupant.trim() || rental.amount < 0) {
@@ -140,30 +105,22 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
     }
     const configuredRoom = rooms.rows.find((item) => item.id === rental.roomId);
     if (rental.audience === 'tercero' && !configuredRoom?.thirdPartyEnabled) {
-      setError('El alquiler a terceros está desactivado para este consultorio.');
+      setError('El alquiler a terceros está desactivado para este consultorio. Habilitalo en la tarjeta del consultorio antes de guardar.');
       return;
     }
     setBusy(true);
     setError('');
     try {
+      // Guarda exclusivamente en crear_rentals (la ocupación se sincroniza con Agenda y Finanzas gestiona el cobro real sin asientos ficticios)
       await save('rentals', {
         ...rental,
         selectedDays:
-          rental.recurrence === 'weekly' ? [new Date(`${rental.date}T12:00:00`).getDay()] : [],
+          rental.recurrence === 'weekly'
+            ? Array.isArray(rental.selectedDays) && rental.selectedDays.length > 0
+              ? rental.selectedDays
+              : [new Date(`${rental.date}T12:00:00`).getDay()]
+            : [],
         updatedAt: new Date().toISOString(),
-      });
-      await save('money', {
-        id: `occasional-rental-${rental.id}`,
-        date: rental.date,
-        kind: 'ingreso',
-        category: 'Alquiler ocasional',
-        description: `${rental.period === 'hora' ? 'Alquiler por hora' : 'Alquiler por jornada'} · ${rental.occupant}`,
-        amount: rental.amount,
-        method: rental.method,
-        person: rental.occupant,
-        sourceId: rental.id,
-        status: rental.paymentStatus === 'cobrado' ? 'pagado' : 'previsto',
-        nature: '',
       });
       setRental(null);
     } catch (e) {
@@ -650,35 +607,85 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
           </p>
         ) : (
           <div className="mt-3 divide-y divide-[#E5EAE5]">
-            {rentals.rows.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <strong className="text-sm font-bold text-[#34433F]">{item.occupant}</strong>
-                    <span className="rounded-full bg-[#F1F3EF] px-2.5 py-0.5 text-xs font-medium text-[#52635D]">
-                      {item.audience === 'tercero' ? 'Tercero externo' : 'Profesional habitual'}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-sm text-[#34433F]">
-                    {ROOMS.find((r) => r.id === item.roomId)?.name || item.roomId} · {item.date} ·{' '}
-                    {item.start}–{item.end} · {item.period} · {item.status}
-                  </p>
-                  <p className="text-xs text-[#6D7C76]">
-                    Pago {item.paymentStatus} · ${Number(item.amount || 0).toLocaleString('es-AR')}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="rounded-xl border border-[#D7DFDA] px-3.5 py-1.5 text-xs font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
-                  onClick={() => setRental(item)}
+            {rentals.rows.map((item) => {
+              const matchingPaid = money.rows.filter(
+                (row) =>
+                  (row.id === `occasional-rental-${item.id}` ||
+                    row.sourceId === item.id ||
+                    row.id.startsWith(`occasional-rental-${item.id}`) ||
+                    row.id.startsWith(`rental-${item.id}`)) &&
+                  row.status === 'pagado'
+              );
+              const paidAmount =
+                matchingPaid.length > 0
+                  ? matchingPaid.reduce((sum, r) => sum + Number(r.amount || 0), 0)
+                  : item.paymentStatus === 'cobrado'
+                    ? Number(item.amount || 0)
+                    : 0;
+              const agreedAmount = Number(item.amount || 0);
+              const pendingAmount = Math.max(agreedAmount - paidAmount, 0);
+              const isPaid = paidAmount >= agreedAmount && agreedAmount > 0;
+              const isPartial = paidAmount > 0 && paidAmount < agreedAmount;
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
                 >
-                  Editar
-                </button>
-              </div>
-            ))}
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong className="text-sm font-bold text-[#34433F]">{item.occupant}</strong>
+                      <span className="rounded-full bg-[#F1F3EF] px-2.5 py-0.5 text-xs font-medium text-[#52635D]">
+                        {item.audience === 'tercero' ? 'Tercero externo (subalquiler)' : 'Profesional habitual'}
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          isPaid
+                            ? 'bg-[#DDEAE2] text-[#1D4E38]'
+                            : isPartial
+                              ? 'bg-[#FEF3C7] text-[#92400E]'
+                              : 'bg-[#F6E9DB] text-[#8A521D]'
+                        }`}
+                      >
+                        {isPaid ? 'Cobrado' : isPartial ? 'Parcialmente cobrado' : 'Pendiente de cobro'}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-sm text-[#34433F]">
+                      {ROOMS.find((r) => r.id === item.roomId)?.name || item.roomId} · {item.date} ·{' '}
+                      {item.start}–{item.end} · {item.period === 'hora' ? 'Por hora' : 'Por jornada'} · {item.status}
+                    </p>
+                    <p className="text-xs text-[#6D7C76]">
+                      Importe acordado: ${agreedAmount.toLocaleString('es-AR')} · Cobrado: ${paidAmount.toLocaleString('es-AR')} ·{' '}
+                      <span className={pendingAmount > 0 ? 'font-semibold text-[#8A521D]' : ''}>
+                        Saldo pendiente: ${pendingAmount.toLocaleString('es-AR')}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-xl border border-[#D7DFDA] px-3.5 py-1.5 text-xs font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
+                      onClick={() => setRental(item)}
+                    >
+                      Editar
+                    </button>
+                    {onNavigate && (
+                      <button
+                        type="button"
+                        className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
+                          pendingAmount > 0
+                            ? 'border-[#46766B] bg-[#E8F3EE] text-[#46766B] hover:bg-[#DDEAE2]'
+                            : 'border-[#D7DFDA] bg-white text-[#52635D] hover:bg-[#F1F3EF]'
+                        }`}
+                        onClick={() => onNavigate('finance')}
+                      >
+                        {pendingAmount > 0 ? 'Cobrar en Finanzas →' : 'Ver en Finanzas →'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
@@ -695,58 +702,92 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
           <p className="mt-3 text-sm text-[#6D7C76]">Todavía no hay acuerdos registrados.</p>
         ) : (
           <div className="mt-3 divide-y divide-[#E5EAE5]">
-            {agreements.rows.map((x) => (
-              <div
-                key={x.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3"
-              >
-                <div>
-                  <strong className="text-sm font-bold text-[#34433F]">
-                    {resolveProName(x.professionalId)}
-                  </strong>
-                  <p className="text-sm text-[#34433F]">
-                    {ROOMS.find((r) => r.id === x.roomId)?.name} ·{' '}
-                    {WEEKDAYS_ES[Number(x.days)] || x.days} · {x.start}–{x.end} · $
-                    {Number(x.amount || 0).toLocaleString('es-AR')} al mes
-                  </p>
-                  <p className="text-xs text-[#6D7C76]">
-                    Estado: {x.status} · Pagos registrados:{' '}
-                    {
-                      money.rows.filter(
-                        (row) => row.sourceId === x.id && row.category === 'Alquiler mensual'
-                      ).length
-                    }
-                  </p>
+            {agreements.rows.map((x) => {
+              const currentMonth = localDate().slice(0, 7);
+              const matchingPaid = money.rows.filter(
+                (row) =>
+                  (row.id === `rent-${x.id}-${currentMonth}` ||
+                    row.sourceId === x.id ||
+                    row.id.startsWith(`rent-${x.id}-${currentMonth}`)) &&
+                  row.status === 'pagado'
+              );
+              const paidAmount = matchingPaid.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+              const agreedAmount = Number(x.amount || 0);
+              const pendingAmount = Math.max(agreedAmount - paidAmount, 0);
+              const isPaid = paidAmount >= agreedAmount && agreedAmount > 0;
+              const isPartial = paidAmount > 0 && paidAmount < agreedAmount;
+
+              return (
+                <div
+                  key={x.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                >
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong className="text-sm font-bold text-[#34433F]">
+                        {resolveProName(x.professionalId)}
+                      </strong>
+                      <span className="rounded-full bg-[#EEF2EE] px-2.5 py-0.5 text-xs font-medium text-[#46766B]">
+                        Acuerdo mensual institucional
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          isPaid
+                            ? 'bg-[#DDEAE2] text-[#1D4E38]'
+                            : isPartial
+                              ? 'bg-[#FEF3C7] text-[#92400E]'
+                              : 'bg-[#F6E9DB] text-[#8A521D]'
+                        }`}
+                      >
+                        {isPaid ? 'Al día (Cobrado)' : isPartial ? 'Parcialmente cobrado' : 'Pendiente este mes'}
+                      </span>
+                      {x.dueDay && (
+                        <span className="text-[11px] text-[#7A8A84]">
+                          Vence día {x.dueDay}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-sm text-[#34433F]">
+                      {ROOMS.find((r) => r.id === x.roomId)?.name} ·{' '}
+                      {WEEKDAYS_ES[Number(x.days)] || x.days} · {x.start}–{x.end}
+                    </p>
+                    <p className="text-xs text-[#6D7C76]">
+                      Acordado mensual: ${agreedAmount.toLocaleString('es-AR')} · Cobrado este mes: ${paidAmount.toLocaleString('es-AR')} ·{' '}
+                      <span className={pendingAmount > 0 ? 'font-semibold text-[#8A521D]' : ''}>
+                        Saldo pendiente: ${pendingAmount.toLocaleString('es-AR')}
+                      </span>
+                    </p>
+                    {(x.startDate || x.endDate) && (
+                      <p className="text-[11px] text-[#7A8A84]">
+                        Vigencia: {x.startDate ? `Desde ${x.startDate}` : ''} {x.endDate ? `hasta ${x.endDate}` : 'indefinida'}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-xl border border-[#D7DFDA] px-3 py-1.5 text-xs font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
+                      onClick={() => setAgreement(x)}
+                    >
+                      Editar
+                    </button>
+                    {onNavigate && (
+                      <button
+                        type="button"
+                        className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
+                          pendingAmount > 0
+                            ? 'border-[#46766B] bg-[#E8F3EE] text-[#46766B] hover:bg-[#DDEAE2]'
+                            : 'border-[#D7DFDA] bg-white text-[#52635D] hover:bg-[#F1F3EF]'
+                        }`}
+                        onClick={() => onNavigate('finance')}
+                      >
+                        {pendingAmount > 0 ? 'Cobrar en Finanzas →' : 'Ver en Finanzas →'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl border border-[#D7DFDA] px-3 py-1.5 text-xs font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
-                    onClick={() => setAgreement(x)}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-xl border border-[#46766B] bg-[#E8F3EE] px-3 py-1.5 text-xs font-semibold text-[#46766B] hover:bg-[#DDEAE2]"
-                    onClick={() => {
-                      if (onNavigate) {
-                        onNavigate('finance');
-                      } else {
-                        setPayment({
-                          agreement: x,
-                          month: localDate().slice(0, 7),
-                          amount: x.amount,
-                          method: '',
-                        });
-                      }
-                    }}
-                  >
-                    {onNavigate ? 'Cobrar en Finanzas →' : 'Registrar pago'}
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -854,10 +895,11 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                     </select>
                   </label>
                   <label className="block">
-                    Importe mensual
+                    Importe mensual acordado
                     <input
                       className={input}
                       type="number"
+                      min="0"
                       value={agreement.amount}
                       onChange={(e) =>
                         setAgreement({ ...agreement, amount: Number(e.target.value) })
@@ -865,7 +907,29 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                     />
                   </label>
                   <label className="block">
-                    Desde
+                    Fecha de inicio
+                    <input
+                      className={input}
+                      type="date"
+                      value={agreement.startDate || ''}
+                      onChange={(e) =>
+                        setAgreement({ ...agreement, startDate: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    Fecha de finalización (opcional)
+                    <input
+                      className={input}
+                      type="date"
+                      value={agreement.endDate || ''}
+                      onChange={(e) =>
+                        setAgreement({ ...agreement, endDate: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    Desde (horario habitual)
                     <input
                       className={input}
                       type="time"
@@ -874,7 +938,7 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                     />
                   </label>
                   <label className="block">
-                    Hasta
+                    Hasta (horario habitual)
                     <input
                       className={input}
                       type="time"
@@ -975,28 +1039,31 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                 </select>
               </label>
               <label className="block">
-                Responsable
+                {rental.audience === 'tercero' ? 'Persona o entidad externa' : 'Responsable / Ocupante'}
                 <input
                   className={input}
+                  placeholder={rental.audience === 'tercero' ? 'Nombre de la persona o institución externa' : 'Nombre del ocupante'}
                   value={rental.occupant}
                   onChange={(e) => setRental({ ...rental, occupant: e.target.value })}
                 />
               </label>
-              <label className="block">
-                Profesional
-                <select
-                  className={input}
-                  value={rental.professionalId}
-                  onChange={(e) => setRental({ ...rental, professionalId: e.target.value })}
-                >
-                  <option value="">Sin vincular</option>
-                  {professionalOptions.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {rental.audience === 'habitual' && (
+                <label className="block">
+                  Profesional de CREAR vinculada
+                  <select
+                    className={input}
+                    value={rental.professionalId}
+                    onChange={(e) => setRental({ ...rental, professionalId: e.target.value })}
+                  >
+                    <option value="">Sin vincular</option>
+                    {professionalOptions.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="block">
                 Consultorio
                 <select
@@ -1076,7 +1143,7 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                 </label>
               )}
               <label className="block">
-                Estado
+                Estado del espacio
                 <select
                   className={input}
                   value={rental.status}
@@ -1084,13 +1151,13 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                     setRental({ ...rental, status: e.target.value as Rental['status'] })
                   }
                 >
+                  <option value="confirmado">Confirmado (ocupa consultorio)</option>
                   <option value="provisional">Provisional</option>
-                  <option value="confirmado">Confirmado</option>
-                  <option value="cancelled">Cancelado</option>
+                  <option value="cancelled">Cancelado (libera consultorio)</option>
                 </select>
               </label>
               <label className="block">
-                Importe
+                Importe acordado ($)
                 <input
                   type="number"
                   min="0"
@@ -1100,7 +1167,7 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                 />
               </label>
               <label className="block">
-                Pago
+                Estado de cobro
                 <select
                   className={input}
                   value={rental.paymentStatus}
@@ -1112,6 +1179,7 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                   }
                 >
                   <option value="pendiente">Pendiente</option>
+                  <option value="parcial">Parcialmente cobrado</option>
                   <option value="cobrado">Cobrado</option>
                 </select>
               </label>

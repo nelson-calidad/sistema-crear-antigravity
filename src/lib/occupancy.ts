@@ -114,11 +114,12 @@ export function buildUnifiedOccupancyAppointments(params: {
       professionalId: item.professionalId,
       proId: item.professionalId,
       roomId: item.roomId,
-      date: agreementAnchorDate(weekday),
+      date: item.startDate || agreementAnchorDate(weekday),
       start: item.start,
       end: item.end,
       recurrence: 'weekly',
       selectedDays: [weekday],
+      untilDate: item.endDate || '',
       notes: item.notes || '',
       source: 'agreements',
     });

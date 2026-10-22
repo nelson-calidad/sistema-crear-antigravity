@@ -125,7 +125,7 @@ function crearUpsert_(body, actor) {
       const busy = interviews.concat(appointments).find(item => item.id !== record.id && item.status !== 'cancelada' && item.status !== 'cancelled' && (item.recurrence ? crearOccurs_(item, record.date) : item.date === record.date) && item.start < record.end && item.end > record.start && (item.roomId === record.roomId || item.professionalId === record.professionalId) && !(item.kind === 'block' && item.roomId === record.roomId && item.professionalId === record.professionalId));
       if (busy) throw new Error('Conflicto de horario: consultorio o profesional ocupados.');
       const weekday = new Date(record.date + 'T12:00:00').getDay();
-      const agreement = crearList_('agreements').records.find(item => item.status === 'activo' && String(item.days) === String(weekday) && item.start < record.end && item.end > record.start && (item.roomId === record.roomId && item.professionalId !== record.professionalId || item.professionalId === record.professionalId && item.roomId !== record.roomId));
+      const agreement = crearList_('agreements').records.find(item => item.status === 'activo' && (!item.startDate || record.date >= item.startDate) && (!item.endDate || record.date <= item.endDate) && String(item.days) === String(weekday) && item.start < record.end && item.end > record.start && (item.roomId === record.roomId && item.professionalId !== record.professionalId || item.professionalId === record.professionalId && item.roomId !== record.roomId));
       if (agreement) throw new Error('Conflicto con la reserva fija de un consultorio.');
       const rental = crearList_('rentals').records.find(item => item.status !== 'cancelled' && item.roomId === record.roomId && crearOccurs_(item, record.date) && item.start < record.end && item.end > record.start);
       if (rental) throw new Error('El consultorio está alquilado en esa franja.');
@@ -206,7 +206,7 @@ function crearCheckConflict_(sheet, incoming) {
     const day = Utilities.formatDate(date, 'America/Argentina/Jujuy', 'yyyy-MM-dd');
     if (!crearOccurs_(incoming, day)) continue;
     const weekday = date.getDay();
-    const agreement = agreements.find(item => item.status === 'activo' && String(item.days) === String(weekday) && item.start < incoming.end && item.end > incoming.start && (item.roomId === incoming.roomId && item.professionalId !== incoming.professionalId || item.professionalId === incoming.professionalId && item.roomId !== incoming.roomId));
+    const agreement = agreements.find(item => item.status === 'activo' && (!item.startDate || day >= item.startDate) && (!item.endDate || day <= item.endDate) && String(item.days) === String(weekday) && item.start < incoming.end && item.end > incoming.start && (item.roomId === incoming.roomId && item.professionalId !== incoming.professionalId || item.professionalId === incoming.professionalId && item.roomId !== incoming.roomId));
     if (agreement) throw new Error('Conflicto de horario en ' + roomLabel + ' (' + agreement.start + ' a ' + agreement.end + '): reserva fija de consultorio.');
     const interview = interviews.find(item => item.status !== 'cancelada' && item.date === day && item.start < incoming.end && item.end > incoming.start && (item.roomId === incoming.roomId || item.professionalId === incoming.professionalId));
     if (interview) throw new Error('Conflicto de horario en ' + roomLabel + ' (' + interview.start + ' a ' + interview.end + '): entrevista inicial.');
@@ -251,7 +251,7 @@ function crearCheckRentalConflict_(rental) {
     if (appointments.some(item => item.status !== 'cancelled' && item.roomId === rental.roomId && crearOccurs_(item, day) && overlap(item))) throw new Error('El consultorio tiene una reserva en esa franja.');
     if (interviews.some(item => item.status !== 'cancelada' && item.roomId === rental.roomId && item.date === day && overlap(item))) throw new Error('El consultorio tiene una entrevista en esa franja.');
     if (rentals.some(item => item.id !== rental.id && item.status !== 'cancelled' && item.roomId === rental.roomId && crearOccurs_(item, day) && overlap(item))) throw new Error('El consultorio ya está alquilado en esa franja.');
-    if (agreements.some(item => item.status === 'activo' && item.roomId === rental.roomId && Number(item.days) === date.getDay() && overlap(item))) throw new Error('El consultorio está reservado por un acuerdo mensual.');
+    if (agreements.some(item => item.status === 'activo' && item.roomId === rental.roomId && (!item.startDate || day >= item.startDate) && (!item.endDate || day <= item.endDate) && Number(item.days) === date.getDay() && overlap(item))) throw new Error('El consultorio está reservado por un acuerdo mensual.');
   }
 }
 const SHEET_NAME = 'appointments';
