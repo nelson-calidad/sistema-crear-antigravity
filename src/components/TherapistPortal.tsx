@@ -39,6 +39,8 @@ import {
 } from '../lib/googleSheetsService';
 import { AuthUser, CREAR_TEAM, logoutUser } from '../lib/crearAuth';
 import { useProfessionals } from '../lib/professionalsStore';
+import { useRecords } from '../lib/crearStore';
+import { buildUnifiedOccupancyAppointments } from '../lib/occupancy';
 import { QuickReservationModal } from './QuickReservationModal';
 import { occursOn, type Slot } from '../lib/scheduling';
 
@@ -108,6 +110,9 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
   };
 
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
+  const agreementRecords = useRecords('agreements');
+  const rentalRecords = useRecords('rentals');
+  const interviewRecords = useRecords('interviews');
   const [rooms, setRooms] = useState<ConfiguredRoom[]>([]);
   const [services, setServices] = useState<ServiceCatalogItem[]>([]);
   const [patients, setPatients] = useState<PatientRecord[]>([]);
@@ -130,6 +135,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
     roomId?: string;
     date?: string;
     startTime?: string;
+    kind?: 'block' | 'session';
   }>({});
 
   const [notice, setNotice] = useState<{
@@ -191,18 +197,30 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
     });
   }, [currentDateStr]);
 
+  const unifiedAppointments = useMemo(
+    () =>
+      buildUnifiedOccupancyAppointments({
+        appointments,
+        agreements: agreementRecords.rows,
+        rentals: rentalRecords.rows,
+        interviews: interviewRecords.rows,
+        profiles: allProfessionals,
+      }),
+    [appointments, agreementRecords.rows, rentalRecords.rows, interviewRecords.rows, allProfessionals]
+  );
+
   const activeAppointmentsOnDate = (date: string) => {
-    return appointments.filter((app) => {
+    return unifiedAppointments.filter((app) => {
       if (app.status === 'cancelled') return false;
       return occursOn(app as Slot, date);
     });
   };
 
   const myAppointments = useMemo(() => {
-    return appointments
+    return unifiedAppointments
       .filter((app) => app.professionalId === myProId && app.status !== 'cancelled')
       .sort((a, b) => `${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`));
-  }, [appointments, myProId]);
+  }, [unifiedAppointments, myProId]);
 
   const handleSaveAppointment = async (record: Partial<AppointmentRecord>) => {
     try {
@@ -240,17 +258,24 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
     return created;
   };
 
-  const handleOpenBooking = (roomId?: string, date?: string, startTime?: string) => {
+  const handleOpenBooking = (roomId?: string, date?: string, startTime?: string, initialKind?: 'block' | 'session') => {
     setEditingAppointment(null);
     setModalPreselect({
       roomId: roomId || (selectedRoomFilter !== 'all' ? selectedRoomFilter : rooms[0]?.id || 'c1'),
       date: date || currentDateStr,
       startTime: startTime || '15:00',
+      kind: initialKind,
     });
     setIsModalOpen(true);
   };
 
   const handleEditBooking = (app: AppointmentRecord) => {
+    if ((app as any).source && (app as any).source !== 'appointments') {
+      if (currentUser.role === 'admin' && onOpenAdminSuite) {
+        onOpenAdminSuite((app as any).source === 'interviews' ? 'admissions' : 'rooms');
+      }
+      return;
+    }
     const isMine = app.professionalId === myProId;
     if (!isMine && currentUser.role !== 'admin') return;
     setEditingAppointment(app);
@@ -645,21 +670,29 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                                     {/* REGLA DE PRIVACIDAD ESTRICTA SEGÚN QUIÉN MIRA */}
                                     {!canSeeDetails ? (
                                       <p className="mt-1 text-xs font-bold">
-                                        Ocupado — {therapistName}
+                                        {(booking as any).source === 'rentals' && !booking.professionalId
+                                          ? 'Ocupado — Subalquiler externo'
+                                          : `Ocupado — ${therapistName}`}
                                       </p>
                                     ) : isBlock ? (
                                       <div className="mt-1 space-y-0.5">
                                         <p className="text-xs font-bold">
-                                          Reserva de consultorio — {therapistName}
+                                          {(booking as any).source === 'agreements'
+                                            ? `Acuerdo mensual — ${therapistName}`
+                                            : (booking as any).source === 'rentals'
+                                              ? booking.title || `Alquiler — ${therapistName}`
+                                              : `Reserva de consultorio — ${therapistName}`}
                                         </p>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenBooking(room.id, currentDateStr, booking.start)}
-                                          className="mt-1 inline-flex items-center gap-1 rounded-lg bg-white/80 px-2 py-0.5 text-[10px] font-bold text-[#1D3E35] hover:bg-white"
-                                        >
-                                          <Plus className="h-3 w-3" />
-                                          <span>Asignar paciente en este bloque</span>
-                                        </button>
+                                        {booking.professionalId === myProId || isAdmin ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleOpenBooking(room.id, currentDateStr, booking.start, 'session')}
+                                            className="mt-1 inline-flex items-center gap-1 rounded-lg bg-white/80 px-2 py-0.5 text-[10px] font-bold text-[#1D3E35] hover:bg-white"
+                                          >
+                                            <Plus className="h-3 w-3" />
+                                            <span>Asignar paciente en este bloque</span>
+                                          </button>
+                                        ) : null}
                                       </div>
                                     ) : (
                                       <div className="mt-1 space-y-0.5 text-xs">
@@ -683,26 +716,26 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                                     )}
                                   </div>
 
-                                  {canSeeDetails && (
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleEditBooking(booking)}
-                                        className="rounded-xl bg-white/80 p-1.5 text-[#34433F] hover:bg-white"
-                                        title="Editar"
-                                      >
-                                        <Edit2 className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => void handleCancelAppointment(booking.id)}
-                                        className="rounded-xl bg-white/80 p-1.5 text-rose-700 hover:bg-rose-50"
-                                        title="Cancelar"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  )}
+                                    {canSeeDetails && (!(booking as any).source || (booking as any).source === 'appointments') && (
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleEditBooking(booking)}
+                                          className="rounded-xl bg-white/80 p-1.5 text-[#34433F] hover:bg-white"
+                                          title="Editar"
+                                        >
+                                          <Edit2 className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleCancelAppointment(booking.id)}
+                                          className="rounded-xl bg-white/80 p-1.5 text-rose-700 hover:bg-rose-50"
+                                          title="Cancelar"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                    )}
                                 </div>
                               </div>
                             );
@@ -938,13 +971,14 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
         onClose={() => setIsModalOpen(false)}
         currentUser={currentUser}
         rooms={rooms}
-        appointments={appointments}
+        appointments={unifiedAppointments}
         patients={patients}
         services={services}
         initialData={editingAppointment}
         initialRoomId={modalPreselect.roomId}
         initialDate={modalPreselect.date}
         initialStartTime={modalPreselect.startTime}
+        initialKind={modalPreselect.kind}
         onSave={handleSaveAppointment}
         onCreatePatient={handleCreatePatient}
         onDelete={handleCancelAppointment}

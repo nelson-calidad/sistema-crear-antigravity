@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ROOMS } from '../constants';
 import { DEFAULT_PROFILES_SEED, Profile, save, useRecords } from '../lib/crearStore';
+import { buildUnifiedOccupancyAppointments } from '../lib/occupancy';
 import {
   fetchAuthorizedUsersFromSheets,
   fetchRoomsFromSheets,
@@ -94,6 +95,8 @@ export function ProfilesReal({ onAgenda }: { onAgenda: () => void }) {
   const { rows, error, refresh: refreshProfiles } = useRecords('profiles');
   const settings = useRecords('settings');
   const agreements = useRecords('agreements');
+  const rentals = useRecords('rentals');
+  const interviews = useRecords('interviews');
 
   // Datos vinculados desde Google Sheets
   const [users, setUsers] = useState<AuthorizedUserRecord[]>([]);
@@ -205,9 +208,21 @@ export function ProfilesReal({ onAgenda }: { onAgenda: () => void }) {
     []
   );
 
-  // Turnos futuros activos de una profesional
+  const unifiedAppointments = useMemo(
+    () =>
+      buildUnifiedOccupancyAppointments({
+        appointments,
+        agreements: agreements.rows,
+        rentals: rentals.rows,
+        interviews: interviews.rows,
+        profiles,
+      }),
+    [appointments, agreements.rows, rentals.rows, interviews.rows, profiles]
+  );
+
+  // Turnos futuros activos de una profesional (unificados desde reservas, acuerdos mensuales, alquileres y entrevistas)
   const getFutureAppointments = (proId: string): AppointmentRecord[] => {
-    return appointments
+    return unifiedAppointments
       .filter(
         (a) =>
           (a.professionalId === proId || a.proId === proId) &&
@@ -521,7 +536,21 @@ export function ProfilesReal({ onAgenda }: { onAgenda: () => void }) {
           const futureTurns = getFutureAppointments(profile.id);
           const nextTurn = futureTurns[0];
           const availRecord = availabilities.find((a) => a.therapistId === profile.id);
-          const scheduleSummary = profile.availability || availRecord?.summary || 'Sin horario habitual cargado';
+          const realScheduleSummary =
+            futureTurns.length > 0
+              ? futureTurns
+                  .slice(0, 2)
+                  .map((t) => {
+                    const rShort = rooms.find((r) => r.id === t.roomId)?.name.split('—')[0].replace('Consultorio ', 'C') || t.roomId;
+                    return `${t.recurrence === 'weekly' ? 'Semanal' : t.date.slice(5).split('-').reverse().join('/')} ${t.start}-${t.end} (${rShort})`;
+                  })
+                  .join(' · ')
+              : '';
+          const scheduleSummary =
+            realScheduleSummary ||
+            profile.availability ||
+            availRecord?.notes ||
+            'Sin horario habitual cargado';
 
           // Consultorios vinculados (habitual + donde tiene reservas futuras)
           const usedRoomIds = new Set<string>();

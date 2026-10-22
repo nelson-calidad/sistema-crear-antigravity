@@ -287,24 +287,32 @@ function validateLocalSchedule(entity: 'interviews' | 'rentals' | 'agreements', 
   })();
   const interviews = localRead('interviews').map(item => ({ ...item, kind: 'interview', recurrence: 'none' }));
   const rentals = localRead('rentals').map(item => ({ ...item, kind: 'block' }));
-  const agreements = localRead('agreements').map(item => ({
-    ...item,
-    date: localDate(),
-    kind: 'block',
-    recurrence: 'weekly',
-    selectedDays: [Number(item.days)],
-    status: item.status === 'activo' ? 'confirmed' : 'cancelled',
-  }));
+  const agreements = localRead('agreements').map(item => {
+    const weekday = Number(item.days);
+    const safeDay = Number.isNaN(weekday) ? 1 : ((weekday % 7) + 7) % 7;
+    return {
+      ...item,
+      date: `2026-01-${String(4 + safeDay).padStart(2, '0')}`,
+      kind: 'block',
+      recurrence: 'weekly',
+      selectedDays: [safeDay],
+      status: item.status === 'activo' ? 'confirmed' : 'cancelled',
+    };
+  });
   const candidate: Slot =
     entity === 'agreements'
-      ? {
-          ...(value as Agreement),
-          date: localDate(),
-          kind: 'block',
-          recurrence: 'weekly',
-          selectedDays: [Number((value as Agreement).days)],
-          status: (value as Agreement).status === 'activo' ? 'confirmed' : 'cancelled',
-        }
+      ? (() => {
+          const weekday = Number((value as Agreement).days);
+          const safeDay = Number.isNaN(weekday) ? 1 : ((weekday % 7) + 7) % 7;
+          return {
+            ...(value as Agreement),
+            date: `2026-01-${String(4 + safeDay).padStart(2, '0')}`,
+            kind: 'block',
+            recurrence: 'weekly',
+            selectedDays: [safeDay],
+            status: (value as Agreement).status === 'activo' ? 'confirmed' : 'cancelled',
+          };
+        })()
       : ({
           ...(value as Interview | Rental),
           kind: entity === 'interviews' ? 'interview' : 'block',

@@ -4,7 +4,7 @@ import type { AppointmentRecord, ConfiguredRoom, PatientRecord, ServiceCatalogIt
 import type { AuthUser } from '../lib/crearAuth';
 import { CREAR_TEAM } from '../lib/crearAuth';
 import { useProfessionals } from '../lib/professionalsStore';
-import { conflictOnDate, type Slot } from '../lib/scheduling';
+import { conflictOnDate, occursOn, type Slot } from '../lib/scheduling';
 
 interface QuickReservationModalProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ interface QuickReservationModalProps {
   initialRoomId?: string;
   initialDate?: string;
   initialStartTime?: string;
+  initialKind?: 'block' | 'session';
   onSave: (record: Partial<AppointmentRecord>) => Promise<void>;
   onCreatePatient: (name: string, professionalId: string) => Promise<PatientRecord>;
   onDelete?: (id: string) => Promise<void>;
@@ -35,6 +36,7 @@ export function QuickReservationModal({
   initialRoomId,
   initialDate,
   initialStartTime,
+  initialKind,
   onSave,
   onCreatePatient,
   onDelete,
@@ -56,7 +58,7 @@ export function QuickReservationModal({
   const defaultEnd = initialData?.end || addMinutesToTime(defaultStart, 45);
 
   const [bookingKind, setBookingKind] = useState<'session' | 'block'>(
-    initialData ? (initialData.kind === 'block' ? 'block' : 'session') : 'block'
+    initialData ? (initialData.kind === 'block' ? 'block' : 'session') : initialKind || 'block'
   );
   const [roomId, setRoomId] = useState(initialData?.roomId || initialRoomId || rooms[0]?.id || 'c1');
   const [date, setDate] = useState(defaultDate);
@@ -145,7 +147,7 @@ export function QuickReservationModal({
         (a.kind === 'block' || a.type === 'block') &&
         a.roomId === roomId &&
         a.professionalId === therapistId &&
-        a.date === date &&
+        occursOn(a as Slot, date) &&
         a.start <= startTime &&
         a.end >= endTime
     );

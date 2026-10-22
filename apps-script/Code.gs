@@ -924,6 +924,32 @@ function crearListAuthorized_(entity, actor) {
     return { ok: true, records: sanitizedProfiles };
   }
   if (entity === 'agreements' || entity === 'interviews') return { ok: true, records: crearList_(entity).records.filter(item => item.professionalId === actor.professionalId) };
+  if (entity === 'rentals') {
+    const rawRentals = crearList_('rentals').records.map(function(r) {
+      return {
+        id: r.id,
+        roomId: r.roomId,
+        professionalId: r.professionalId || '',
+        audience: r.audience || 'tercero',
+        occupant: r.audience === 'tercero' ? 'Alquiler externo' : (r.occupant || 'Ocupado'),
+        period: r.period || 'hora',
+        date: r.date,
+        start: r.start,
+        end: r.end,
+        recurrence: r.recurrence || 'none',
+        selectedDays: r.selectedDays || [],
+        untilDate: r.untilDate || '',
+        excludedDates: r.excludedDates || [],
+        status: r.status || 'confirmado',
+        amount: 0,
+        paymentStatus: 'pendiente',
+        dueDate: '',
+        method: '',
+        notes: ''
+      };
+    });
+    return { ok: true, records: rawRentals };
+  }
   throw new Error('Acceso administrativo requerido.');
 }
 

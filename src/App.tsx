@@ -23,6 +23,8 @@ import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, su
 import { readStoredValue, writeStoredValue } from './lib/browserStorage';
 import logoCrear from './assets/logo-crear-mobile.jpg';
 import { isDemo, seedDemoData, useRecords } from './lib/crearStore';
+import { buildUnifiedOccupancyAppointments } from './lib/occupancy';
+import { useProfessionals } from './lib/professionalsStore';
 import { useSession } from './lib/session';
 import { useAuth, logoutUser } from './lib/crearAuth';
 import { LoginView } from './components/LoginView';
@@ -81,8 +83,14 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
   const interviewRecords = useRecords('interviews');
   const agreementRecords = useRecords('agreements');
   const rentalRecords = useRecords('rentals');
-  const nextWeeklyDate = (weekday: number) => { const date = new Date(); date.setDate(date.getDate() + (weekday - date.getDay() + 7) % 7); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
-  const agendaAppointments = [...appointments, ...interviewRecords.rows.map(item => ({ id: item.id, title: 'Entrevista inicial', kind: 'interview', type: 'interview', status: item.status === 'cancelada' ? 'cancelled' : item.status === 'realizada' ? 'completed' : item.status === 'confirmada' ? 'confirmed' : 'scheduled', professionalId: item.professionalId, proId: item.professionalId, roomId: item.roomId, date: item.date, start: item.start, end: item.end, recurrence: 'none', source: 'interviews' })), ...agreementRecords.rows.filter(item => item.status === 'activo').map(item => ({ id: item.id, title: 'Reserva fija de profesional', kind: 'block', type: 'block', status: 'confirmed', professionalId: item.professionalId, proId: item.professionalId, roomId: item.roomId, date: nextWeeklyDate(Number(item.days)), start: item.start, end: item.end, recurrence: 'weekly', selectedDays: [Number(item.days)], source: 'agreements' })), ...rentalRecords.rows.map(item => ({ id: item.id, title: `Alquiler ${item.period}`, kind: 'block', type: 'block', status: item.status === 'cancelled' ? 'cancelled' : item.status === 'confirmado' ? 'confirmed' : 'scheduled', professionalId: item.professionalId, proId: item.professionalId, roomId: item.roomId, date: item.date, start: item.start, end: item.end, recurrence: item.recurrence, selectedDays: item.selectedDays, untilDate: item.untilDate, excludedDates: item.excludedDates, source: 'rentals' }))];
+  const [professionals] = useProfessionals();
+  const agendaAppointments = buildUnifiedOccupancyAppointments({
+    appointments,
+    interviews: interviewRecords.rows,
+    agreements: agreementRecords.rows,
+    rentals: rentalRecords.rows,
+    profiles: professionals,
+  });
   const [modalAction, setModalAction] = useState<'save' | 'delete' | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastTimers = useRef<number[]>([]);
@@ -211,7 +219,7 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
       case 'admissions': return <Admissions />;
       case 'professionals': return <ProfessionalsGrid onAgenda={() => navigateToTab('agenda')} />;
       case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} />;
-      case 'rooms': return <Rooms />;
+      case 'rooms': return <Rooms onOpenModal={handleOpenModal} />;
       case 'responsibilities': return <Responsibilities />;
       case 'coverage': return <CoveragePlanner />;
       case 'finance': return <Finance />;
@@ -377,7 +385,7 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
         onClose={() => setIsModalOpen(false)}
         room={modalContext.room}
         professional={modalContext.pro}
-        appointments={appointments}
+        appointments={agendaAppointments}
         initialData={modalContext.appointment}
         initialDate={modalContext.date}
         initialStartTime={modalContext.startTime}
@@ -417,7 +425,9 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
             });
             setAgendaFocusDate(appointmentData.date);
             setIsModalOpen(false); // Close immediately after save returns
-            navigateToTab('agenda', { replace: true });
+            if (activeTab !== 'rooms') {
+              navigateToTab('agenda', { replace: true });
+            }
           } catch (error) {
             pushToast('error', 'No se pudo guardar', error instanceof Error ? error.message : 'No se pudo guardar la reserva.');
           } finally {

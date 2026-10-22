@@ -266,21 +266,84 @@ export async function bookAppointmentInSheets(
     untilDate: appointment.untilDate,
   };
 
-  const existingSlots: Slot[] = cachedAppointments
-    .filter((a) => a.id !== id && a.status !== 'cancelled')
-    .map((a) => ({
-      id: a.id,
-      kind: a.kind || a.type || 'session',
-      date: a.date,
-      start: a.start,
-      end: a.end,
-      roomId: a.roomId || '',
-      professionalId: a.professionalId || '',
-      status: a.status,
-      recurrence: a.recurrence,
-      selectedDays: a.selectedDays,
-      untilDate: a.untilDate,
+  const readStoredArray = (key: string): any[] => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const extraAgreementSlots: Slot[] = readStoredArray('crear.sheets.agreements')
+    .filter((item) => item && item.status === 'activo')
+    .map((item) => {
+      const weekday = Number(item.days);
+      const safeDay = Number.isNaN(weekday) ? 1 : ((weekday % 7) + 7) % 7;
+      return {
+        id: String(item.id),
+        kind: 'block',
+        date: `2026-01-${String(4 + safeDay).padStart(2, '0')}`,
+        start: item.start,
+        end: item.end,
+        roomId: item.roomId || '',
+        professionalId: item.professionalId || '',
+        status: 'confirmed',
+        recurrence: 'weekly',
+        selectedDays: [safeDay],
+      };
+    });
+
+  const extraRentalSlots: Slot[] = readStoredArray('crear.sheets.rentals')
+    .filter((item) => item && item.status !== 'cancelled')
+    .map((item) => ({
+      id: String(item.id),
+      kind: 'block',
+      date: item.date || '',
+      start: item.start,
+      end: item.end,
+      roomId: item.roomId || '',
+      professionalId: item.professionalId || '',
+      status: 'confirmed',
+      recurrence: item.recurrence || 'none',
+      selectedDays: item.selectedDays,
+      untilDate: item.untilDate,
     }));
+
+  const extraInterviewSlots: Slot[] = readStoredArray('crear.sheets.interviews')
+    .filter((item) => item && item.status !== 'cancelada')
+    .map((item) => ({
+      id: String(item.id),
+      kind: 'interview',
+      date: item.date || '',
+      start: item.start,
+      end: item.end,
+      roomId: item.roomId || '',
+      professionalId: item.professionalId || '',
+      status: 'confirmed',
+      recurrence: 'none',
+    }));
+
+  const existingSlots: Slot[] = [
+    ...cachedAppointments
+      .filter((a) => a.id !== id && a.status !== 'cancelled')
+      .map((a) => ({
+        id: a.id,
+        kind: a.kind || a.type || 'session',
+        date: a.date,
+        start: a.start,
+        end: a.end,
+        roomId: a.roomId || '',
+        professionalId: a.professionalId || '',
+        status: a.status,
+        recurrence: a.recurrence,
+        selectedDays: a.selectedDays,
+        untilDate: a.untilDate,
+      })),
+    ...extraAgreementSlots,
+    ...extraRentalSlots,
+    ...extraInterviewSlots,
+  ];
 
   const localConflict = conflictOnDate(candidate, existingSlots, appointment.date || '');
   if (localConflict) {

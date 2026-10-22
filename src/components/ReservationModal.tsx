@@ -157,15 +157,35 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
 
   const occupiedProfessionalIds = useMemo(() => {
     return selectedDayAppointments
-      .filter((a) => (a.professionalId || a.proId) && overlaps(formData.startTime, formData.endTime, a.start, a.end))
+      .filter((a) => {
+        const pro = a.professionalId || a.proId;
+        if (!pro) return false;
+        if (!overlaps(formData.startTime, formData.endTime, a.start, a.end)) return false;
+        const aKind = a.kind || a.type || 'session';
+        const nestedOwnBlock =
+          a.roomId === selectedRoomId &&
+          ((kind === 'block' && aKind !== 'block') || (aKind === 'block' && kind !== 'block'));
+        if (nestedOwnBlock) return false;
+        return true;
+      })
       .map((a) => (a.professionalId || a.proId) as string);
-  }, [selectedDayAppointments, formData.endTime, formData.startTime]);
+  }, [selectedDayAppointments, formData.endTime, formData.startTime, selectedRoomId, kind]);
 
   const occupiedRoomIds = useMemo(() => {
     return selectedDayAppointments
-      .filter((a) => a.roomId && overlaps(formData.startTime, formData.endTime, a.start, a.end))
+      .filter((a) => {
+        if (!a.roomId) return false;
+        if (!overlaps(formData.startTime, formData.endTime, a.start, a.end)) return false;
+        const pro = a.professionalId || a.proId;
+        const aKind = a.kind || a.type || 'session';
+        const nestedOwnBlock =
+          Boolean(selectedProId && pro === selectedProId) &&
+          ((kind === 'block' && aKind !== 'block') || (aKind === 'block' && kind !== 'block'));
+        if (nestedOwnBlock) return false;
+        return true;
+      })
       .map((a) => a.roomId as string);
-  }, [selectedDayAppointments, formData.endTime, formData.startTime]);
+  }, [selectedDayAppointments, formData.endTime, formData.startTime, selectedProId, kind]);
 
   // Populate form when modal opens or data changes
   useEffect(() => {
@@ -246,14 +266,15 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
   const professionalLabel = kind === 'block' ? 'Profesional' : 'Profesional corresponsal';
 
   const isFormValid = useMemo(() => {
+    const hasPatientOrBlock = kind === 'block' || formData.patient.trim() !== '';
     return (
       selectedProId !== '' &&
       selectedRoomId !== '' &&
-      formData.patient.trim() !== '' &&
+      hasPatientOrBlock &&
       !selectedProfessionalBusy &&
       !selectedRoomBusy
     );
-  }, [selectedProId, selectedRoomId, formData.patient, selectedProfessionalBusy, selectedRoomBusy]);
+  }, [selectedProId, selectedRoomId, formData.patient, kind, selectedProfessionalBusy, selectedRoomBusy]);
 
   const handleSave = () => {
     if (isSaving || isDeleting || !isFormValid) {
@@ -420,9 +441,6 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                   key={t.id}
                   onClick={() => {
                     setKind(t.id as any);
-                    if (t.id === 'block') {
-                      setSelectedProId('');
-                    }
                   }}
                   className={cn(
                     "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all",
@@ -483,7 +501,6 @@ export const ReservationModal = ({ isOpen, onClose, room, professional, appointm
                 <select 
                   value={selectedProId}
                   onChange={(e) => setSelectedProId(e.target.value)}
-                  disabled={kind === 'block'}
                   className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-100 dark:focus:ring-cyan-900 disabled:opacity-50 text-slate-900 dark:text-slate-100"
                 >
                    <option value="">Seleccionar...</option>

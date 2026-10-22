@@ -1,32 +1,1226 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Calendar, Clock, DoorOpen, Pencil, Plus, Repeat, Trash2, User } from 'lucide-react';
 import { PROFESSIONALS, ROOMS } from '../constants';
 import { Agreement, localDate, Rental, Room, save, uid, useRecords } from '../lib/crearStore';
-import { subscribeToAppointments } from '../lib/appointmentsStore';
+import { deleteAppointment, subscribeToAppointments } from '../lib/appointmentsStore';
+import {
+  buildUnifiedOccupancyAppointments,
+  getActiveOccupancyForDate,
+  type UnifiedOccupancySlot,
+} from '../lib/occupancy';
 import type { AppointmentRecord } from '../types';
-import { occursOn, type Slot } from '../lib/scheduling';
-export function RoomsReal() {
-  const rooms = useRecords('rooms'), agreements = useRecords('agreements'), rentals = useRecords('rentals'), interviews = useRecords('interviews'), profiles = useRecords('profiles'), money = useRecords('money');
-  const [room, setRoom] = useState<Room | null>(null); const [agreement, setAgreement] = useState<Agreement | null>(null); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
-  const [payment, setPayment] = useState<{ agreement: Agreement; month: string; amount: number; method: string } | null>(null);
+
+const HOURS_SLOTS = [
+  '08:00',
+  '09:00',
+  '10:00',
+  '11:00',
+  '12:00',
+  '14:00',
+  '15:00',
+  '16:00',
+  '17:00',
+  '18:00',
+  '19:00',
+  '20:00',
+];
+
+const WEEKDAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+interface RoomsRealProps {
+  onOpenModal?: (
+    room?: string,
+    pro?: string,
+    app?: AppointmentRecord,
+    options?: { date?: string; startTime?: string }
+  ) => void;
+}
+
+export function RoomsReal({ onOpenModal }: RoomsRealProps = {}) {
+  const rooms = useRecords('rooms');
+  const agreements = useRecords('agreements');
+  const rentals = useRecords('rentals');
+  const interviews = useRecords('interviews');
+  const profiles = useRecords('profiles');
+  const money = useRecords('money');
+
+  const [room, setRoom] = useState<Room | null>(null);
+  const [agreement, setAgreement] = useState<Agreement | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [payment, setPayment] = useState<{
+    agreement: Agreement;
+    month: string;
+    amount: number;
+    method: string;
+  } | null>(null);
   const [rental, setRental] = useState<Rental | null>(null);
   const [availabilityDate, setAvailabilityDate] = useState(localDate());
+  const [selectedRoomTab, setSelectedRoomTab] = useState<string>('all');
+  const [selectedSlotDetail, setSelectedSlotDetail] = useState<UnifiedOccupancySlot | null>(null);
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
-  useEffect(() => subscribeToAppointments(setAppointments, value => setError(value instanceof Error ? value.message : 'No se pudo leer la agenda.')), []);
-  const input = 'w-full rounded-xl border p-2.5';
-  const professionalOptions = [...PROFESSIONALS.map(p => profiles.rows.find(row => row.id === p.id) || p), ...profiles.rows.filter(row => !PROFESSIONALS.some(p => p.id === row.id))];
-  async function commit() { setBusy(true); setError(''); try { if (room) await save('rooms', room); if (agreement) { if (!agreement.professionalId || agreement.start >= agreement.end) throw new Error('ElegÃ­ profesional y horario vÃ¡lido.'); await save('agreements', agreement); } setRoom(null); setAgreement(null); } catch (e) { setError(String(e)); } finally { setBusy(false); } }
-  async function commitPayment() { if (!payment || payment.amount <= 0) { setError('IngresÃ¡ un importe mayor que cero.'); return; } setBusy(true); setError(''); try { await save('money', { id: `rent-${payment.agreement.id}-${payment.month}`, date: localDate(), kind: 'ingreso', category: 'Alquiler mensual', description: `Alquiler ${payment.month} Â· ${profiles.rows.find(p => p.id === payment.agreement.professionalId)?.name || payment.agreement.professionalId}`, amount: payment.amount, method: payment.method, person: '', sourceId: payment.agreement.id, status: 'pagado', nature: '' }); setPayment(null); } catch (e) { setError(String(e)); } finally { setBusy(false); } }
-  async function commitRental() { if (!rental) return; if (rental.start >= rental.end || !rental.occupant.trim() || rental.amount < 0) { setError('CompletÃ¡ responsable, horario e importe vÃ¡lidos.'); return; } const configuredRoom = rooms.rows.find(item => item.id === rental.roomId); if (rental.audience === 'tercero' && !configuredRoom?.thirdPartyEnabled) { setError('El alquiler a terceros estÃ¡ desactivado para este consultorio.'); return; } setBusy(true); setError(''); try { await save('rentals', { ...rental, selectedDays: rental.recurrence === 'weekly' ? [new Date(`${rental.date}T12:00:00`).getDay()] : [], updatedAt: new Date().toISOString() }); await save('money', { id: `occasional-rental-${rental.id}`, date: rental.date, kind: 'ingreso', category: 'Alquiler ocasional', description: `${rental.period === 'hora' ? 'Alquiler por hora' : 'Alquiler por jornada'} Â· ${rental.occupant}`, amount: rental.amount, method: rental.method, person: rental.occupant, sourceId: rental.id, status: rental.paymentStatus === 'cobrado' ? 'pagado' : 'previsto', nature: '' }); setRental(null); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
-  const occupancy = useMemo(() => ROOMS.map(room => ({ room, slots: [...appointments.filter(item => item.roomId === room.id && item.status !== 'cancelled' && occursOn(item as Slot, availabilityDate)).map(item => ({ start: item.start, end: item.end, label: item.kind === 'block' ? 'Reserva profesional' : item.kind === 'interview' ? 'Entrevista' : 'SesiÃ³n' })), ...interviews.rows.filter(item => item.roomId === room.id && item.date === availabilityDate && item.status !== 'cancelada').map(item => ({ start: item.start, end: item.end, label: 'Entrevista' })), ...rentals.rows.filter(item => item.roomId === room.id && item.status !== 'cancelled' && occursOn(item as Slot, availabilityDate)).map(item => ({ start: item.start, end: item.end, label: 'Alquiler ocasional' })), ...agreements.rows.filter(item => item.roomId === room.id && item.status === 'activo' && Number(item.days) === new Date(`${availabilityDate}T12:00:00`).getDay()).map(item => ({ start: item.start, end: item.end, label: 'Reserva fija' }))].sort((a, b) => a.start.localeCompare(b.start)) })), [appointments, interviews.rows, rentals.rows, agreements.rows, availabilityDate]);
-  const weekDates = useMemo(() => { const selected = new Date(`${availabilityDate}T12:00:00`); const monday = new Date(selected); monday.setDate(selected.getDate() - ((selected.getDay() + 6) % 7)); return Array.from({ length: 7 }, (_, index) => { const date = new Date(monday); date.setDate(monday.getDate() + index); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }); }, [availabilityDate]);
-  return <div className="space-y-6"><div className="flex flex-wrap justify-between gap-3"><div><h1 className="text-3xl font-semibold">Consultorios</h1><p className="text-[#6D7C76]">Espacios, acuerdos y disponibilidad real</p></div><div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto"><button className="min-h-11 rounded-xl border bg-white px-4 py-2" onClick={() => setRental({ id: uid(), roomId: 'c1', professionalId: '', audience: 'habitual', occupant: '', period: 'hora', date: localDate(), start: '09:00', end: '10:00', recurrence: 'none', selectedDays: [], untilDate: '', excludedDates: [], status: 'provisional', amount: 0, paymentStatus: 'pendiente', dueDate: localDate(), method: '', notes: '', updatedAt: new Date().toISOString() })}>Nuevo alquiler</button><button className="min-h-11 rounded-xl bg-[#46766B] px-4 py-2 text-white" onClick={() => setAgreement({ id: uid(), professionalId: '', roomId: 'c1', days: '1', start: '14:00', end: '20:00', amount: 65000, dueDay: 10, status: 'activo', notes: '' })}>Nuevo acuerdo mensual</button></div></div>
-  {rooms.error && <p role="alert">{rooms.error}</p>}{agreements.error && <p role="alert">{agreements.error}</p>}
-  <div className="grid gap-4 lg:grid-cols-3">{ROOMS.map(defaultRoom => { const value = rooms.rows.find(x => x.id === defaultRoom.id) || { id: defaultRoom.id, name: defaultRoom.name, description: '', disciplines: '', thirdPartyEnabled: false }; return <section key={value.id} className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">{value.name}</h2><p className="text-sm text-[#6D7C76]">{value.description || 'Sin descripciÃ³n'}</p><p className="mt-3 text-sm">Disciplinas: {value.disciplines || 'Sin configurar'}</p><p className="text-sm">Alquiler a terceros: {value.thirdPartyEnabled ? 'Habilitado' : 'Desactivado'}</p><button className="mt-4 rounded-xl border px-3 py-2 text-sm" onClick={() => setRoom(value)}>Editar espacio</button></section>; })}</div>
-  <section className="rounded-2xl border bg-white p-5"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-lg font-semibold">OcupaciÃ³n semanal</h2><p className="text-sm text-[#6D7C76]">El bloque reservado ocupa el espacio aunque todavÃ­a no tenga sesiones cargadas.</p></div><input aria-label="Elegir fecha" type="date" className={`${input} sm:w-auto`} value={availabilityDate} onChange={e => setAvailabilityDate(e.target.value)} /></div><div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">{weekDates.map(date => <button key={date} onClick={() => setAvailabilityDate(date)} className={`rounded-xl border px-2 py-2 text-xs ${date === availabilityDate ? 'border-[#46766B] bg-[#DDEAE2] font-semibold' : 'border-[#E5EAE5] bg-white'}`}>{new Intl.DateTimeFormat('es-AR', { weekday: 'short', day: 'numeric' }).format(new Date(`${date}T12:00:00`))}</button>)}</div><div className="mt-4 grid gap-3 lg:grid-cols-3">{occupancy.map(({ room, slots }) => <div key={room.id} className="rounded-xl bg-[#F1F3EF] p-4"><strong>{room.name}</strong>{slots.length ? slots.map((slot, index) => <p key={`${slot.start}-${index}`} className="mt-2 text-sm">{slot.start}â€“{slot.end} Â· {slot.label}</p>) : <p className="mt-2 text-sm text-[#46766B]">Disponible todo el dÃ­a</p>}</div>)}</div></section>
-  <section className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">Alquileres ocasionales</h2>{rentals.rows.length === 0 ? <p className="mt-3 text-[#6D7C76]">TodavÃ­a no hay alquileres por hora o jornada.</p> : rentals.rows.map(item => <div key={item.id} className="flex flex-wrap justify-between gap-3 border-b py-3"><div><strong>{item.occupant}</strong><p className="text-sm">{item.date} Â· {item.start}â€“{item.end} Â· {item.period} Â· {item.status}</p><p className="text-sm text-[#6D7C76]">Pago {item.paymentStatus} Â· ${item.amount.toLocaleString('es-AR')}</p></div><button className="rounded-xl border px-3 py-1" onClick={() => setRental(item)}>Editar</button></div>)}</section>
-  <section className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">Acuerdos de uso</h2>{agreements.rows.length === 0 ? <p className="mt-3 text-[#6D7C76]">TodavÃ­a no hay acuerdos registrados.</p> : agreements.rows.map(x => <div key={x.id} className="flex flex-wrap justify-between gap-3 border-b py-3"><div><strong>{profiles.rows.find(p => p.id === x.professionalId)?.name || x.professionalId}</strong><p className="text-sm">{ROOMS.find(r => r.id === x.roomId)?.name} Â· {['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado'][Number(x.days)] || x.days} Â· {x.start}â€“{x.end} Â· ${x.amount.toLocaleString('es-AR')} al mes</p><p className="text-sm text-[#6D7C76]">Pagos registrados: {money.rows.filter(row => row.sourceId === x.id && row.category === 'Alquiler mensual').length}</p></div><div className="flex gap-2"><button className="rounded-xl border px-3 py-1" onClick={() => setAgreement(x)}>Editar</button><button className="rounded-xl border px-3 py-1" onClick={() => setPayment({ agreement: x, month: localDate().slice(0, 7), amount: x.amount, method: '' })}>Registrar pago</button></div></div>)}</section>
-  {(room || agreement) && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3"><div className="max-h-[94dvh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5"><div className="mb-4 flex justify-between"><h2 className="text-xl font-semibold">{room ? 'Consultorio' : 'Acuerdo'}</h2><button onClick={() => { setRoom(null); setAgreement(null); }}>Cerrar</button></div>{room ? <div className="space-y-3"><label>Nombre<input className={input} value={room.name} onChange={e => setRoom({ ...room, name: e.target.value })} /></label><label>DescripciÃ³n<input className={input} value={room.description} onChange={e => setRoom({ ...room, description: e.target.value })} /></label><label>Disciplinas compatibles<input className={input} value={room.disciplines} onChange={e => setRoom({ ...room, disciplines: e.target.value })} /></label><label className="flex gap-2"><input type="checkbox" checked={room.thirdPartyEnabled} onChange={e => setRoom({ ...room, thirdPartyEnabled: e.target.checked })} />Habilitar alquiler a terceros</label></div> : agreement && <div className="grid gap-3 sm:grid-cols-2"><label>Profesional<select className={input} value={agreement.professionalId} onChange={e => setAgreement({ ...agreement, professionalId: e.target.value })}><option value="">Seleccionar</option>{professionalOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Consultorio<select className={input} value={agreement.roomId} onChange={e => setAgreement({ ...agreement, roomId: e.target.value })}>{ROOMS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label><label>DÃ­a reservado<select className={input} value={agreement.days} onChange={e => setAgreement({ ...agreement, days: e.target.value })}>{['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado'].map((day, i) => <option key={day} value={i}>{day}</option>)}</select></label><label>Importe mensual<input className={input} type="number" value={agreement.amount} onChange={e => setAgreement({ ...agreement, amount: Number(e.target.value) })} /></label><label>Desde<input className={input} type="time" value={agreement.start} onChange={e => setAgreement({ ...agreement, start: e.target.value })} /></label><label>Hasta<input className={input} type="time" value={agreement.end} onChange={e => setAgreement({ ...agreement, end: e.target.value })} /></label><label>DÃ­a de vencimiento<input className={input} type="number" min="1" max="31" value={agreement.dueDay} onChange={e => setAgreement({ ...agreement, dueDay: Number(e.target.value) })} /></label><label>Estado<select className={input} value={agreement.status} onChange={e => setAgreement({ ...agreement, status: e.target.value as Agreement['status'] })}><option>activo</option><option>pausado</option></select></label><label className="sm:col-span-2">Observaciones<textarea className={input} value={agreement.notes} onChange={e => setAgreement({ ...agreement, notes: e.target.value })} /></label></div>}{error && <p role="alert" className="text-red-700">{error}</p>}<div className="mt-4 flex justify-end"><button disabled={busy} className="rounded-xl bg-[#46766B] px-4 py-2 text-white" onClick={() => void commit()}>{busy ? 'Guardando...' : 'Guardar'}</button></div></div></div>}
-  {rental && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3"><div className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5"><div className="mb-4 flex justify-between"><h2 className="text-xl font-semibold">Alquiler de consultorio</h2><button onClick={() => setRental(null)}>Cerrar</button></div><div className="grid gap-3 sm:grid-cols-2"><label>Uso<select className={input} value={rental.audience} onChange={e => setRental({ ...rental, audience: e.target.value as Rental['audience'] })}><option value="habitual">Profesional habitual</option><option value="tercero" disabled={!rooms.rows.some(room => room.thirdPartyEnabled)}>Tercero autorizado</option></select></label><label>Responsable<input className={input} value={rental.occupant} onChange={e => setRental({ ...rental, occupant: e.target.value })} /></label><label>Profesional<select className={input} value={rental.professionalId} onChange={e => setRental({ ...rental, professionalId: e.target.value })}><option value="">Sin vincular</option>{professionalOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Consultorio<select className={input} value={rental.roomId} onChange={e => setRental({ ...rental, roomId: e.target.value })}>{ROOMS.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label><label>Modalidad<select className={input} value={rental.period} onChange={e => setRental({ ...rental, period: e.target.value as Rental['period'] })}><option value="hora">Por hora</option><option value="jornada">Por jornada</option></select></label><label>Fecha<input type="date" className={input} value={rental.date} onChange={e => setRental({ ...rental, date: e.target.value })} /></label><label>Desde<input type="time" className={input} value={rental.start} onChange={e => setRental({ ...rental, start: e.target.value })} /></label><label>Hasta<input type="time" className={input} value={rental.end} onChange={e => setRental({ ...rental, end: e.target.value })} /></label><label>RepeticiÃ³n<select className={input} value={rental.recurrence} onChange={e => setRental({ ...rental, recurrence: e.target.value as Rental['recurrence'] })}><option value="none">Ãšnica</option><option value="weekly">Semanal</option></select></label>{rental.recurrence === 'weekly' && <label>Hasta<input type="date" className={input} value={rental.untilDate} onChange={e => setRental({ ...rental, untilDate: e.target.value })} /></label>}<label>Estado<select className={input} value={rental.status} onChange={e => setRental({ ...rental, status: e.target.value as Rental['status'] })}><option value="provisional">Provisional</option><option value="confirmado">Confirmado</option><option value="cancelled">Cancelado</option></select></label><label>Importe<input type="number" min="0" className={input} value={rental.amount} onChange={e => setRental({ ...rental, amount: Number(e.target.value) })} /></label><label>Pago<select className={input} value={rental.paymentStatus} onChange={e => setRental({ ...rental, paymentStatus: e.target.value as Rental['paymentStatus'] })}><option value="pendiente">Pendiente</option><option value="cobrado">Cobrado</option></select></label><label>Vencimiento<input type="date" className={input} value={rental.dueDate} onChange={e => setRental({ ...rental, dueDate: e.target.value })} /></label><label>Medio de pago<input className={input} value={rental.method} onChange={e => setRental({ ...rental, method: e.target.value })} /></label><label className="sm:col-span-2">Observaciones<textarea className={input} value={rental.notes} onChange={e => setRental({ ...rental, notes: e.target.value })} /></label></div>{rental.audience === 'tercero' && <p className="mt-3 rounded-xl bg-[#F6E9DB] p-3 text-sm">Solo puede guardarse si el consultorio tiene habilitada expresamente la contrataciÃ³n a terceros.</p>}{error && <p role="alert" className="mt-3 text-red-700">{error}</p>}<div className="mt-4 flex justify-end"><button disabled={busy} className="rounded-xl bg-[#46766B] px-4 py-2 text-white" onClick={() => void commitRental()}>{busy ? 'Guardando...' : 'Guardar alquiler'}</button></div></div></div>}
-  {payment && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3"><div className="w-full max-w-md rounded-2xl bg-white p-5"><div className="mb-4 flex justify-between"><h2 className="text-xl font-semibold">Pago de alquiler mensual</h2><button onClick={() => setPayment(null)}>Cerrar</button></div><div className="space-y-3"><label>Mes<input type="month" className={input} value={payment.month} onChange={e => setPayment({ ...payment, month: e.target.value })} /></label><label>Importe<input type="number" min="0" className={input} value={payment.amount} onChange={e => setPayment({ ...payment, amount: Number(e.target.value) })} /></label><label>Medio de pago<input className={input} value={payment.method} onChange={e => setPayment({ ...payment, method: e.target.value })} /></label></div>{error && <p role="alert" className="mt-2 text-red-700">{error}</p>}<div className="mt-4 flex justify-end"><button disabled={busy} className="rounded-xl bg-[#46766B] px-4 py-2 text-white" onClick={() => void commitPayment()}>{busy ? 'Guardando...' : 'Registrar pago'}</button></div></div></div>}
-  </div>;
+
+  useEffect(
+    () =>
+      subscribeToAppointments(
+        setAppointments,
+        (value) => setError(value instanceof Error ? value.message : 'No se pudo leer la agenda.')
+      ),
+    []
+  );
+
+  const input = 'w-full rounded-xl border border-[#DDE3DF] bg-white p-2.5 text-sm text-[#34433F] outline-none focus:border-[#46766B]';
+
+  const professionalOptions = useMemo(() => {
+    const base = PROFESSIONALS.map((p) => profiles.rows.find((row) => row.id === p.id) || p);
+    const extras = profiles.rows.filter((row) => !PROFESSIONALS.some((p) => p.id === row.id));
+    return [...base, ...extras];
+  }, [profiles.rows]);
+
+  const resolveProName = (proId?: string) => {
+    if (!proId) return 'Sin asignar';
+    return professionalOptions.find((p) => p.id === proId)?.name || proId;
+  };
+
+  async function commit() {
+    setBusy(true);
+    setError('');
+    try {
+      if (room) await save('rooms', room);
+      if (agreement) {
+        if (!agreement.professionalId || agreement.start >= agreement.end) {
+          throw new Error('Elegí profesional y horario válido.');
+        }
+        await save('agreements', agreement);
+      }
+      setRoom(null);
+      setAgreement(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function commitPayment() {
+    if (!payment || payment.amount <= 0) {
+      setError('Ingresá un importe mayor que cero.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await save('money', {
+        id: `rent-${payment.agreement.id}-${payment.month}`,
+        date: localDate(),
+        kind: 'ingreso',
+        category: 'Alquiler mensual',
+        description: `Alquiler ${payment.month} · ${resolveProName(payment.agreement.professionalId)}`,
+        amount: payment.amount,
+        method: payment.method,
+        person: '',
+        sourceId: payment.agreement.id,
+        status: 'pagado',
+        nature: '',
+      });
+      setPayment(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function commitRental() {
+    if (!rental) return;
+    if (rental.start >= rental.end || !rental.occupant.trim() || rental.amount < 0) {
+      setError('Completá responsable, horario e importe válidos.');
+      return;
+    }
+    const configuredRoom = rooms.rows.find((item) => item.id === rental.roomId);
+    if (rental.audience === 'tercero' && !configuredRoom?.thirdPartyEnabled) {
+      setError('El alquiler a terceros está desactivado para este consultorio.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await save('rentals', {
+        ...rental,
+        selectedDays:
+          rental.recurrence === 'weekly' ? [new Date(`${rental.date}T12:00:00`).getDay()] : [],
+        updatedAt: new Date().toISOString(),
+      });
+      await save('money', {
+        id: `occasional-rental-${rental.id}`,
+        date: rental.date,
+        kind: 'ingreso',
+        category: 'Alquiler ocasional',
+        description: `${rental.period === 'hora' ? 'Alquiler por hora' : 'Alquiler por jornada'} · ${rental.occupant}`,
+        amount: rental.amount,
+        method: rental.method,
+        person: rental.occupant,
+        sourceId: rental.id,
+        status: rental.paymentStatus === 'cobrado' ? 'pagado' : 'previsto',
+        nature: '',
+      });
+      setRental(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Ocupación unificada desde la única fuente de verdad (appointments + agreements + rentals + interviews)
+  const unifiedOccupancy = useMemo(
+    () =>
+      buildUnifiedOccupancyAppointments({
+        appointments,
+        agreements: agreements.rows,
+        rentals: rentals.rows,
+        interviews: interviews.rows,
+        profiles: professionalOptions,
+      }),
+    [appointments, agreements.rows, rentals.rows, interviews.rows, professionalOptions]
+  );
+
+  const occupancy = useMemo(
+    () =>
+      ROOMS.map((defaultRoom) => {
+        const roomValue = rooms.rows.find((r) => r.id === defaultRoom.id) || {
+          id: defaultRoom.id,
+          name: defaultRoom.name,
+          description: '',
+          disciplines: '',
+          thirdPartyEnabled: false,
+        };
+        const activeSlots = getActiveOccupancyForDate(
+          unifiedOccupancy,
+          availabilityDate,
+          defaultRoom.id
+        );
+        return {
+          room: roomValue,
+          slots: activeSlots,
+        };
+      }),
+    [unifiedOccupancy, availabilityDate, rooms.rows]
+  );
+
+  const weekDates = useMemo(() => {
+    const selected = new Date(`${availabilityDate}T12:00:00`);
+    const monday = new Date(selected);
+    monday.setDate(selected.getDate() - ((selected.getDay() + 6) % 7));
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + index);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    });
+  }, [availabilityDate]);
+
+  const handleSlotAction = (slot: UnifiedOccupancySlot) => {
+    if (slot.source === 'agreements') {
+      const found = agreements.rows.find((a) => a.id === slot.id);
+      if (found) setAgreement(found);
+      return;
+    }
+    if (slot.source === 'rentals') {
+      const found = rentals.rows.find((r) => r.id === slot.id);
+      if (found) setRental(found);
+      return;
+    }
+    if (onOpenModal) {
+      const roomName = ROOMS.find((r) => r.id === slot.roomId)?.name;
+      const proName = resolveProName(slot.professionalId || slot.proId);
+      onOpenModal(roomName, proName, slot);
+    } else {
+      setSelectedSlotDetail(slot);
+    }
+  };
+
+  const handleFreeSlotReserve = (roomId: string, startTime: string) => {
+    const roomName = ROOMS.find((r) => r.id === roomId)?.name;
+    if (onOpenModal) {
+      onOpenModal(roomName, undefined, undefined, {
+        date: availabilityDate,
+        startTime,
+      });
+    }
+  };
+
+  const getSlotBadge = (slot: UnifiedOccupancySlot) => {
+    if (slot.source === 'agreements') {
+      return { text: 'Acuerdo mensual fijo', tone: 'bg-[#DDEAE2] text-[#1D4E38]' };
+    }
+    if (slot.source === 'rentals') {
+      return { text: 'Subalquiler / Ocasional', tone: 'bg-[#F6E9DB] text-[#8A521D]' };
+    }
+    if (slot.source === 'interviews' || slot.kind === 'interview') {
+      return { text: 'Entrevista inicial', tone: 'bg-amber-100 text-amber-900' };
+    }
+    if (slot.kind === 'block') {
+      return { text: 'Reserva de consultorio', tone: 'bg-violet-100 text-violet-900' };
+    }
+    if (slot.isNestedInBlock) {
+      return { text: 'Turno en bloque propio', tone: 'bg-sky-100 text-sky-900' };
+    }
+    return { text: 'Turno de paciente', tone: 'bg-emerald-100 text-emerald-900' };
+  };
+
+  const visibleOccupancy = useMemo(() => {
+    if (selectedRoomTab === 'all') return occupancy;
+    return occupancy.filter((entry) => entry.room.id === selectedRoomTab);
+  }, [occupancy, selectedRoomTab]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#34433F]">Consultorios</h1>
+          <p className="text-sm text-[#6D7C76]">
+            Espacios, acuerdos mensuales, alquileres y disponibilidad real unificada con la agenda de terapeutas
+          </p>
+        </div>
+        <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto">
+          <button
+            type="button"
+            className="min-h-11 rounded-xl border border-[#D7DFDA] bg-white px-4 py-2 text-sm font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
+            onClick={() =>
+              setRental({
+                id: uid(),
+                roomId: 'c1',
+                professionalId: '',
+                audience: 'habitual',
+                occupant: '',
+                period: 'hora',
+                date: localDate(),
+                start: '09:00',
+                end: '10:00',
+                recurrence: 'none',
+                selectedDays: [],
+                untilDate: '',
+                excludedDates: [],
+                status: 'provisional',
+                amount: 0,
+                paymentStatus: 'pendiente',
+                dueDate: localDate(),
+                method: '',
+                notes: '',
+                updatedAt: new Date().toISOString(),
+              })
+            }
+          >
+            Nuevo alquiler
+          </button>
+          <button
+            type="button"
+            className="min-h-11 rounded-xl bg-[#46766B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B675D]"
+            onClick={() =>
+              setAgreement({
+                id: uid(),
+                professionalId: '',
+                roomId: 'c1',
+                days: '1',
+                start: '14:00',
+                end: '20:00',
+                amount: 65000,
+                dueDay: 10,
+                status: 'activo',
+                notes: '',
+              })
+            }
+          >
+            Nuevo acuerdo mensual
+          </button>
+        </div>
+      </div>
+
+      {rooms.error && (
+        <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">
+          {rooms.error}
+        </p>
+      )}
+      {agreements.error && (
+        <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">
+          {agreements.error}
+        </p>
+      )}
+      {error && !room && !agreement && !rental && !payment && (
+        <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">
+          {error}
+        </p>
+      )}
+
+      {/* Tarjetas de Consultorio 1, Consultorio 2 y Consultorio 3 */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {ROOMS.map((defaultRoom) => {
+          const value = rooms.rows.find((x) => x.id === defaultRoom.id) || {
+            id: defaultRoom.id,
+            name: defaultRoom.name,
+            description: '',
+            disciplines: '',
+            thirdPartyEnabled: false,
+          };
+          return (
+            <section
+              key={value.id}
+              className="rounded-2xl border border-[#E5EAE5] bg-white p-5 shadow-xs"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-lg font-semibold text-[#34433F]">{value.name}</h2>
+                  <p className="mt-0.5 text-sm text-[#6D7C76]">
+                    {value.description || 'Sin descripción'}
+                  </p>
+                </div>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#46766B]">
+                  <DoorOpen className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="mt-3 text-sm text-[#34433F]">
+                <strong className="font-semibold">Disciplinas:</strong>{' '}
+                {value.disciplines || 'Sin configurar'}
+              </p>
+              <p className="mt-1 text-sm text-[#34433F]">
+                <strong className="font-semibold">Alquiler a terceros:</strong>{' '}
+                {value.thirdPartyEnabled ? 'Habilitado' : 'Desactivado'}
+              </p>
+              <button
+                type="button"
+                className="mt-4 rounded-xl border border-[#D7DFDA] px-3.5 py-2 text-sm font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
+                onClick={() => setRoom(value)}
+              >
+                Editar espacio
+              </button>
+            </section>
+          );
+        })}
+      </div>
+
+      {/* Sección Ocupación semanal y Calendario de disponibilidad unificados */}
+      <section className="rounded-2xl border border-[#E5EAE5] bg-white p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-[#34433F]">Ocupación semanal</h2>
+            <p className="text-sm text-[#6D7C76]">
+              Sincronizada en tiempo real con la Agenda de Terapeutas, acuerdos mensuales y alquileres. El bloque reservado ocupa el espacio aunque todavía no tenga sesiones cargadas.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              aria-label="Elegir fecha"
+              type="date"
+              className={`${input} sm:w-auto`}
+              value={availabilityDate}
+              onChange={(e) => setAvailabilityDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Selector de días de la semana (adaptable al celular) */}
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+          {weekDates.map((date) => {
+            const countOnDay = getActiveOccupancyForDate(unifiedOccupancy, date).filter(
+              (s) => !s.isNestedInBlock
+            ).length;
+            return (
+              <button
+                key={date}
+                type="button"
+                onClick={() => setAvailabilityDate(date)}
+                className={`flex flex-col items-center justify-center rounded-xl border px-2 py-2 text-xs transition ${
+                  date === availabilityDate
+                    ? 'border-[#46766B] bg-[#DDEAE2] font-semibold text-[#1D3E35]'
+                    : 'border-[#E5EAE5] bg-white text-[#52635D] hover:bg-[#F9FBF9]'
+                }`}
+              >
+                <span className="capitalize">
+                  {new Intl.DateTimeFormat('es-AR', {
+                    weekday: 'short',
+                    day: 'numeric',
+                  }).format(new Date(`${date}T12:00:00`))}
+                </span>
+                <span className="mt-0.5 text-[10px] opacity-80">
+                  {countOnDay === 0 ? 'Libre' : `${countOnDay} ocup.`}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Filtro rápido de consultorio para vista móvil cómoda sin desplazamiento horizontal */}
+        <div className="flex sm:hidden items-center gap-1.5 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => setSelectedRoomTab('all')}
+            className={`rounded-xl px-3 py-1.5 text-xs font-bold shrink-0 ${
+              selectedRoomTab === 'all'
+                ? 'bg-[#46766B] text-white'
+                : 'border border-[#DDE3DF] bg-[#F9FBF9] text-[#52635D]'
+            }`}
+          >
+            Todos (3)
+          </button>
+          {ROOMS.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setSelectedRoomTab(r.id)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold shrink-0 ${
+                selectedRoomTab === r.id
+                  ? 'bg-[#46766B] text-white'
+                  : 'border border-[#DDE3DF] bg-[#F9FBF9] text-[#52635D]'
+              }`}
+            >
+              {r.name.split('—')[0].trim()}
+            </button>
+          ))}
+        </div>
+
+        {/* Columnas por Consultorio: Ocupaciones + Horarios libres */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          {visibleOccupancy.map(({ room: currentRoom, slots }) => {
+            const physicalBlocksCount = slots.filter((s) => !s.isNestedInBlock).length;
+            const freeHours = HOURS_SLOTS.filter((slotHour) => {
+              const slotH = Number(slotHour.slice(0, 2));
+              return !slots.some((s) => {
+                const startH = Number(s.start.slice(0, 2));
+                const endH = Number(s.end.slice(0, 2));
+                const endM = Number(s.end.slice(3, 5));
+                return slotH >= startH && (slotH < endH || (slotH === endH && endM > 0));
+              });
+            });
+
+            return (
+              <div
+                key={currentRoom.id}
+                className="flex flex-col justify-between rounded-2xl border border-[#E5EAE5] bg-[#F6F8F5] p-4 space-y-3"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#E2E8E3] pb-2.5">
+                    <div>
+                      <strong className="text-sm font-bold text-[#34433F]">
+                        {currentRoom.name}
+                      </strong>
+                      <p className="text-xs text-[#6D7C76]">
+                        {physicalBlocksCount === 0
+                          ? 'Disponible todo el día'
+                          : `${physicalBlocksCount} franja(s) ocupada(s)`}
+                      </p>
+                    </div>
+                    {onOpenModal && (
+                      <button
+                        type="button"
+                        onClick={() => handleFreeSlotReserve(currentRoom.id, freeHours[0] || '15:00')}
+                        className="inline-flex items-center gap-1 rounded-xl bg-white px-2.5 py-1.5 text-xs font-bold text-[#46766B] border border-[#D5DDD7] hover:bg-[#E8F3EE]"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span>Reservar</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Listado de reservas / ocupaciones confirmadas */}
+                  {slots.length > 0 ? (
+                    <div className="space-y-2">
+                      {slots.map((slot, index) => {
+                        const badge = getSlotBadge(slot);
+                        const proName = resolveProName(slot.professionalId || slot.proId);
+                        const detailLabel =
+                          slot.source === 'rentals'
+                            ? slot.patient || slot.title
+                            : slot.kind === 'block'
+                              ? proName
+                              : `${slot.patient || slot.title}${proName !== 'Sin asignar' ? ` · ${proName}` : ''}`;
+
+                        return (
+                          <div
+                            key={`${slot.id}-${index}`}
+                            className={`rounded-xl border bg-white p-3 text-xs shadow-2xs transition ${
+                              slot.isNestedInBlock
+                                ? 'ml-3 border-dashed border-[#BFD2C8] bg-[#FBFDFB]'
+                                : 'border-[#E2E8E3]'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="font-mono font-bold text-[#34433F]">
+                                    {slot.start}–{slot.end}
+                                  </span>
+                                  <span
+                                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${badge.tone}`}
+                                  >
+                                    {badge.text}
+                                  </span>
+                                  {slot.recurrence === 'weekly' && (
+                                    <span className="inline-flex items-center gap-0.5 rounded-md bg-[#EEF2EE] px-1.5 py-0.5 text-[10px] font-semibold text-[#52635D]">
+                                      <Repeat className="h-2.5 w-2.5" /> Semanal
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="mt-1 font-semibold text-[#34433F] truncate">
+                                  {detailLabel}
+                                </p>
+                                {slot.serviceName && (
+                                  <p className="text-[11px] text-[#6D7C76]">
+                                    Prestación: {slot.serviceName}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSlotAction(slot)}
+                                  className="rounded-lg border border-[#D7DFDA] bg-white px-2 py-1 text-[11px] font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
+                                  title="Ver o editar reserva"
+                                >
+                                  Editar
+                                </button>
+                                {(!slot.source || slot.source === 'appointments') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void deleteAppointment(slot.id)}
+                                    className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                                    title="Cancelar reserva y liberar horario"
+                                  >
+                                    Liberar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-[#CFE0D6] bg-white/80 p-3 text-sm font-medium text-[#46766B]">
+                      Disponible todo el día
+                    </p>
+                  )}
+                </div>
+
+                {/* Calendario rápido de horarios libres del día */}
+                <div className="border-t border-[#E2E8E3] pt-2.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#52635D] mb-1.5">
+                    Horarios libres ({freeHours.length})
+                  </p>
+                  {freeHours.length === 0 ? (
+                    <p className="text-xs text-[#6D7C76]">Sin franjas libres en este día.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {freeHours.map((h) => (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => handleFreeSlotReserve(currentRoom.id, h)}
+                          className="rounded-lg border border-[#D5DDD7] bg-white px-2 py-1 font-mono text-[11px] font-semibold text-[#46766B] hover:border-[#46766B] hover:bg-[#E8F3EE]"
+                          title={`Reservar ${currentRoom.name} a las ${h}`}
+                        >
+                          {h}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Sección Alquileres ocasionales / Subalquileres externos */}
+      <section className="rounded-2xl border border-[#E5EAE5] bg-white p-5 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-[#34433F]">
+              Alquileres ocasionales y subalquileres externos
+            </h2>
+            <p className="text-xs text-[#6D7C76]">
+              Bloquean físicamente el consultorio en la agenda compartida y se vinculan con Finanzas respetando su estado de cobro.
+            </p>
+          </div>
+        </div>
+        {rentals.rows.length === 0 ? (
+          <p className="mt-3 text-sm text-[#6D7C76]">
+            Todavía no hay alquileres por hora o jornada.
+          </p>
+        ) : (
+          <div className="mt-3 divide-y divide-[#E5EAE5]">
+            {rentals.rows.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <strong className="text-sm font-bold text-[#34433F]">{item.occupant}</strong>
+                    <span className="rounded-full bg-[#F1F3EF] px-2.5 py-0.5 text-xs font-medium text-[#52635D]">
+                      {item.audience === 'tercero' ? 'Tercero externo' : 'Profesional habitual'}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-sm text-[#34433F]">
+                    {ROOMS.find((r) => r.id === item.roomId)?.name || item.roomId} · {item.date} ·{' '}
+                    {item.start}–{item.end} · {item.period} · {item.status}
+                  </p>
+                  <p className="text-xs text-[#6D7C76]">
+                    Pago {item.paymentStatus} · ${Number(item.amount || 0).toLocaleString('es-AR')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-xl border border-[#D7DFDA] px-3.5 py-1.5 text-xs font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
+                  onClick={() => setRental(item)}
+                >
+                  Editar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Sección Acuerdos de uso mensuales */}
+      <section className="rounded-2xl border border-[#E5EAE5] bg-white p-5 shadow-xs">
+        <div>
+          <h2 className="text-lg font-semibold text-[#34433F]">Acuerdos de uso mensual</h2>
+          <p className="text-xs text-[#6D7C76]">
+            Importe mensual fijo por profesional, independiente de la cantidad de pacientes y turnos realizados.
+          </p>
+        </div>
+        {agreements.rows.length === 0 ? (
+          <p className="mt-3 text-sm text-[#6D7C76]">Todavía no hay acuerdos registrados.</p>
+        ) : (
+          <div className="mt-3 divide-y divide-[#E5EAE5]">
+            {agreements.rows.map((x) => (
+              <div
+                key={x.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <div>
+                  <strong className="text-sm font-bold text-[#34433F]">
+                    {resolveProName(x.professionalId)}
+                  </strong>
+                  <p className="text-sm text-[#34433F]">
+                    {ROOMS.find((r) => r.id === x.roomId)?.name} ·{' '}
+                    {WEEKDAYS_ES[Number(x.days)] || x.days} · {x.start}–{x.end} · $
+                    {Number(x.amount || 0).toLocaleString('es-AR')} al mes
+                  </p>
+                  <p className="text-xs text-[#6D7C76]">
+                    Estado: {x.status} · Pagos registrados:{' '}
+                    {
+                      money.rows.filter(
+                        (row) => row.sourceId === x.id && row.category === 'Alquiler mensual'
+                      ).length
+                    }
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#D7DFDA] px-3 py-1.5 text-xs font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
+                    onClick={() => setAgreement(x)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#46766B] bg-[#E8F3EE] px-3 py-1.5 text-xs font-semibold text-[#46766B] hover:bg-[#DDEAE2]"
+                    onClick={() =>
+                      setPayment({
+                        agreement: x,
+                        month: localDate().slice(0, 7),
+                        amount: x.amount,
+                        method: '',
+                      })
+                    }
+                  >
+                    Registrar pago
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Modal: Editar Consultorio o Acuerdo Mensual */}
+      {(room || agreement) && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3">
+          <div className="max-h-[94dvh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-[#34433F]">
+                {room ? 'Configurar Consultorio' : 'Acuerdo mensual de uso'}
+              </h2>
+              <button
+                type="button"
+                className="text-sm font-semibold text-[#6D7C76] hover:text-[#34433F]"
+                onClick={() => {
+                  setRoom(null);
+                  setAgreement(null);
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+            {room ? (
+              <div className="space-y-3 text-sm">
+                <label className="block">
+                  Nombre
+                  <input
+                    className={input}
+                    value={room.name}
+                    onChange={(e) => setRoom({ ...room, name: e.target.value })}
+                  />
+                </label>
+                <label className="block">
+                  Descripción
+                  <input
+                    className={input}
+                    value={room.description}
+                    onChange={(e) => setRoom({ ...room, description: e.target.value })}
+                  />
+                </label>
+                <label className="block">
+                  Disciplinas compatibles
+                  <input
+                    className={input}
+                    value={room.disciplines}
+                    onChange={(e) => setRoom({ ...room, disciplines: e.target.value })}
+                  />
+                </label>
+                <label className="flex items-center gap-2 pt-1 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={room.thirdPartyEnabled}
+                    onChange={(e) => setRoom({ ...room, thirdPartyEnabled: e.target.checked })}
+                  />
+                  Habilitar alquiler a terceros
+                </label>
+              </div>
+            ) : (
+              agreement && (
+                <div className="grid gap-3 text-sm sm:grid-cols-2">
+                  <label className="block">
+                    Profesional
+                    <select
+                      className={input}
+                      value={agreement.professionalId}
+                      onChange={(e) =>
+                        setAgreement({ ...agreement, professionalId: e.target.value })
+                      }
+                    >
+                      <option value="">Seleccionar</option>
+                      {professionalOptions.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    Consultorio
+                    <select
+                      className={input}
+                      value={agreement.roomId}
+                      onChange={(e) => setAgreement({ ...agreement, roomId: e.target.value })}
+                    >
+                      {ROOMS.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    Día reservado
+                    <select
+                      className={input}
+                      value={agreement.days}
+                      onChange={(e) => setAgreement({ ...agreement, days: e.target.value })}
+                    >
+                      {WEEKDAYS_ES.map((day, i) => (
+                        <option key={day} value={i}>
+                          {day}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    Importe mensual
+                    <input
+                      className={input}
+                      type="number"
+                      value={agreement.amount}
+                      onChange={(e) =>
+                        setAgreement({ ...agreement, amount: Number(e.target.value) })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    Desde
+                    <input
+                      className={input}
+                      type="time"
+                      value={agreement.start}
+                      onChange={(e) => setAgreement({ ...agreement, start: e.target.value })}
+                    />
+                  </label>
+                  <label className="block">
+                    Hasta
+                    <input
+                      className={input}
+                      type="time"
+                      value={agreement.end}
+                      onChange={(e) => setAgreement({ ...agreement, end: e.target.value })}
+                    />
+                  </label>
+                  <label className="block">
+                    Día de vencimiento
+                    <input
+                      className={input}
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={agreement.dueDay}
+                      onChange={(e) =>
+                        setAgreement({ ...agreement, dueDay: Number(e.target.value) })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    Estado
+                    <select
+                      className={input}
+                      value={agreement.status}
+                      onChange={(e) =>
+                        setAgreement({
+                          ...agreement,
+                          status: e.target.value as Agreement['status'],
+                        })
+                      }
+                    >
+                      <option value="activo">activo</option>
+                      <option value="pausado">pausado</option>
+                    </select>
+                  </label>
+                  <label className="block sm:col-span-2">
+                    Observaciones
+                    <textarea
+                      className={input}
+                      value={agreement.notes}
+                      onChange={(e) => setAgreement({ ...agreement, notes: e.target.value })}
+                    />
+                  </label>
+                </div>
+              )
+            )}
+            {error && (
+              <p role="alert" className="mt-3 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                disabled={busy}
+                className="rounded-xl bg-[#46766B] px-4 py-2 text-sm font-semibold text-white"
+                onClick={() => void commit()}
+              >
+                {busy ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Alquiler ocasional / Subalquiler externo */}
+      {rental && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3">
+          <div className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-[#34433F]">Alquiler de consultorio</h2>
+              <button
+                type="button"
+                className="text-sm font-semibold text-[#6D7C76]"
+                onClick={() => setRental(null)}
+              >
+                Cerrar
+              </button>
+            </div>
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              <label className="block">
+                Uso
+                <select
+                  className={input}
+                  value={rental.audience}
+                  onChange={(e) =>
+                    setRental({ ...rental, audience: e.target.value as Rental['audience'] })
+                  }
+                >
+                  <option value="habitual">Profesional habitual</option>
+                  <option
+                    value="tercero"
+                    disabled={!rooms.rows.some((r) => r.thirdPartyEnabled)}
+                  >
+                    Tercero autorizado
+                  </option>
+                </select>
+              </label>
+              <label className="block">
+                Responsable
+                <input
+                  className={input}
+                  value={rental.occupant}
+                  onChange={(e) => setRental({ ...rental, occupant: e.target.value })}
+                />
+              </label>
+              <label className="block">
+                Profesional
+                <select
+                  className={input}
+                  value={rental.professionalId}
+                  onChange={(e) => setRental({ ...rental, professionalId: e.target.value })}
+                >
+                  <option value="">Sin vincular</option>
+                  {professionalOptions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                Consultorio
+                <select
+                  className={input}
+                  value={rental.roomId}
+                  onChange={(e) => setRental({ ...rental, roomId: e.target.value })}
+                >
+                  {ROOMS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                Modalidad
+                <select
+                  className={input}
+                  value={rental.period}
+                  onChange={(e) =>
+                    setRental({ ...rental, period: e.target.value as Rental['period'] })
+                  }
+                >
+                  <option value="hora">Por hora</option>
+                  <option value="jornada">Por jornada</option>
+                </select>
+              </label>
+              <label className="block">
+                Fecha
+                <input
+                  type="date"
+                  className={input}
+                  value={rental.date}
+                  onChange={(e) => setRental({ ...rental, date: e.target.value })}
+                />
+              </label>
+              <label className="block">
+                Desde
+                <input
+                  type="time"
+                  className={input}
+                  value={rental.start}
+                  onChange={(e) => setRental({ ...rental, start: e.target.value })}
+                />
+              </label>
+              <label className="block">
+                Hasta
+                <input
+                  type="time"
+                  className={input}
+                  value={rental.end}
+                  onChange={(e) => setRental({ ...rental, end: e.target.value })}
+                />
+              </label>
+              <label className="block">
+                Repetición
+                <select
+                  className={input}
+                  value={rental.recurrence}
+                  onChange={(e) =>
+                    setRental({ ...rental, recurrence: e.target.value as Rental['recurrence'] })
+                  }
+                >
+                  <option value="none">Única</option>
+                  <option value="weekly">Semanal</option>
+                </select>
+              </label>
+              {rental.recurrence === 'weekly' && (
+                <label className="block">
+                  Hasta
+                  <input
+                    type="date"
+                    className={input}
+                    value={rental.untilDate}
+                    onChange={(e) => setRental({ ...rental, untilDate: e.target.value })}
+                  />
+                </label>
+              )}
+              <label className="block">
+                Estado
+                <select
+                  className={input}
+                  value={rental.status}
+                  onChange={(e) =>
+                    setRental({ ...rental, status: e.target.value as Rental['status'] })
+                  }
+                >
+                  <option value="provisional">Provisional</option>
+                  <option value="confirmado">Confirmado</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
+              </label>
+              <label className="block">
+                Importe
+                <input
+                  type="number"
+                  min="0"
+                  className={input}
+                  value={rental.amount}
+                  onChange={(e) => setRental({ ...rental, amount: Number(e.target.value) })}
+                />
+              </label>
+              <label className="block">
+                Pago
+                <select
+                  className={input}
+                  value={rental.paymentStatus}
+                  onChange={(e) =>
+                    setRental({
+                      ...rental,
+                      paymentStatus: e.target.value as Rental['paymentStatus'],
+                    })
+                  }
+                >
+                  <option value="pendiente">Pendiente</option>
+                  <option value="cobrado">Cobrado</option>
+                </select>
+              </label>
+              <label className="block">
+                Vencimiento
+                <input
+                  type="date"
+                  className={input}
+                  value={rental.dueDate}
+                  onChange={(e) => setRental({ ...rental, dueDate: e.target.value })}
+                />
+              </label>
+              <label className="block">
+                Medio de pago
+                <input
+                  className={input}
+                  value={rental.method}
+                  onChange={(e) => setRental({ ...rental, method: e.target.value })}
+                />
+              </label>
+              <label className="block sm:col-span-2">
+                Observaciones
+                <textarea
+                  className={input}
+                  value={rental.notes}
+                  onChange={(e) => setRental({ ...rental, notes: e.target.value })}
+                />
+              </label>
+            </div>
+            {rental.audience === 'tercero' && (
+              <p className="mt-3 rounded-xl bg-[#F6E9DB] p-3 text-sm text-[#8A521D]">
+                Solo puede guardarse si el consultorio tiene habilitada expresamente la contratación a terceros.
+              </p>
+            )}
+            {error && (
+              <p role="alert" className="mt-3 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                disabled={busy}
+                className="rounded-xl bg-[#46766B] px-4 py-2 text-sm font-semibold text-white"
+                onClick={() => void commitRental()}
+              >
+                {busy ? 'Guardando...' : 'Guardar alquiler'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Registrar pago de acuerdo mensual */}
+      {payment && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-[#34433F]">Pago de alquiler mensual</h2>
+              <button
+                type="button"
+                className="text-sm font-semibold text-[#6D7C76]"
+                onClick={() => setPayment(null)}
+              >
+                Cerrar
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <label className="block">
+                Mes
+                <input
+                  type="month"
+                  className={input}
+                  value={payment.month}
+                  onChange={(e) => setPayment({ ...payment, month: e.target.value })}
+                />
+              </label>
+              <label className="block">
+                Importe
+                <input
+                  type="number"
+                  min="0"
+                  className={input}
+                  value={payment.amount}
+                  onChange={(e) => setPayment({ ...payment, amount: Number(e.target.value) })}
+                />
+              </label>
+              <label className="block">
+                Medio de pago
+                <input
+                  className={input}
+                  value={payment.method}
+                  onChange={(e) => setPayment({ ...payment, method: e.target.value })}
+                />
+              </label>
+            </div>
+            {error && (
+              <p role="alert" className="mt-2 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                disabled={busy}
+                className="rounded-xl bg-[#46766B] px-4 py-2 text-sm font-semibold text-white"
+                onClick={() => void commitPayment()}
+              >
+                {busy ? 'Guardando...' : 'Registrar pago'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
