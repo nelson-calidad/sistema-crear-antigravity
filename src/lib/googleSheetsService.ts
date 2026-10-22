@@ -550,20 +550,32 @@ export async function fetchAuthorizedUsersFromSheets(): Promise<AuthorizedUserRe
 }
 
 export async function saveAuthorizedUserInSheets(user: AuthorizedUserRecord): Promise<void> {
+  const safeAsciiName = (user.name || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const sanitizedUser: AuthorizedUserRecord = {
+    ...user,
+    name: safeAsciiName || user.name,
+  };
   try {
     const raw = localStorage.getItem(USERS_CACHE_KEY);
     const current: AuthorizedUserRecord[] = raw ? JSON.parse(raw) : [...DEFAULT_INITIAL_USERS];
-    const next = current.some((u) => u.id === user.id)
-      ? current.map((u) => (u.id === user.id ? { ...u, ...user, password: user.password || u.password } : u))
-      : [...current, user];
+    const next = current.some((u) => u.id === sanitizedUser.id)
+      ? current.map((u) =>
+          u.id === sanitizedUser.id
+            ? { ...u, ...sanitizedUser, password: sanitizedUser.password || u.password }
+            : u
+        )
+      : [...current, sanitizedUser];
     localStorage.setItem(USERS_CACHE_KEY, JSON.stringify(next));
   } catch {}
 
-  void callSheetsApi({
+  await callSheetsApi({
     action: 'upsert',
     entity: 'users',
-    record: user,
-  }).catch(() => {});
+    record: sanitizedUser,
+  });
 }
 
 /**
@@ -587,16 +599,18 @@ export async function fetchAuditLogsFromSheets(): Promise<AuditLogRecord[]> {
  */
 export async function saveAvailabilityInSheets(
   therapistId: string,
-  availabilitySummary: string
+  availabilitySummary: string,
+  acceptingPatients?: boolean
 ): Promise<void> {
-  void callSheetsApi({
+  await callSheetsApi({
     action: 'updateAvailability',
     entity: 'profiles',
     record: {
       id: therapistId,
       availability: availabilitySummary,
+      acceptingPatients,
     },
-  }).catch(() => {});
+  });
 }
 
 /**
@@ -610,6 +624,9 @@ export async function fetchTherapistAvailabilitiesFromSheets(): Promise<Therapis
     });
 
     if (res.records && res.records.length > 0) {
+      try {
+        localStorage.setItem('crear.sheets.profiles', JSON.stringify(res.records));
+      } catch {}
       return res.records.map((p) => ({
         id: `avail-${p.id}`,
         therapistId: p.id,
@@ -617,7 +634,7 @@ export async function fetchTherapistAvailabilitiesFromSheets(): Promise<Therapis
         activeDays: [1, 2, 3, 4, 5],
         startTime: '14:00',
         endTime: '20:00',
-        acceptingPatients: true,
+        acceptingPatients: p.acceptingPatients !== false,
         needsRecurringBlock: false,
         notes: p.availability || '',
         updatedAt: p.updatedAt || new Date().toISOString(),

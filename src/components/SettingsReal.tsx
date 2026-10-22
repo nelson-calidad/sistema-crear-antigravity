@@ -16,10 +16,12 @@ import type {
   ServiceCatalogItem,
 } from '../types';
 import { CREAR_TEAM } from '../lib/crearAuth';
+import { useProfessionals } from '../lib/professionalsStore';
 import { Plus, ShieldCheck, Layers, History, Users, Check } from 'lucide-react';
 
 export function SettingsReal() {
   const { rows, error } = useRecords('settings');
+  const [allProfessionals] = useProfessionals();
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -269,30 +271,32 @@ export function SettingsReal() {
                     <option value="admin">Responsable (Administradora)</option>
                   </select>
                 </label>
-                {editingUser.role !== 'admin' && (
-                  <label className="block text-sm">
-                    <span className="font-medium text-[#34433F]">Profesional vinculada</span>
-                    <select
-                      value={editingUser.professionalId || ''}
-                      onChange={(e) => {
-                        const pro = CREAR_TEAM.find((t) => t.id === e.target.value);
-                        setEditingUser({
-                          ...editingUser,
-                          professionalId: e.target.value,
-                          specialty: pro?.specialty || editingUser.specialty,
-                        });
-                      }}
-                      className="mt-1.5 min-h-11 w-full rounded-xl border border-[#DDE3DF] bg-white px-3.5 text-sm"
-                    >
-                      <option value="">Seleccionar profesional...</option>
-                      {CREAR_TEAM.filter((t) => t.role === 'therapist').map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} ({t.specialty})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
+                <label className="block text-sm">
+                  <span className="font-medium text-[#34433F]">
+                    Profesional vinculada {editingUser.role === 'admin' ? '(opcional si también atiende)' : ''}
+                  </span>
+                  <select
+                    value={editingUser.professionalId || ''}
+                    onChange={(e) => {
+                      const pro =
+                        allProfessionals.find((t) => t.id === e.target.value) ||
+                        CREAR_TEAM.find((t) => t.id === e.target.value);
+                      setEditingUser({
+                        ...editingUser,
+                        professionalId: e.target.value,
+                        specialty: pro?.specialty || editingUser.specialty,
+                      });
+                    }}
+                    className="mt-1.5 min-h-11 w-full rounded-xl border border-[#DDE3DF] bg-white px-3.5 text-sm"
+                  >
+                    <option value="">Sin vincular a agenda individual...</option>
+                    {allProfessionals.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.specialty || 'Profesional'})
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
               <div className="flex justify-end gap-2">
                 <Button tone="secondary" type="button" onClick={() => setEditingUser(null)}>

@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { X, Calendar, AlertTriangle, Trash2, CheckCircle2, User, Plus } from 'lucide-react';
+import { X, Calendar, AlertTriangle, Trash2, CheckCircle2, Plus } from 'lucide-react';
 import type { AppointmentRecord, ConfiguredRoom, PatientRecord, ServiceCatalogItem } from '../types';
 import type { AuthUser } from '../lib/crearAuth';
 import { CREAR_TEAM } from '../lib/crearAuth';
+import { useProfessionals } from '../lib/professionalsStore';
 import { conflictOnDate, type Slot } from '../lib/scheduling';
 
 interface QuickReservationModalProps {
@@ -61,22 +62,45 @@ export function QuickReservationModal({
   const [date, setDate] = useState(defaultDate);
   const [startTime, setStartTime] = useState(defaultStart);
   const [endTime, setEndTime] = useState(defaultEnd);
-  const [therapistId, setTherapistId] = useState(
-    initialData?.professionalId ||
-      (currentUser.role === 'admin' ? CREAR_TEAM[4].id : currentUser.professionalId || currentUser.id)
+  const [allProfessionals] = useProfessionals();
+  const activeProfessionals = useMemo(
+    () => allProfessionals.filter((p) => p.status === 'Activo' || p.id === initialData?.professionalId),
+    [allProfessionals, initialData?.professionalId]
   );
 
-  // Paciente y Prestación
-  const activeServices = useMemo(() => services.filter((s) => s.active !== false), [services]);
+  const [therapistId, setTherapistId] = useState(
+    initialData?.professionalId ||
+      (currentUser.role === 'admin'
+        ? currentUser.professionalId || activeProfessionals[0]?.id || CREAR_TEAM[4].id
+        : currentUser.professionalId || currentUser.id)
+  );
+
+  const selectedProRecord = useMemo(
+    () => allProfessionals.find((p) => p.id === therapistId),
+    [allProfessionals, therapistId]
+  );
+
+  // Paciente y Prestación (priorizando prestaciones vinculadas a la profesional si existen)
+  const activeServices = useMemo(() => {
+    const base = services.filter((s) => s.active !== false);
+    if (selectedProRecord?.serviceIds && selectedProRecord.serviceIds.length > 0) {
+      const linked = base.filter(
+        (s) => selectedProRecord.serviceIds?.includes(s.id) || s.id === initialData?.serviceId
+      );
+      if (linked.length > 0) return linked;
+    }
+    return base;
+  }, [services, selectedProRecord, initialData?.serviceId]);
   const defaultService = useMemo(() => {
     if (initialData?.serviceId) {
       return activeServices.find((s) => s.id === initialData.serviceId) || activeServices[0];
     }
+    const proSpecialty = selectedProRecord?.specialty || currentUser.specialty || '';
     const bySpecialty = activeServices.find(
-      (s) => s.name.toLowerCase() === (currentUser.specialty || '').toLowerCase()
+      (s) => s.name.toLowerCase() === proSpecialty.toLowerCase()
     );
     return bySpecialty || activeServices[0];
-  }, [initialData, activeServices, currentUser.specialty]);
+  }, [initialData, activeServices, selectedProRecord, currentUser.specialty]);
 
   const [selectedServiceId, setSelectedServiceId] = useState(defaultService?.id || '');
   const [selectedPatientId, setSelectedPatientId] = useState(initialData?.patientId || '');
@@ -100,13 +124,17 @@ export function QuickReservationModal({
   }, [patients, therapistId]);
 
   const currentTherapist = useMemo(() => {
+    const dynamicPro = allProfessionals.find((t) => t.id === therapistId);
+    if (dynamicPro) {
+      return { name: dynamicPro.name, id: dynamicPro.id };
+    }
     return (
       CREAR_TEAM.find((t) => t.id === therapistId) || {
         name: currentUser.name,
         id: currentUser.id,
       }
     );
-  }, [therapistId, currentUser]);
+  }, [therapistId, allProfessionals, currentUser]);
 
   // Detectar si el turno cae dentro de un bloque propio ya reservado (no genera conflicto, sino que se vincula)
   const matchingOwnBlock = useMemo(() => {
@@ -422,9 +450,9 @@ export function QuickReservationModal({
                 onChange={(e) => setTherapistId(e.target.value)}
                 className="w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-3 py-2.5 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
               >
-                {CREAR_TEAM.filter((m) => m.role === 'therapist').map((member) => (
+                {activeProfessionals.map((member) => (
                   <option key={member.id} value={member.id}>
-                    {member.name} — {member.specialty}
+                    {member.name} — {member.specialty || 'Profesional'}
                   </option>
                 ))}
               </select>

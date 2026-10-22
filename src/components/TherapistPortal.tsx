@@ -38,6 +38,7 @@ import {
   saveAvailabilityInSheets,
 } from '../lib/googleSheetsService';
 import { AuthUser, CREAR_TEAM, logoutUser } from '../lib/crearAuth';
+import { useProfessionals } from '../lib/professionalsStore';
 import { QuickReservationModal } from './QuickReservationModal';
 import { occursOn, type Slot } from '../lib/scheduling';
 
@@ -94,6 +95,17 @@ const HOURS_SLOTS = [
 
 export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPortalProps) {
   const [activeTab, setActiveTab] = useState<'agenda' | 'my-bookings' | 'availability' | 'profile'>('agenda');
+  const [allProfessionals] = useProfessionals();
+
+  const resolveProName = (proId?: string) => {
+    if (!proId) return 'Profesional';
+    const fromStore = allProfessionals.find((p) => p.id === proId);
+    if (fromStore) return fromStore.name;
+    const fromTeam = CREAR_TEAM.find((t) => t.id === proId);
+    if (fromTeam) return fromTeam.name;
+    if (proId === currentUser.professionalId || proId === currentUser.id) return currentUser.name;
+    return proId;
+  };
 
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
   const [rooms, setRooms] = useState<ConfiguredRoom[]>([]);
@@ -579,8 +591,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                           }
 
                           return matchingBookings.map((booking) => {
-                            const therapist = CREAR_TEAM.find((t) => t.id === booking.professionalId);
-                            const therapistName = therapist?.name || booking.professionalId || 'Profesional';
+                            const therapistName = resolveProName(booking.professionalId);
                             const isMine = booking.professionalId === myProId;
                             const isAdmin = currentUser.role === 'admin';
                             const canSeeDetails = isMine || isAdmin;
@@ -743,8 +754,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                             </button>
                           ) : (
                             dayBookings.map((app) => {
-                              const therapist = CREAR_TEAM.find((t) => t.id === app.professionalId);
-                              const therapistName = therapist?.name || app.professionalId;
+                              const therapistName = resolveProName(app.professionalId);
                               const roomObj = rooms.find((r) => r.id === app.roomId);
                               const isMine = app.professionalId === myProId;
                               const canSee = isMine || currentUser.role === 'admin';

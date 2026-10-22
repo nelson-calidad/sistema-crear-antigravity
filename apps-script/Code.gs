@@ -10,6 +10,7 @@ function crearSheet_(entity) {
 function crearList_(entity) {
   if (entity === 'users') ensureUsersSeeded_();
   if (entity === 'services') ensureServicesSeeded_();
+  if (entity === 'profiles') ensureProfilesSeeded_();
   const sheet = crearSheet_(entity);
   const values = sheet.getDataRange().getValues().slice(1);
   return { ok: true, records: values.filter(row => row[0]).map(row => JSON.parse(String(row[1]))) };
@@ -68,9 +69,14 @@ function crearUpsert_(body, actor) {
       if (entity !== 'profiles' || (body.action !== 'updateAvailability' && body.action !== 'upsert') || record.id !== actor.professionalId) {
         throw new Error('No tenés permisos para modificar estos datos administrativos.');
       }
-      const current = crearList_('profiles').records.find(item => item.id === actor.professionalId) || { id: actor.professionalId, name: actor.name || actor.professionalId, specialty: '', phone: '', email: actor.email, active: true, responsible: '', roomId: '', availability: '', rent: 65000, dueDay: 10, notes: '' };
+      const current = crearList_('profiles').records.find(item => item.id === actor.professionalId) || { id: actor.professionalId, name: actor.name || actor.professionalId, specialty: '', phone: '', email: actor.email, active: true, responsible: '', roomId: '', availability: '', acceptingPatients: true, serviceIds: [], rent: 65000, dueDay: 10, notes: '' };
       if (typeof record.availability !== 'string' || record.availability.length > 500) throw new Error('Disponibilidad inválida.');
-      const updatedProfile = { ...current, availability: record.availability };
+      const updatedProfile = {
+        ...current,
+        availability: record.availability,
+        acceptingPatients: record.acceptingPatients !== undefined ? Boolean(record.acceptingPatients) : current.acceptingPatients !== false,
+        updatedAt: new Date().toISOString()
+      };
       const rowIndex = sheet.getDataRange().getValues().findIndex((row, index) => index > 0 && String(row[0]) === actor.professionalId);
       const profRow = [actor.professionalId, JSON.stringify(updatedProfile), new Date().toISOString()];
       if (rowIndex >= 0) sheet.getRange(rowIndex + 1, 1, 1, 3).setValues([profRow]);
@@ -103,7 +109,8 @@ function crearUpsert_(body, actor) {
         professionalId: String(record.professionalId || ''),
         specialty: String(record.specialty || ''),
         active: record.active !== false,
-        createdAt: String(record.createdAt || new Date().toISOString().slice(0, 10))
+        createdAt: String(record.createdAt || new Date().toISOString().slice(0, 10)),
+        lastLoginAt: String(record.lastLoginAt || '')
       };
       const uRow = [userRecord.id, JSON.stringify(userRecord), new Date().toISOString()];
       if (uIndex >= 0) sheet.getRange(uIndex + 1, 1, 1, 3).setValues([uRow]);
@@ -133,10 +140,44 @@ function crearUpsert_(body, actor) {
       if (record.audience === 'tercero' && (!room || room.thirdPartyEnabled !== true)) throw new Error('El alquiler a terceros no está habilitado para este consultorio.');
       crearCheckRentalConflict_(record);
     }
+    if (entity === 'profiles') {
+      ensureProfilesSeeded_();
+    }
     const values = sheet.getDataRange().getValues();
     const index = values.findIndex((row, i) => i > 0 && String(row[0]) === String(record.id));
     const row = [String(record.id), JSON.stringify(record), new Date().toISOString()];
     if (index >= 0) sheet.getRange(index + 1, 1, 1, 3).setValues([row]); else sheet.appendRow(row);
+    if (entity === 'profiles') {
+      try {
+        const legacySheet = ensureProfessionalsSheet_();
+        upsertProfessional_(legacySheet, {
+          id: record.id,
+          name: record.name,
+          specialty: record.specialty || '',
+          color: record.color || 'bg-emerald-500',
+          status: record.active === false ? 'En Pausa' : 'Activo',
+          email: record.email || '',
+          phone: record.phone || '',
+          hours: record.availability || '',
+          retention: record.notes || '',
+          image: ''
+        }, true);
+        if (record.active === false) {
+          ensureUsersSeeded_();
+          const uSheet = crearSheet_('users');
+          const uVals = uSheet.getDataRange().getValues();
+          for (let ui = 1; ui < uVals.length; ui++) {
+            try {
+              const parsedU = JSON.parse(String(uVals[ui][1] || '{}'));
+              if (parsedU.professionalId === String(record.id) && parsedU.active !== false) {
+                parsedU.active = false;
+                uSheet.getRange(ui + 1, 1, 1, 3).setValues([[parsedU.id, JSON.stringify(parsedU), new Date().toISOString()]]);
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
     SpreadsheetApp.flush();
     appendAuditLog_(actor, index >= 0 ? 'update' : 'create', entity, record.id, 'Actualización en ' + entity);
     return { ok: true, id: record.id };
@@ -144,6 +185,13 @@ function crearUpsert_(body, actor) {
 }
 function crearCheckConflict_(sheet, incoming) {
   if (incoming.status === 'cancelled') return;
+  if (incoming.professionalId) {
+    ensureProfilesSeeded_();
+    const prof = crearList_('profiles').records.find(function(p) { return p.id === incoming.professionalId; });
+    if (prof && prof.active === false) {
+      throw new Error('La profesional seleccionada se encuentra inactiva y no admite nuevas asignaciones.');
+    }
+  }
   const rows = readAppointments_(sheet);
   const startDate = String(incoming.date || '');
   const endDate = String(incoming.untilDate || startDate);
@@ -300,6 +348,68 @@ function ensureServicesSeeded_() {
   }
 }
 
+const DEFAULT_PROFILES_SEED_ = [
+  { id: 'ariadna', name: 'Ariadna Gareca', firstName: 'Ariadna', lastName: 'Gareca', specialty: 'Psicología', subSpecialty: 'Clínica Infanto-Juvenil', licenseNumber: '', phone: '', email: 'ariadna@crear.com', active: true, responsible: 'Janina', roomId: 'c3', availability: 'Viernes de 14:00 a 20:00', acceptingPatients: true, serviceIds: ['srv-psicologia', 'srv-evaluacion'], rent: 65000, dueDay: 10, notes: '', color: 'bg-purple-500' },
+  { id: 'ivana', name: 'Ivana Gúzman', firstName: 'Ivana', lastName: 'Gúzman', specialty: 'Educación especial', subSpecialty: 'Inclusión escolar', licenseNumber: '', phone: '3884870363', email: 'ivana@crear.com', active: true, responsible: 'Janina', roomId: 'c1', availability: 'Mar (17 a 21:00) - Vier (16:30 a 21:00)', acceptingPatients: true, serviceIds: ['srv-educacion-especial'], rent: 65000, dueDay: 10, notes: 'Alquiler 2 días', color: 'bg-amber-500' },
+  { id: 'dana', name: 'Dana Lopéz', firstName: 'Dana', lastName: 'Lopéz', specialty: 'Psicopedagogía', subSpecialty: 'Diagnóstico y tratamiento', licenseNumber: '', phone: '3884322746', email: 'dana@crear.com', active: true, responsible: 'Florencia', roomId: 'c1', availability: 'Jue (16:00 a 20:00)', acceptingPatients: true, serviceIds: ['srv-psicopedagogia', 'srv-evaluacion'], rent: 65000, dueDay: 10, notes: 'Alquiler 1 día', color: 'bg-cyan-500' },
+  { id: 'romy', name: 'Romina Goméz', firstName: 'Romina', lastName: 'Goméz', specialty: 'Psicomotricidad', subSpecialty: '', licenseNumber: '', phone: '3517016812', email: 'romy@crear.com', active: true, responsible: 'Florencia', roomId: 'c2', availability: 'Lun (14:00 a 20:00)', acceptingPatients: true, serviceIds: ['srv-psicomotricidad'], rent: 65000, dueDay: 10, notes: 'Alquiler 1 día', color: 'bg-slate-500' },
+  { id: 'barbie', name: 'Barbie Benicio', firstName: 'Barbie', lastName: 'Benicio', specialty: 'Terapia ocupacional', subSpecialty: 'Integración sensorial', licenseNumber: '', phone: '3885817010', email: 'barbie@crear.com', active: true, responsible: 'Janina', roomId: 'c2', availability: 'Martes y Jueves (14:00 - 19:00)', acceptingPatients: true, serviceIds: ['srv-terapia-ocupacional'], rent: 65000, dueDay: 10, notes: 'Alquiler 2 días', color: 'bg-rose-500' },
+  { id: 'vero', name: 'Vero Rodulfo', firstName: 'Vero', lastName: 'Rodulfo', specialty: 'Fonoaudiología', subSpecialty: 'Lenguaje y habla', licenseNumber: '', phone: '3883133794', email: 'vero@crear.com', active: true, responsible: 'Florencia', roomId: 'c3', availability: 'Mar y Jue (18:00 - 21:00)', acceptingPatients: true, serviceIds: ['srv-fonoaudiologia'], rent: 65000, dueDay: 10, notes: 'Alquiler 2 días', color: 'bg-emerald-500' }
+];
+
+function ensureProfilesSeeded_() {
+  const sheet = crearSheet_('profiles');
+  if (sheet.getLastRow() > 1) return;
+  const now = new Date().toISOString();
+  const mergedMap = new Map();
+  DEFAULT_PROFILES_SEED_.forEach(function(p) {
+    mergedMap.set(p.id, Object.assign({}, p, { updatedAt: now }));
+  });
+  try {
+    const legacySheet = ensureProfessionalsSheet_();
+    const legacyRows = readProfessionals_(legacySheet);
+    legacyRows.forEach(function(lp) {
+      const lowerName = String(lp.name || '').toLowerCase();
+      let canonicalId = String(lp.id || '');
+      if (lowerName.indexOf('vero') >= 0) canonicalId = 'vero';
+      else if (lowerName.indexOf('barbie') >= 0) canonicalId = 'barbie';
+      else if (lowerName.indexOf('ivana') >= 0) canonicalId = 'ivana';
+      else if (lowerName.indexOf('dana') >= 0) canonicalId = 'dana';
+      else if (lowerName.indexOf('romi') >= 0) canonicalId = 'romy';
+      else if (lowerName.indexOf('ariadna') >= 0) canonicalId = 'ariadna';
+
+      const base = mergedMap.get(canonicalId) || {
+        id: canonicalId,
+        name: lp.name,
+        specialty: lp.specialty || '',
+        phone: lp.phone || '',
+        email: lp.email && lp.email !== '-' ? lp.email : '',
+        active: lp.status !== 'En Pausa',
+        responsible: '',
+        roomId: '',
+        availability: lp.hours || '',
+        acceptingPatients: true,
+        serviceIds: [],
+        rent: 65000,
+        dueDay: 10,
+        notes: lp.retention || '',
+        color: lp.color || 'bg-emerald-500'
+      };
+      if (lp.phone && !base.phone) base.phone = String(lp.phone);
+      if (lp.hours && !base.availability) base.availability = String(lp.hours);
+      if (lp.color && !base.color) base.color = String(lp.color);
+      base.updatedAt = now;
+      mergedMap.set(canonicalId, base);
+    });
+  } catch (e) {}
+  const outRows = Array.from(mergedMap.values()).map(function(p) {
+    return [p.id, JSON.stringify(p), now];
+  });
+  if (outRows.length > 0) {
+    sheet.getRange(2, 1, outRows.length, 3).setValues(outRows);
+  }
+}
+
 function getSigningSecret_() {
   const props = PropertiesService.getScriptProperties();
   let secret = props.getProperty('CREAR_TOKEN_SECRET');
@@ -314,12 +424,12 @@ function signSessionToken_(user) {
   const payloadObj = {
     uid: user.id,
     email: user.email,
-    name: user.name,
+    name: String(user.name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
     role: user.role,
     professionalId: user.professionalId || '',
     exp: new Date().getTime() + 14 * 24 * 60 * 60 * 1000
   };
-  const payloadB64 = Utilities.base64EncodeWebSafe(JSON.stringify(payloadObj));
+  const payloadB64 = Utilities.base64EncodeWebSafe(Utilities.newBlob(JSON.stringify(payloadObj)).getBytes());
   const sigBytes = Utilities.computeHmacSha256Signature(payloadB64, getSigningSecret_());
   const sigB64 = Utilities.base64EncodeWebSafe(sigBytes);
   return payloadB64 + '.' + sigB64;
@@ -576,6 +686,16 @@ function handleLoginPassword_(body) {
   if (!isValid) {
     throw new Error('Contraseña incorrecta.');
   }
+  const nowIso = new Date().toISOString();
+  try {
+    const uSheet = crearSheet_('users');
+    const uVals = uSheet.getDataRange().getValues();
+    const uIdx = uVals.findIndex(function(r, i) { return i > 0 && String(r[0]) === matched.id; });
+    if (uIdx >= 0) {
+      matched.lastLoginAt = nowIso;
+      uSheet.getRange(uIdx + 1, 1, 1, 3).setValues([[matched.id, JSON.stringify(matched), nowIso]]);
+    }
+  } catch (e) {}
   const sessionToken = signSessionToken_(matched);
   return {
     ok: true,
@@ -605,6 +725,17 @@ function handleLoginGoogle_(body) {
   if (!matched || matched.active === false) {
     throw new Error('El correo ' + info.email + ' no está autorizado en CREAR. Solicitá el alta a las responsables.');
   }
+  const nowIso = new Date().toISOString();
+  try {
+    const uSheet = crearSheet_('users');
+    const uVals = uSheet.getDataRange().getValues();
+    const uIdx = uVals.findIndex(function(r, i) { return i > 0 && String(r[0]) === matched.id; });
+    if (uIdx >= 0) {
+      matched.lastLoginAt = nowIso;
+      if (info.sub && !matched.googleSub) matched.googleSub = info.sub;
+      uSheet.getRange(uIdx + 1, 1, 1, 3).setValues([[matched.id, JSON.stringify(matched), nowIso]]);
+    }
+  } catch (e) {}
   const sessionToken = signSessionToken_(matched);
   return {
     ok: true,
@@ -752,6 +883,7 @@ function crearListAuthorized_(entity, actor) {
         specialty: u.specialty || '',
         active: u.active !== false,
         createdAt: u.createdAt || '',
+        lastLoginAt: u.lastLoginAt || '',
         hasPassword: Boolean(u.passwordHash || u.password)
       };
     });
@@ -770,7 +902,27 @@ function crearListAuthorized_(entity, actor) {
   if (CREAR_ENTITIES_.indexOf(entity) < 0) throw new Error('Entidad desconocida.');
   if (actor.role === 'admin') return crearList_(entity);
   if (entity === 'rooms') return crearList_(entity);
-  if (entity === 'profiles') return { ok: true, records: crearList_(entity).records.filter(item => item.id === actor.professionalId) };
+  if (entity === 'profiles') {
+    const allProfiles = crearList_('profiles').records;
+    if (actor.role === 'admin') return { ok: true, records: allProfiles };
+    const sanitizedProfiles = allProfiles.map(function(item) {
+      if (item.id === actor.professionalId) return item;
+      return {
+        id: item.id,
+        name: item.name,
+        specialty: item.specialty || '',
+        subSpecialty: item.subSpecialty || '',
+        active: item.active !== false,
+        color: item.color || '',
+        serviceIds: Array.isArray(item.serviceIds) ? item.serviceIds : [],
+        phone: '',
+        email: '',
+        notes: '',
+        rent: 0
+      };
+    });
+    return { ok: true, records: sanitizedProfiles };
+  }
   if (entity === 'agreements' || entity === 'interviews') return { ok: true, records: crearList_(entity).records.filter(item => item.professionalId === actor.professionalId) };
   throw new Error('Acceso administrativo requerido.');
 }

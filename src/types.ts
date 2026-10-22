@@ -56,6 +56,8 @@ export interface AuthorizedUserRecord {
   specialty?: string;
   active: boolean;
   createdAt: string;
+  lastLoginAt?: string;
+  hasPassword?: boolean;
 }
 
 export interface ServiceCatalogItem {
