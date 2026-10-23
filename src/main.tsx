@@ -6,40 +6,71 @@ import './index.css';
 
 const PRELOAD_RETRY_KEY = 'crear-preload-retry';
 
-class AppErrorBoundary extends React.Component<{ children: ReactNode }, { hasError: boolean }> {
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error | null;
+}
+
+class AppErrorBoundary extends React.Component<{ children: ReactNode }, ErrorBoundaryState> {
   declare props: { children: ReactNode };
-  state: { hasError: boolean };
+  state: ErrorBoundaryState;
 
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error) {
-    console.error('No se pudo renderizar CREAR.', error);
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('No se pudo renderizar CREAR.', error, errorInfo);
   }
+
+  handleResetAndReload = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+    window.location.href = window.location.origin + window.location.pathname;
+  };
 
   render() {
     if (this.state.hasError) {
+      const errorMessage = this.state.error?.message || 'Error inesperado al cargar la interfaz.';
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-          <div className="max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 sm:p-6 text-[#34433F]">
+          <div className="max-w-md w-full rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-lg space-y-4">
             <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-400">CREAR</p>
-            <h1 className="mt-2 text-2xl font-black text-slate-900">La app no pudo iniciar</h1>
-            <p className="mt-3 text-sm text-slate-600">
-              Hubo un error al cargar la interfaz. Actualizá para volver a intentar con la versión más reciente.
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900">La app no pudo iniciar</h1>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Hubo un inconveniente al cargar los datos en pantalla. Podés actualizar o restablecer los datos guardados en este navegador.
             </p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="mt-5 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white"
-            >
-              Actualizar aplicación
-            </button>
+
+            {this.state.error && (
+              <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-3 text-xs text-rose-800">
+                <p className="font-bold">Detalle del error:</p>
+                <p className="mt-1 font-mono break-all opacity-90">{errorMessage}</p>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="w-full rounded-2xl bg-[#46766B] py-3 px-4 text-xs font-bold text-white hover:bg-[#3B645B] transition"
+              >
+                Actualizar aplicación
+              </button>
+              <button
+                type="button"
+                onClick={this.handleResetAndReload}
+                className="w-full rounded-2xl border border-[#D5DDD7] bg-white py-2.5 px-4 text-xs font-semibold text-[#52635D] hover:bg-[#FAF8F5] transition"
+              >
+                Limpiar datos locales y restablecer
+              </button>
+            </div>
           </div>
         </div>
       );

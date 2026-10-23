@@ -141,12 +141,12 @@ export function SettingsReal({ onNavigate }: { onNavigate?: (tab: string) => voi
         </div>
       )}
 
-      {/* Pestañas de Configuración */}
-      <div className="flex flex-wrap gap-1.5 rounded-2xl border border-[#E5EAE5] bg-white p-1.5">
+      {/* Pestañas de Configuración Adaptadas para Celular y Escritorio */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar rounded-2xl border border-[#E5EAE5] bg-white p-1.5">
         <button
           type="button"
           onClick={() => setSection('users')}
-          className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+          className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
             section === 'users' ? 'bg-[#46766B] text-white' : 'text-[#6D7C76] hover:bg-[#F2F5F3]'
           }`}
         >
@@ -157,7 +157,7 @@ export function SettingsReal({ onNavigate }: { onNavigate?: (tab: string) => voi
         <button
           type="button"
           onClick={() => setSection('services')}
-          className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+          className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
             section === 'services' ? 'bg-[#46766B] text-white' : 'text-[#6D7C76] hover:bg-[#F2F5F3]'
           }`}
         >
@@ -168,7 +168,7 @@ export function SettingsReal({ onNavigate }: { onNavigate?: (tab: string) => voi
         <button
           type="button"
           onClick={() => setSection('patients')}
-          className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+          className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
             section === 'patients' ? 'bg-[#46766B] text-white' : 'text-[#6D7C76] hover:bg-[#F2F5F3]'
           }`}
         >
@@ -179,7 +179,7 @@ export function SettingsReal({ onNavigate }: { onNavigate?: (tab: string) => voi
         <button
           type="button"
           onClick={() => setSection('audit')}
-          className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+          className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
             section === 'audit' ? 'bg-[#46766B] text-white' : 'text-[#6D7C76] hover:bg-[#F2F5F3]'
           }`}
         >
@@ -190,7 +190,7 @@ export function SettingsReal({ onNavigate }: { onNavigate?: (tab: string) => voi
         <button
           type="button"
           onClick={() => setSection('general')}
-          className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+          className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
             section === 'general' ? 'bg-[#46766B] text-white' : 'text-[#6D7C76] hover:bg-[#F2F5F3]'
           }`}
         >
@@ -324,10 +324,10 @@ export function SettingsReal({ onNavigate }: { onNavigate?: (tab: string) => voi
             {users.map((u) => (
               <div
                 key={u.id}
-                className="flex items-center justify-between rounded-2xl border border-[#E5EAE5] bg-white p-4 shadow-xs"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-[#E5EAE5] bg-white p-3.5 sm:p-4 shadow-xs"
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-sm font-bold text-[#34433F]">{u.name}</span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
@@ -344,24 +344,24 @@ export function SettingsReal({ onNavigate }: { onNavigate?: (tab: string) => voi
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 font-mono text-xs text-[#52635D]">{u.email}</p>
+                  <p className="mt-1 font-mono text-xs text-[#52635D] break-all">{u.email}</p>
                   {u.googleEmail && (
-                    <p className="text-[11px] text-[#6D7C76]">Google: {u.googleEmail}</p>
+                    <p className="text-[11px] text-[#6D7C76] break-all">Google: {u.googleEmail}</p>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-2 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-[#F0F4F2] shrink-0">
                   <button
                     type="button"
                     onClick={() => setEditingUser(u)}
-                    className="rounded-xl border border-[#D5DDD7] px-3 py-1.5 text-xs font-bold text-[#34433F] hover:bg-[#F9FBF9]"
+                    className="flex-1 sm:flex-initial rounded-xl border border-[#D5DDD7] px-3 py-1.5 text-xs font-bold text-[#34433F] hover:bg-[#F9FBF9] text-center"
                   >
                     Clave / Editar
                   </button>
                   <button
                     type="button"
                     onClick={() => void toggleUserActive(u)}
-                    className={`rounded-xl px-3 py-1.5 text-xs font-bold ${
+                    className={`flex-1 sm:flex-initial rounded-xl px-3 py-1.5 text-xs font-bold text-center ${
                       u.active
                         ? 'border border-rose-200 bg-rose-50 text-rose-700'
                         : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
@@ -481,15 +481,15 @@ export function SettingsReal({ onNavigate }: { onNavigate?: (tab: string) => voi
               {auditLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="flex items-center justify-between rounded-xl border border-[#EAEFEA] bg-[#FDFEFC] px-3.5 py-2.5 text-xs"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 rounded-xl border border-[#EAEFEA] bg-[#FDFEFC] px-3.5 py-2.5 text-xs"
                 >
-                  <div>
-                    <span className="font-bold text-[#34433F]">{log.summary}</span>
-                    <p className="text-[11px] text-[#6D7C76]">
+                  <div className="min-w-0">
+                    <span className="font-bold text-[#34433F] break-words">{log.summary}</span>
+                    <p className="text-[11px] text-[#6D7C76] break-words">
                       Usuario: {log.actorEmail} ({log.actorRole}) · Acción: {log.action}
                     </p>
                   </div>
-                  <span className="font-mono text-[11px] text-[#889892]">
+                  <span className="font-mono text-[10px] text-[#889892] shrink-0">
                     {log.timestamp.slice(0, 16).replace('T', ' ')}
                   </span>
                 </div>

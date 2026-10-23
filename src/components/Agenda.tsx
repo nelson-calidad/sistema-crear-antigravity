@@ -50,6 +50,21 @@ import { forceRefreshAppointments } from '../lib/appointmentsStore';
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
 const HOUR_HEIGHT = 68;
 const DEFAULT_SESSION_DURATION = 45;
+const MOBILE_HOURS_SLOTS = [
+  '08:00',
+  '09:00',
+  '10:00',
+  '11:00',
+  '12:00',
+  '13:00',
+  '14:00',
+  '15:00',
+  '16:00',
+  '17:00',
+  '18:00',
+  '19:00',
+  '20:00',
+];
 const UNASSIGNED_COLUMN = {
   id: 'unassigned',
   name: 'Sin asignar',
@@ -236,6 +251,8 @@ export const Agenda = ({
   const [filterRoomId, setFilterRoomId] = useState<string>('all');
   const [showCancelled, setShowCancelled] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [mobileRoomFilter, setMobileRoomFilter] = useState<string>('all');
+  const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
 
   const [professionals] = useProfessionals();
   const hasSyncedInitialDateRef = useRef(false);
@@ -346,6 +363,11 @@ export const Agenda = ({
       free: Math.max(ROOMS.length - busyIds.size, 0),
     };
   }, [professionals.length, selectedDateAppointments, viewMode]);
+
+  const visibleRoomsOnMobile = useMemo(() => {
+    if (mobileRoomFilter === 'all') return ROOMS;
+    return ROOMS.filter((r) => r.id === mobileRoomFilter);
+  }, [mobileRoomFilter]);
 
   const columns: CalendarColumn[] = useMemo(() => {
     if (timeMode === 'weekly') {
@@ -528,9 +550,169 @@ export const Agenda = ({
   return (
     <div className="flex h-full flex-col gap-2 min-h-0 antialiased">
       {/* =========================================================================
-          TOOLBAR ULTRA-COMPACTA: MÁXIMO AIRE PARA LA GRILLA DE HORARIOS
+          TOOLBAR MÓVIL (< md): LIMPIA, COMPACTA Y CON FILTROS EN PANEL
           ========================================================================= */}
-      <div className="rounded-2xl border border-[#E5EAE5] bg-white px-3 py-2 shadow-2xs shrink-0 flex flex-col gap-1.5">
+      <div className="md:hidden rounded-2xl border border-[#E5EAE5] bg-white p-2.5 shadow-2xs shrink-0 flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-1.5">
+          {/* Navegación temporal: Hoy, Ant, Sig, Selector de fecha */}
+          <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
+            <button
+              type="button"
+              onClick={() => setSelectedDate(new Date())}
+              className="rounded-lg px-2 py-1 text-xs font-bold text-[#46766B] hover:bg-white transition"
+            >
+              Hoy
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedDate(
+                  subDays(
+                    selectedDate,
+                    timeMode === 'weekly' ? 7 : timeMode === 'monthly' ? 30 : 1
+                  )
+                )
+              }
+              title="Anterior"
+              className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedDate(
+                  addDays(
+                    selectedDate,
+                    timeMode === 'weekly' ? 7 : timeMode === 'monthly' ? 30 : 1
+                  )
+                )
+              }
+              title="Siguiente"
+              className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <input
+              type="date"
+              value={format(selectedDate, 'yyyy-MM-dd')}
+              onChange={(e) => {
+                const parsed = parseDay(e.target.value);
+                if (parsed) setSelectedDate(parsed);
+              }}
+              className="bg-transparent border-none text-xs font-bold text-[#34433F] outline-none px-1 py-0.5 cursor-pointer max-w-[110px]"
+            />
+          </div>
+
+          {/* Acciones Derecha: Botón Filtros (con badge de activo) + Botón Reservar */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowMobileFilters((open) => !open)}
+              className={cn(
+                'flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition',
+                showMobileFilters || filterProId !== 'all' || showCancelled
+                  ? 'border-[#46766B] bg-[#E8F3EE] text-[#2C5E50]'
+                  : 'border-[#D5DDD7] bg-[#FAF8F5] text-[#52635D]'
+              )}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              <span className="text-[11px]">Filtros</span>
+              {(filterProId !== 'all' || showCancelled) && (
+                <span className="h-1.5 w-1.5 rounded-full bg-[#46766B]" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenModal()}
+              className="flex items-center gap-1 rounded-xl bg-[#46766B] px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-[#3B645B] transition active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Reservar</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Panel Desplegable de Filtros en Celular */}
+        {showMobileFilters && (
+          <div className="pt-2 border-t border-[#F0F4F2] flex flex-col gap-2 animate-[fadeIn_.15s_ease-out]">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[#6D7C76] mb-0.5">Profesional</label>
+                <select
+                  value={filterProId}
+                  onChange={(e) => setFilterProId(e.target.value)}
+                  className="w-full rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] px-2 py-1.5 text-xs font-semibold text-[#34433F] outline-none"
+                >
+                  <option value="all">Todas las profesionales</option>
+                  {professionals.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[#6D7C76] mb-0.5">Turnos cancelados</label>
+                <button
+                  type="button"
+                  onClick={() => setShowCancelled((v) => !v)}
+                  className={cn(
+                    'w-full rounded-xl border py-1.5 text-xs font-semibold text-center transition',
+                    showCancelled
+                      ? 'border-rose-300 bg-rose-50 text-rose-800'
+                      : 'border-[#D5DDD7] bg-[#FAF8F5] text-[#6D7C76]'
+                  )}
+                >
+                  {showCancelled ? 'Cancelados visibles' : 'Ocultar cancelados'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#F0F4F2]">
+              <div className="flex items-center rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
+                <button
+                  type="button"
+                  onClick={handleDailyPdf}
+                  className="px-2 py-1 text-[11px] font-semibold text-[#52635D] hover:bg-white rounded"
+                >
+                  <Printer className="h-3 w-3 inline mr-1" />
+                  PDF Día
+                </button>
+                <button
+                  type="button"
+                  onClick={handleWeeklyPdf}
+                  className="px-2 py-1 text-[11px] font-semibold text-[#52635D] hover:bg-white rounded"
+                >
+                  PDF Sem
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMonthlyPdf}
+                  className="px-2 py-1 text-[11px] font-semibold text-[#52635D] hover:bg-white rounded"
+                >
+                  PDF Mes
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void handleRefresh()}
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] px-2.5 py-1 text-xs font-semibold text-[#52635D]"
+              >
+                <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin text-[#46766B]')} />
+                <span>Sincronizar</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* =========================================================================
+          TOOLBAR DE ESCRITORIO (md:flex): COMPACTA Y COMPLETA
+          ========================================================================= */}
+      <div className="hidden md:flex rounded-2xl border border-[#E5EAE5] bg-white px-3 py-2 shadow-2xs shrink-0 flex-col gap-1.5">
         <div className="flex flex-wrap items-center justify-between gap-1.5">
           {/* Bloque Izquierdo: Título compacto + Navegación temporal + Modos */}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -766,8 +948,8 @@ export const Agenda = ({
       <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-[#E5EAE5] bg-white p-2 sm:p-2.5 shadow-2xs overflow-hidden">
         {timeMode === 'daily' || timeMode === 'weekly' ? (
           <>
-            {/* VISTA MÓVIL (Touch, selector semanal horizontal y tarjetas delicadas) */}
-            <div className="md:hidden flex flex-col gap-2.5 overflow-y-auto flex-1 pr-1">
+            {/* VISTA MÓVIL (Pestañas táctiles de consultorios deslizables y tarjetas muy espaciosas con horas disponibles) */}
+            <div className="md:hidden flex flex-col gap-3 overflow-y-auto flex-1 pr-0.5">
               {/* Barra de 7 días touch para celular */}
               <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar shrink-0">
                 {Array.from({ length: 7 }).map((_, i) => {
@@ -799,75 +981,201 @@ export const Agenda = ({
                 })}
               </div>
 
-              {/* Lista de turnos del día para celular */}
-              {visibleAppointments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#CFE2D8] bg-[#F4FAF7] p-6 text-center my-auto">
-                  <div className="h-8 w-8 rounded-xl bg-[#E8F3EE] flex items-center justify-center text-[#46766B] mb-2">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </div>
-                  <p className="text-xs font-bold text-[#264A40]">Espacio libre para este día</p>
-                  <p className="text-[11px] text-[#657570] mt-0.5">No hay turnos ni bloques programados.</p>
-                  <button
-                    type="button"
-                    onClick={() => onOpenModal()}
-                    className="mt-2.5 rounded-lg bg-[#46766B] px-3 py-1.5 text-xs font-bold text-white shadow-2xs"
-                  >
-                    + Crear reserva
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {visibleAppointments.map((app) => {
-                    const pro = professionals.find(
-                      (p) => p.id === (app.professionalId || app.proId)
-                    );
-                    const room = ROOMS.find((r) => r.id === app.roomId);
-                    const kind = app.kind || app.type;
-                    const cardStyle = getTypeStyles(kind, pro?.id);
-
-                    return (
-                      <div
-                        key={app.id}
-                        onClick={() => onOpenModal(room?.name, pro?.name, app)}
+              {/* Pestañas táctiles de Consultorio para Celulares (deslizables para el costado) */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMobileRoomFilter('all')}
+                  className={cn(
+                    'min-h-9 shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5',
+                    mobileRoomFilter === 'all'
+                      ? 'bg-[#46766B] text-white shadow-2xs'
+                      : 'border border-[#DDE3DF] bg-white text-[#52635D]'
+                  )}
+                >
+                  <span>Todos ({selectedDateAppointments.length})</span>
+                </button>
+                {ROOMS.map((r) => {
+                  const count = selectedDateAppointments.filter((a) => a.roomId === r.id).length;
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setMobileRoomFilter(r.id)}
+                      className={cn(
+                        'min-h-9 shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5',
+                        mobileRoomFilter === r.id
+                          ? 'bg-[#46766B] text-white shadow-2xs'
+                          : 'border border-[#DDE3DF] bg-white text-[#52635D]'
+                      )}
+                    >
+                      <span>{r.name.split('—')[0].trim()}</span>
+                      <span
                         className={cn(
-                          'rounded-xl border p-2.5 transition shadow-2xs cursor-pointer',
-                          cardStyle
+                          'rounded-full px-1.5 py-0.2 text-[10px] font-bold',
+                          mobileRoomFilter === r.id
+                            ? 'bg-white/20 text-white'
+                            : 'bg-[#EAEFEA] text-[#2C4E44]'
                         )}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-mono text-xs font-bold">
-                                {app.start} - {app.end}
-                              </span>
-                              {app.recurrence === 'weekly' && (
-                                <span className="rounded-md bg-white/70 px-1 py-0.2 text-[9px] font-bold">
-                                  Semanal
-                                </span>
-                              )}
-                              <span className="rounded-md bg-white/70 px-1 py-0.2 text-[9px] font-semibold">
-                                {getTypeLabel(kind)}
-                              </span>
-                            </div>
-                            <h4 className="mt-1 font-bold text-xs leading-tight text-[#264A40] truncate">
-                              {getAppointmentName(app)}
-                            </h4>
-                            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] opacity-90 truncate">
-                              <span>Prof. {pro?.name || 'Sin profesional'}</span>
-                              <span>•</span>
-                              <span>{room?.name.split('—')[0].trim() || 'Sin consultorio'}</span>
-                            </div>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Contenedor Espacioso de Consultorios para Celular */}
+              <div className="space-y-3.5">
+                {visibleRoomsOnMobile.map((room) => {
+                  const roomApps = selectedDateAppointments
+                    .filter((a) => a.roomId === room.id)
+                    .sort((a, b) => parseTimeToMinutes(a.start) - parseTimeToMinutes(b.start));
+
+                  return (
+                    <div
+                      key={room.id}
+                      className="flex flex-col rounded-3xl border border-[#E5EAE5] bg-white p-3.5 sm:p-4 shadow-xs"
+                    >
+                      {/* Cabecera Consultorio */}
+                      <div className="flex items-center justify-between border-b border-[#F0F4F1] pb-3 mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#46766B]">
+                            <DoorOpen className="h-4 w-4" />
                           </div>
-                          <div
-                            className={cn('h-2 w-2 rounded-full shrink-0 mt-1', getStatusColor(app.status))}
-                            title={app.status}
-                          />
+                          <div>
+                            <h3 className="text-sm font-bold text-[#34433F]">
+                              {room.name.split('—')[0].trim()}
+                            </h3>
+                            <p className="text-[11px] text-[#6D7C76]">
+                              {room.name.split('—')[1]?.trim() || 'Consultorio CREAR'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-[#E8F3EE] px-2 py-0.5 text-[10px] font-bold text-[#326456]">
+                            {roomApps.length} {roomApps.length === 1 ? 'turno' : 'turnos'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onOpenModal(room.name, undefined, undefined, {
+                                date: format(selectedDate, 'yyyy-MM-dd'),
+                              })
+                            }
+                            className="flex items-center gap-1 rounded-xl bg-[#F2F7F4] px-2.5 py-1.5 text-xs font-bold text-[#46766B] hover:bg-[#DDEAE2] transition"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            <span>Reservar</span>
+                          </button>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+
+                      {/* Grilla de Horarios y Turnos (Estilo Terapeuta muy espacioso) */}
+                      <div className="space-y-1.5">
+                        {MOBILE_HOURS_SLOTS.map((slotHour) => {
+                          const slotH = Number(slotHour.slice(0, 2));
+                          const startingBookings = roomApps.filter((a) => {
+                            const startMin = parseTimeToMinutes(a.start);
+                            const startHour = Math.floor(startMin / 60);
+                            return startHour === slotH;
+                          });
+                          const isSlotCovered = roomApps.some((a) =>
+                            overlaps(
+                              slotHour,
+                              `${(slotH + 1).toString().padStart(2, '0')}:00`,
+                              a.start,
+                              a.end
+                            )
+                          );
+
+                          // Si hay turnos que inician en esta hora, renderizar tarjetas
+                          if (startingBookings.length > 0) {
+                            return startingBookings.map((booking) => {
+                              const pro = professionals.find(
+                                (p) => p.id === (booking.professionalId || booking.proId)
+                              );
+                              const kind = booking.kind || booking.type;
+                              const pastelClass = getTypeStyles(kind, pro?.id);
+
+                              return (
+                                <div
+                                  key={booking.id}
+                                  onClick={() => onOpenModal(room.name, pro?.name, booking)}
+                                  className={cn(
+                                    'rounded-2xl border p-3 transition shadow-2xs cursor-pointer',
+                                    pastelClass
+                                  )}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-mono text-xs font-black">
+                                          {booking.start} a {booking.end}
+                                        </span>
+                                        {booking.recurrence === 'weekly' && (
+                                          <span className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-bold">
+                                            Semanal
+                                          </span>
+                                        )}
+                                        <span className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold">
+                                          {getTypeLabel(kind)}
+                                        </span>
+                                      </div>
+                                      <h4 className="mt-1 font-bold text-sm leading-tight text-[#264A40] truncate">
+                                        {getAppointmentName(booking)}
+                                      </h4>
+                                      <div className="mt-1 flex items-center gap-1.5 text-xs opacity-90 truncate">
+                                        <span>Prof. {pro?.name || 'Sin profesional'}</span>
+                                        <span>•</span>
+                                        <span>{room.name.split('—')[0].trim()}</span>
+                                      </div>
+                                    </div>
+                                    <div
+                                      className={cn(
+                                        'h-2.5 w-2.5 rounded-full shrink-0 mt-1',
+                                        getStatusColor(booking.status)
+                                      )}
+                                      title={booking.status}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            });
+                          }
+
+                          // Si la hora está libre (no cubierta por un turno anterior), mostrar slot disponible
+                          if (!isSlotCovered) {
+                            return (
+                              <button
+                                key={slotHour}
+                                type="button"
+                                onClick={() =>
+                                  onOpenModal(room.name, undefined, undefined, {
+                                    date: format(selectedDate, 'yyyy-MM-dd'),
+                                    startTime: slotHour,
+                                  })
+                                }
+                                className="group flex w-full items-center justify-between rounded-2xl border border-dashed border-[#E2EAE4] bg-[#FBFDFB] px-3 py-2 text-left transition hover:border-[#46766B] hover:bg-[#F1F8F4]"
+                              >
+                                <span className="font-mono text-xs font-semibold text-[#7C8D86]">
+                                  {slotHour}
+                                </span>
+                                <span className="text-[11px] font-semibold text-[#889892] group-hover:text-[#46766B]">
+                                  Disponible · + Reservar
+                                </span>
+                              </button>
+                            );
+                          }
+
+                          return null;
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* VISTA DESKTOP / TABLET (Columnas optimizadas, cabecera de consultorios y slots compactos) */}

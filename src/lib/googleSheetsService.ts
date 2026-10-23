@@ -547,9 +547,8 @@ export async function fetchPatientsFromSheets(): Promise<PatientRecord[]> {
     try {
       const raw = localStorage.getItem(PATIENTS_CACHE_KEY);
       const all: PatientRecord[] = raw ? JSON.parse(raw) : [];
-      return actor.role === 'admin'
-        ? all
-        : all.filter((p) => p.professionalId === actor.professionalId);
+      if (!actor || actor.role === 'admin') return all;
+      return all.filter((p) => p.professionalId === actor.professionalId);
     } catch {
       return [];
     }
@@ -561,7 +560,7 @@ export async function fetchPatientsFromSheets(): Promise<PatientRecord[]> {
       entity: 'patients',
     });
     if (Array.isArray(res.records)) {
-      if (actor.role === 'admin') {
+      if (!actor || actor.role === 'admin') {
         localStorage.setItem(PATIENTS_CACHE_KEY, JSON.stringify(res.records));
       }
       return res.records;
@@ -580,9 +579,9 @@ export async function savePatientMinimalInSheets(
     id: patient.id || `pac-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name: String(patient.name || '').trim(),
     professionalId:
-      actor.role === 'professional'
+      actor?.role === 'professional'
         ? actor.professionalId
-        : patient.professionalId || actor.professionalId,
+        : patient.professionalId || actor?.professionalId || '',
     status: patient.status === 'inactive' ? 'inactive' : 'active',
     createdAt: patient.createdAt || nowIso,
     updatedAt: nowIso,

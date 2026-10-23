@@ -517,10 +517,11 @@ export default function App() {
 
   const wantsAdminRoute =
     routeHash.startsWith('#/admin') ||
+    routeHash.startsWith('#admin') ||
     (!routeHash.startsWith('#/terapeutas') && authUser.role === 'admin');
 
-  // Si una terapeuta intenta acceder a /#/admin, mostrar aviso de acceso restringido
-  if (routeHash.startsWith('#/admin') && authUser.role !== 'admin') {
+  // Si una terapeuta intenta acceder a /#/admin o #admin, mostrar aviso de acceso restringido
+  if ((routeHash.startsWith('#/admin') || routeHash.startsWith('#admin')) && authUser.role !== 'admin') {
     return (
       <main className="min-h-dvh flex items-center justify-center bg-[#F9F8F5] p-4 text-[#34433F]">
         <div className="w-full max-w-md rounded-3xl border border-[#E5EAE5] bg-white p-7 text-center shadow-sm space-y-4">
