@@ -99,10 +99,14 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
 
   async function commitRental() {
     if (!rental) return;
-    if (rental.start >= rental.end || !rental.occupant.trim() || rental.amount < 0) {
-      setError('Completá responsable, horario e importe válidos.');
+    if (rental.start >= rental.end) {
+      setError('El horario de inicio debe ser anterior al de fin.');
       return;
     }
+    const finalOccupant =
+      rental.occupant.trim() ||
+      (rental.audience === 'tercero' ? 'Subalquiler externo' : 'Reserva de consultorio');
+    const finalAmount = Math.max(0, Number(rental.amount) || 0);
     const configuredRoom = rooms.rows.find((item) => item.id === rental.roomId);
     if (rental.audience === 'tercero' && !configuredRoom?.thirdPartyEnabled) {
       setError('El alquiler a terceros está desactivado para este consultorio. Habilitalo en la tarjeta del consultorio antes de guardar.');
@@ -114,6 +118,9 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
       // Guarda exclusivamente en crear_rentals (la ocupación se sincroniza con Agenda y Finanzas gestiona el cobro real sin asientos ficticios)
       await save('rentals', {
         ...rental,
+        occupant: finalOccupant,
+        amount: finalAmount,
+        status: rental.status || 'confirmado',
         selectedDays:
           rental.recurrence === 'weekly'
             ? Array.isArray(rental.selectedDays) && rental.selectedDays.length > 0
@@ -259,7 +266,7 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                 selectedDays: [],
                 untilDate: '',
                 excludedDates: [],
-                status: 'provisional',
+                status: 'confirmado',
                 amount: 0,
                 paymentStatus: 'pendiente',
                 dueDate: localDate(),
@@ -900,10 +907,15 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                       className={input}
                       type="number"
                       min="0"
-                      value={agreement.amount}
-                      onChange={(e) =>
-                        setAgreement({ ...agreement, amount: Number(e.target.value) })
-                      }
+                      placeholder="0 (o monto acordado)"
+                      value={agreement.amount === 0 ? '' : agreement.amount}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAgreement({
+                          ...agreement,
+                          amount: val === '' ? 0 : Math.max(0, Number(val)),
+                        });
+                      }}
                     />
                   </label>
                   <label className="block">
@@ -1005,210 +1017,236 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
         </div>
       )}
 
-      {/* Modal: Alquiler ocasional / Subalquiler externo */}
+      {/* Modal: Alquiler de consultorio / Reserva rápida de espacio */}
       {rental && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3">
-          <div className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-[#34433F]">Alquiler de consultorio</h2>
+          <div className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-5 sm:p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between border-b border-[#E5EAE5] pb-3">
+              <div>
+                <h2 className="text-lg font-bold text-[#34433F]">
+                  {rental.id ? 'Reserva o alquiler de consultorio' : 'Nuevo alquiler de consultorio'}
+                </h2>
+                <p className="text-xs text-[#6D7C76] mt-0.5">
+                  Completá los datos del horario para ocupar el espacio en agenda y consultorios.
+                </p>
+              </div>
               <button
                 type="button"
-                className="text-sm font-semibold text-[#6D7C76]"
+                className="rounded-lg p-1.5 text-sm font-semibold text-[#6D7C76] hover:bg-slate-100 transition"
                 onClick={() => setRental(null)}
               >
-                Cerrar
+                ✕
               </button>
             </div>
-            <div className="grid gap-3 text-sm sm:grid-cols-2">
-              <label className="block">
-                Uso
-                <select
-                  className={input}
-                  value={rental.audience}
-                  onChange={(e) =>
-                    setRental({ ...rental, audience: e.target.value as Rental['audience'] })
-                  }
-                >
-                  <option value="habitual">Profesional habitual</option>
-                  <option
-                    value="tercero"
-                    disabled={!rooms.rows.some((r) => r.thirdPartyEnabled)}
-                  >
-                    Tercero autorizado
-                  </option>
-                </select>
-              </label>
-              <label className="block">
-                {rental.audience === 'tercero' ? 'Persona o entidad externa' : 'Responsable / Ocupante'}
-                <input
-                  className={input}
-                  placeholder={rental.audience === 'tercero' ? 'Nombre de la persona o institución externa' : 'Nombre del ocupante'}
-                  value={rental.occupant}
-                  onChange={(e) => setRental({ ...rental, occupant: e.target.value })}
-                />
-              </label>
-              {rental.audience === 'habitual' && (
-                <label className="block">
-                  Profesional de CREAR vinculada
-                  <select
-                    className={input}
-                    value={rental.professionalId}
-                    onChange={(e) => setRental({ ...rental, professionalId: e.target.value })}
-                  >
-                    <option value="">Sin vincular</option>
-                    {professionalOptions.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
+
+            <div className="space-y-4">
+              {/* Sección 1: Espacio y horario (indispensable) */}
+              <div className="rounded-2xl border border-[#D5DDD7] bg-[#FAF8F5]/60 p-4 space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#46766B]">
+                  1. Espacio y horario del turno
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Consultorio</span>
+                    <select
+                      className={input}
+                      value={rental.roomId}
+                      onChange={(e) => setRental({ ...rental, roomId: e.target.value })}
+                    >
+                      {ROOMS.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Fecha</span>
+                    <input
+                      type="date"
+                      className={input}
+                      value={rental.date}
+                      onChange={(e) => setRental({ ...rental, date: e.target.value })}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Desde</span>
+                    <input
+                      type="time"
+                      className={input}
+                      value={rental.start}
+                      onChange={(e) => setRental({ ...rental, start: e.target.value })}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Hasta</span>
+                    <input
+                      type="time"
+                      className={input}
+                      value={rental.end}
+                      onChange={(e) => setRental({ ...rental, end: e.target.value })}
+                    />
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <span className="font-medium text-[#34433F]">Ocupante o motivo del espacio (opcional)</span>
+                    <input
+                      className={input}
+                      placeholder="Ej: Lic. Martínez, Taller, Subalquiler..."
+                      value={rental.occupant}
+                      onChange={(e) => setRental({ ...rental, occupant: e.target.value })}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Sección 2: Registro de cobro (opcional, sin trabar el avance) */}
+              <div className="rounded-2xl border border-[#E5EAE5] bg-white p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#6D7C76]">
+                    2. Datos de cobro (opcional)
+                  </p>
+                  <span className="text-[11px] text-[#6D7C76]">Podés dejarlo en $0 o registrar importe</span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Importe acordado ($)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0 (o importe acordado)"
+                      className={input}
+                      value={rental.amount === 0 ? '' : rental.amount}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setRental({
+                          ...rental,
+                          amount: val === '' ? 0 : Math.max(0, Number(val)),
+                        });
+                      }}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Estado de cobro</span>
+                    <select
+                      className={input}
+                      value={rental.paymentStatus}
+                      onChange={(e) =>
+                        setRental({
+                          ...rental,
+                          paymentStatus: e.target.value as Rental['paymentStatus'],
+                        })
+                      }
+                    >
+                      <option value="pendiente">Pendiente</option>
+                      <option value="cobrado">Cobrado</option>
+                      <option value="parcial">Parcialmente cobrado</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Vencimiento de pago</span>
+                    <input
+                      type="date"
+                      className={input}
+                      value={rental.dueDate}
+                      onChange={(e) => setRental({ ...rental, dueDate: e.target.value })}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Medio de pago</span>
+                    <input
+                      className={input}
+                      placeholder="Efectivo, Transferencia, etc."
+                      value={rental.method}
+                      onChange={(e) => setRental({ ...rental, method: e.target.value })}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Sección 3: Repetición y detalles adicionales */}
+              <div className="rounded-2xl border border-[#E5EAE5] bg-white p-4 space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#6D7C76]">
+                  3. Opciones adicionales
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Repetición</span>
+                    <select
+                      className={input}
+                      value={rental.recurrence}
+                      onChange={(e) =>
+                        setRental({
+                          ...rental,
+                          recurrence: e.target.value as Rental['recurrence'],
+                        })
+                      }
+                    >
+                      <option value="none">Única vez</option>
+                      <option value="weekly">Semanal</option>
+                    </select>
+                  </label>
+                  {rental.recurrence === 'weekly' && (
+                    <label className="block">
+                      <span className="font-medium text-[#34433F]">Repetir hasta</span>
+                      <input
+                        type="date"
+                        className={input}
+                        value={rental.untilDate}
+                        onChange={(e) => setRental({ ...rental, untilDate: e.target.value })}
+                      />
+                    </label>
+                  )}
+                  <label className="block">
+                    <span className="font-medium text-[#34433F]">Tipo de uso</span>
+                    <select
+                      className={input}
+                      value={rental.audience}
+                      onChange={(e) =>
+                        setRental({ ...rental, audience: e.target.value as Rental['audience'] })
+                      }
+                    >
+                      <option value="habitual">Profesional habitual</option>
+                      <option
+                        value="tercero"
+                        disabled={!rooms.rows.some((r) => r.thirdPartyEnabled)}
+                      >
+                        Tercero autorizado
                       </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <label className="block">
-                Consultorio
-                <select
-                  className={input}
-                  value={rental.roomId}
-                  onChange={(e) => setRental({ ...rental, roomId: e.target.value })}
-                >
-                  {ROOMS.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                Modalidad
-                <select
-                  className={input}
-                  value={rental.period}
-                  onChange={(e) =>
-                    setRental({ ...rental, period: e.target.value as Rental['period'] })
-                  }
-                >
-                  <option value="hora">Por hora</option>
-                  <option value="jornada">Por jornada</option>
-                </select>
-              </label>
-              <label className="block">
-                Fecha
-                <input
-                  type="date"
-                  className={input}
-                  value={rental.date}
-                  onChange={(e) => setRental({ ...rental, date: e.target.value })}
-                />
-              </label>
-              <label className="block">
-                Desde
-                <input
-                  type="time"
-                  className={input}
-                  value={rental.start}
-                  onChange={(e) => setRental({ ...rental, start: e.target.value })}
-                />
-              </label>
-              <label className="block">
-                Hasta
-                <input
-                  type="time"
-                  className={input}
-                  value={rental.end}
-                  onChange={(e) => setRental({ ...rental, end: e.target.value })}
-                />
-              </label>
-              <label className="block">
-                Repetición
-                <select
-                  className={input}
-                  value={rental.recurrence}
-                  onChange={(e) =>
-                    setRental({ ...rental, recurrence: e.target.value as Rental['recurrence'] })
-                  }
-                >
-                  <option value="none">Única</option>
-                  <option value="weekly">Semanal</option>
-                </select>
-              </label>
-              {rental.recurrence === 'weekly' && (
-                <label className="block">
-                  Hasta
-                  <input
-                    type="date"
-                    className={input}
-                    value={rental.untilDate}
-                    onChange={(e) => setRental({ ...rental, untilDate: e.target.value })}
-                  />
-                </label>
-              )}
-              <label className="block">
-                Estado del espacio
-                <select
-                  className={input}
-                  value={rental.status}
-                  onChange={(e) =>
-                    setRental({ ...rental, status: e.target.value as Rental['status'] })
-                  }
-                >
-                  <option value="confirmado">Confirmado (ocupa consultorio)</option>
-                  <option value="provisional">Provisional</option>
-                  <option value="cancelled">Cancelado (libera consultorio)</option>
-                </select>
-              </label>
-              <label className="block">
-                Importe acordado ($)
-                <input
-                  type="number"
-                  min="0"
-                  className={input}
-                  value={rental.amount}
-                  onChange={(e) => setRental({ ...rental, amount: Number(e.target.value) })}
-                />
-              </label>
-              <label className="block">
-                Estado de cobro
-                <select
-                  className={input}
-                  value={rental.paymentStatus}
-                  onChange={(e) =>
-                    setRental({
-                      ...rental,
-                      paymentStatus: e.target.value as Rental['paymentStatus'],
-                    })
-                  }
-                >
-                  <option value="pendiente">Pendiente</option>
-                  <option value="parcial">Parcialmente cobrado</option>
-                  <option value="cobrado">Cobrado</option>
-                </select>
-              </label>
-              <label className="block">
-                Vencimiento
-                <input
-                  type="date"
-                  className={input}
-                  value={rental.dueDate}
-                  onChange={(e) => setRental({ ...rental, dueDate: e.target.value })}
-                />
-              </label>
-              <label className="block">
-                Medio de pago
-                <input
-                  className={input}
-                  value={rental.method}
-                  onChange={(e) => setRental({ ...rental, method: e.target.value })}
-                />
-              </label>
-              <label className="block sm:col-span-2">
-                Observaciones
-                <textarea
-                  className={input}
-                  value={rental.notes}
-                  onChange={(e) => setRental({ ...rental, notes: e.target.value })}
-                />
-              </label>
+                    </select>
+                  </label>
+                  {rental.audience === 'habitual' && (
+                    <label className="block">
+                      <span className="font-medium text-[#34433F]">Profesional vinculada (opcional)</span>
+                      <select
+                        className={input}
+                        value={rental.professionalId}
+                        onChange={(e) =>
+                          setRental({ ...rental, professionalId: e.target.value })
+                        }
+                      >
+                        <option value="">Sin vincular</option>
+                        {professionalOptions.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <label className="block sm:col-span-2">
+                    <span className="font-medium text-[#34433F]">Observaciones</span>
+                    <textarea
+                      rows={2}
+                      className={input}
+                      placeholder="Notas o comentarios sobre el espacio o reserva..."
+                      value={rental.notes}
+                      onChange={(e) => setRental({ ...rental, notes: e.target.value })}
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
+
             {rental.audience === 'tercero' && (
               <p className="mt-3 rounded-xl bg-[#F6E9DB] p-3 text-sm text-[#8A521D]">
                 Solo puede guardarse si el consultorio tiene habilitada expresamente la contratación a terceros.
@@ -1219,14 +1257,22 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
                 {error}
               </p>
             )}
-            <div className="mt-4 flex justify-end">
+
+            <div className="mt-5 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 border-t border-[#E5EAE5] pt-3">
+              <button
+                type="button"
+                className="rounded-xl border border-[#D5DDD7] px-4 py-2.5 text-sm font-semibold text-[#52635D] hover:bg-[#F1F3EF] transition"
+                onClick={() => setRental(null)}
+              >
+                Cancelar
+              </button>
               <button
                 type="button"
                 disabled={busy}
-                className="rounded-xl bg-[#46766B] px-4 py-2 text-sm font-semibold text-white"
+                className="rounded-xl bg-[#46766B] px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-[#3B645B] transition disabled:opacity-50"
                 onClick={() => void commitRental()}
               >
-                {busy ? 'Guardando...' : 'Guardar alquiler'}
+                {busy ? 'Guardando...' : 'Confirmar y ocupar espacio'}
               </button>
             </div>
           </div>
