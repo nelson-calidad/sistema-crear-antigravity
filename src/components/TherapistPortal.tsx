@@ -430,7 +430,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
       )}
 
       {/* Contenido Principal */}
-      <main className="mx-auto w-full max-w-7xl flex-1 p-3 sm:p-5">
+      <main className="mx-auto w-full max-w-7xl flex-1 p-3 pb-24 sm:p-5">
         {/* ========================================================================= */}
         {/* TAB 1: MI AGENDA (AGENDA COMPARTIDA DE CONSULTORIOS) */}
         {/* ========================================================================= */}
@@ -904,62 +904,38 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
         )}
       </main>
 
-      {/* Barra de Navegación Inferior para Celulares (1 mano) */}
-      <nav className="fixed bottom-0 inset-x-0 z-30 flex sm:hidden items-center justify-around border-t border-[#E5EAE5] bg-white/95 py-2 px-2 backdrop-blur-md">
-        <button
-          type="button"
-          onClick={() => setActiveTab('agenda')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold ${
-            activeTab === 'agenda' ? 'text-[#46766B]' : 'text-[#889892]'
-          }`}
-        >
-          <Calendar className="h-5 w-5" />
-          <span>Mi agenda</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleOpenBooking()}
-          className="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[10px] font-bold text-[#46766B]"
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#46766B] text-white">
-            <Plus className="h-4 w-4" />
-          </div>
-          <span>Nueva reserva</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('my-bookings')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[10px] font-bold ${
-            activeTab === 'my-bookings' ? 'text-[#46766B]' : 'text-[#889892]'
-          }`}
-        >
-          <Clock className="h-5 w-5" />
-          <span>Mis reservas</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('availability')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[10px] font-bold ${
-            activeTab === 'availability' ? 'text-[#46766B]' : 'text-[#889892]'
-          }`}
-        >
-          <CalendarDays className="h-5 w-5" />
-          <span>Mi disponibilidad</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold ${
-            activeTab === 'profile' ? 'text-[#46766B]' : 'text-[#889892]'
-          }`}
-        >
-          <User className="h-5 w-5" />
-          <span>Mi perfil</span>
-        </button>
+      {/* Barra de Navegación Inferior para Celulares (1 mano): 5 columnas iguales para que siempre entren todas */}
+      <nav className="fixed bottom-0 inset-x-0 z-30 grid grid-cols-5 sm:hidden border-t border-[#E5EAE5] bg-white/95 px-1 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+        {([
+          { key: 'agenda', label: 'Agenda', Icon: Calendar, onClick: () => setActiveTab('agenda') },
+          { key: 'new', label: 'Reservar', Icon: Plus, onClick: () => handleOpenBooking() },
+          { key: 'my-bookings', label: 'Reservas', Icon: Clock, onClick: () => setActiveTab('my-bookings') },
+          { key: 'availability', label: 'Horarios', Icon: CalendarDays, onClick: () => setActiveTab('availability') },
+          { key: 'profile', label: 'Perfil', Icon: User, onClick: () => setActiveTab('profile') },
+        ] as const).map(({ key, label, Icon, onClick }) => {
+          const isNew = key === 'new';
+          const isActive = activeTab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={onClick}
+              aria-label={label}
+              className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[10px] font-bold leading-tight ${
+                isNew || isActive ? 'text-[#46766B]' : 'text-[#889892]'
+              }`}
+            >
+              {isNew ? (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#46766B] text-white">
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
+              ) : (
+                <Icon className="h-[18px] w-[18px]" />
+              )}
+              <span className="w-full truncate text-center">{label}</span>
+            </button>
+          );
+        })}
       </nav>
 
       {/* Modal Rápido de Turno / Reserva */}
