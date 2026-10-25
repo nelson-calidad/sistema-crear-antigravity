@@ -553,15 +553,25 @@ export const Agenda = ({
           ========================================================================= */}
       <div className="md:hidden rounded-2xl border border-[#E5EAE5] bg-white p-2.5 shadow-2xs shrink-0 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-1 w-full">
-          {/* Navegación temporal: Hoy, Ant, Sig, Selector de fecha */}
+          {/* Navegación temporal: Hoy, +1 sem, Ant, Sig, Selector de fecha */}
           <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5 min-w-0 shrink">
             <button
               type="button"
               onClick={() => setSelectedDate(new Date())}
               className="rounded-lg px-2 py-1 text-xs font-bold text-[#46766B] hover:bg-white transition shrink-0"
+              title="Ir a hoy"
             >
               Hoy
             </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+              className="rounded-lg px-1.5 py-1 text-[11px] font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition shrink-0 hidden min-[360px]:inline-block"
+              title="Avanzar 1 semana"
+            >
+              +1 sem
+            </button>
+            <div className="h-3.5 w-px bg-[#D5DDD7] my-auto mx-0.5 shrink-0" />
             <button
               type="button"
               onClick={() =>
@@ -572,7 +582,7 @@ export const Agenda = ({
                   )
                 )
               }
-              title="Anterior"
+              title={timeMode === 'weekly' ? 'Semana anterior' : 'Día anterior'}
               className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40] shrink-0"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
@@ -587,7 +597,7 @@ export const Agenda = ({
                   )
                 )
               }
-              title="Siguiente"
+              title={timeMode === 'weekly' ? 'Semana siguiente' : 'Día siguiente'}
               className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40] shrink-0"
             >
               <ChevronRight className="h-3.5 w-3.5" />
@@ -723,15 +733,25 @@ export const Agenda = ({
               <span className="text-sm font-bold text-[#264A40] hidden sm:inline">Agenda</span>
             </div>
 
-            {/* Navegación temporal: Hoy, Ant, Sig, Selector de fecha */}
+            {/* Navegación temporal: Hoy, +1 sem, Ant, Sig, Selector de fecha */}
             <div className="flex items-center rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
               <button
                 type="button"
                 onClick={() => setSelectedDate(new Date())}
                 className="rounded-md px-2 py-1 text-xs font-bold text-[#46766B] hover:bg-white transition"
+                title="Ir a hoy"
               >
                 Hoy
               </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+                className="rounded-md px-2 py-1 text-xs font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
+                title="Avanzar 1 semana"
+              >
+                +1 sem
+              </button>
+              <div className="h-4 w-px bg-[#D5DDD7] my-auto mx-0.5" />
               <button
                 type="button"
                 onClick={() =>
@@ -742,7 +762,7 @@ export const Agenda = ({
                     )
                   )
                 }
-                title="Anterior"
+                title={timeMode === 'weekly' ? 'Semana anterior' : 'Día anterior'}
                 className="rounded-md p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -757,7 +777,7 @@ export const Agenda = ({
                     )
                   )
                 }
-                title="Siguiente"
+                title={timeMode === 'weekly' ? 'Semana siguiente' : 'Día siguiente'}
                 className="rounded-md p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
               >
                 <ChevronRight className="h-3.5 w-3.5" />

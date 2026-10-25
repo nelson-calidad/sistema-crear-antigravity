@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import {
   X as CloseIcon,
@@ -32,6 +32,9 @@ import { useSession } from './lib/session';
 import { useAuth, logoutUser } from './lib/crearAuth';
 import { LoginView } from './components/LoginView';
 import { TherapistPortal } from './components/TherapistPortal';
+import { QuickReservationModal } from './components/QuickReservationModal';
+import { usePatients } from './lib/patientsStore';
+import type { ConfiguredRoom } from './types';
 
 const Dashboard = lazy(() => import('./components/HomeReal').then((module) => ({ default: module.HomeReal })));
 const Admissions = lazy(() => import('./components/Admissions').then((module) => ({ default: module.Admissions })));
@@ -42,7 +45,6 @@ const Finance = lazy(() => import('./components/FinanceReal').then((module) => (
 const Settings = lazy(() => import('./components/SettingsReal').then((module) => ({ default: module.SettingsReal })));
 const Responsibilities = lazy(() => import('./components/Responsibilities').then((module) => ({ default: module.Responsibilities })));
 const CoveragePlanner = lazy(() => import('./components/CoveragePlanner').then((module) => ({ default: module.CoveragePlanner })));
-const ReservationModal = lazy(() => import('./components/ReservationModal').then((module) => ({ default: module.ReservationModal })));
 
 type ToastTone = 'success' | 'error' | 'info';
 
@@ -86,7 +88,21 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
   const interviewRecords = useRecords('interviews');
   const agreementRecords = useRecords('agreements');
   const rentalRecords = useRecords('rentals');
+  const roomRecords = useRecords('rooms');
   const [professionals] = useProfessionals();
+  const patients = usePatients();
+  const configuredRooms: ConfiguredRoom[] = useMemo(() => {
+    return roomRecords.rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      capacity: r.capacity || 1,
+      resources: r.features || [],
+      color: r.color || 'bg-slate-100',
+      cleaningMinutes: 0,
+      hourlyRate: r.hourlyRate || 0,
+      thirdPartyEnabled: r.thirdPartyEnabled,
+    }));
+  }, [roomRecords.rows]);
   const agendaAppointments = buildUnifiedOccupancyAppointments({
     appointments,
     interviews: interviewRecords.rows,
@@ -387,77 +403,85 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
         </section>
       </main>
 
-      {isModalOpen && <Suspense fallback={<div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/35 p-4"><div className="rounded-2xl bg-white px-5 py-4 text-sm font-bold text-slate-700 shadow-xl dark:bg-slate-900 dark:text-slate-100">Cargando reserva...</div></div>}>
-        <ReservationModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        room={modalContext.room}
-        professional={modalContext.pro}
-        appointments={agendaAppointments}
-        initialData={modalContext.appointment}
-        initialDate={modalContext.date}
-        initialStartTime={modalContext.startTime}
-        onSave={async (data) => {
-          if (!user) {
-            pushToast('error', 'Sesión requerida', 'Inicia sesión para guardar cambios.');
-            return;
+      {isModalOpen && (
+        <QuickReservationModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          currentUser={
+            authenticated?.actor ||
+            (user
+              ? { id: user.uid, role: 'admin', name: user.name, email: user.email }
+              : { id: 'admin', role: 'admin', name: 'Administración', email: 'admin@crear.com' })
           }
-          setModalAction('save');
-          try {
-            const patientName = data.patient?.trim();
-            const kind = data.kind || data.type || 'session';
-            const professionalId = data.professionalId || data.proId;
-            const appointmentData = {
-              ...data,
-              kind,
-              type: kind,
-              status: data.status || 'scheduled',
-              start: data.startTime,
-              end: data.endTime,
-              patient: patientName || undefined,
-              title: patientName || data.title || 'Reserva',
-              professionalId,
-              proId: professionalId,
-              createdBy: user.uid
-            };
-            await saveAppointment(appointmentData, modalContext.appointment?.id, {
-              onSaving: () => {
-                pushToast('info', 'Guardando...', 'Sincronizando con Google Sheets.');
-              },
-              onConfirmed: () => {
-                pushToast('success', 'Reserva confirmada', 'El turno quedó guardado en Google Sheets.');
-              },
-              onError: (err) => {
-                pushToast('error', 'Error al guardar', err.message || 'No se pudo confirmar en Google Sheets.');
-              },
-            });
-            setAgendaFocusDate(appointmentData.date);
-            setIsModalOpen(false); // Close immediately after save returns
-            if (activeTab !== 'rooms') {
-              navigateToTab('agenda', { replace: true });
+          rooms={configuredRooms}
+          appointments={agendaAppointments}
+          patients={patients}
+          initialData={modalContext.appointment}
+          initialRoomId={
+            configuredRooms.find(
+              (r) => r.name === modalContext.room || r.id === modalContext.room
+            )?.id || modalContext.room
+          }
+          initialProfessionalId={
+            professionals.find(
+              (p) => p.name === modalContext.pro || p.id === modalContext.pro
+            )?.id || modalContext.pro
+          }
+          initialDate={modalContext.date}
+          initialStartTime={modalContext.startTime}
+          onSave={async (record) => {
+            if (!user) {
+              pushToast('error', 'Sesión requerida', 'Inicia sesión para guardar cambios.');
+              return;
             }
-          } catch (error) {
-            pushToast('error', 'No se pudo guardar', error instanceof Error ? error.message : 'No se pudo guardar la reserva.');
-          } finally {
-            setModalAction(null);
-          }
-        }}
-        onDelete={async (id) => {
-          setModalAction('delete');
-          try {
-            await deleteAppointment(id);
-            setIsModalOpen(false);
-            pushToast('success', 'Turno eliminado', 'La reserva se borró correctamente.');
-          } catch (error) {
-            pushToast('error', 'Error', 'No se pudo borrar el turno.');
-          } finally {
-            setModalAction(null);
-          }
-        }}
-        isSaving={modalAction === 'save'}
-        isDeleting={modalAction === 'delete'}
-      />
-      </Suspense>}
+            setModalAction('save');
+            try {
+              const appointmentData = {
+                ...modalContext.appointment,
+                ...record,
+                status: 'confirmed',
+                createdBy: user.uid,
+              };
+              await saveAppointment(appointmentData, modalContext.appointment?.id, {
+                onSaving: () => {
+                  pushToast('info', 'Guardando...', 'Sincronizando con Google Sheets.');
+                },
+                onConfirmed: () => {
+                  pushToast('success', 'Reserva confirmada', 'El turno quedó guardado en Google Sheets.');
+                },
+                onError: (err) => {
+                  pushToast('error', 'Error al guardar', err.message || 'No se pudo confirmar en Google Sheets.');
+                },
+              });
+              setAgendaFocusDate(appointmentData.date);
+              setIsModalOpen(false);
+              if (activeTab !== 'rooms') {
+                navigateToTab('agenda', { replace: true });
+              }
+            } catch (error) {
+              pushToast(
+                'error',
+                'No se pudo guardar',
+                error instanceof Error ? error.message : 'No se pudo guardar la reserva.'
+              );
+            } finally {
+              setModalAction(null);
+            }
+          }}
+          onDelete={async (id) => {
+            setModalAction('delete');
+            try {
+              await deleteAppointment(id);
+              setIsModalOpen(false);
+              pushToast('success', 'Turno eliminado', 'La reserva se borró correctamente.');
+            } catch (error) {
+              pushToast('error', 'Error', 'No se pudo borrar el turno.');
+            } finally {
+              setModalAction(null);
+            }
+          }}
+        />
+      )}
 
       <div className="fixed right-4 top-4 z-[60] flex w-[min(92vw,360px)] flex-col gap-3 pointer-events-none">
         <AnimatePresence initial={false}>

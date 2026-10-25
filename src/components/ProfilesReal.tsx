@@ -875,21 +875,6 @@ export function ProfilesReal({
                   setSelectedProfile((curr) => (curr ? { ...curr, email: e.target.value } : curr))
                 }
               />
-              <SelectField
-                label="Referente administrativa"
-                value={selectedProfile.responsible}
-                onChange={(e) =>
-                  setSelectedProfile((curr) =>
-                    curr ? { ...curr, responsible: e.target.value } : curr
-                  )
-                }
-              >
-                <option value="">Sin asignar</option>
-                <option value="Karina">Karina</option>
-                <option value="Janina">Janina</option>
-                <option value={thirdAdmin}>{thirdAdmin}</option>
-                <option value={fourthAdmin}>{fourthAdmin}</option>
-              </SelectField>
 
               <div className="flex flex-col justify-end">
                 <label className="flex min-h-11 items-center justify-between rounded-xl border border-[#DDE3DF] bg-white px-3.5 py-2 text-sm font-semibold text-[#34433F] cursor-pointer">

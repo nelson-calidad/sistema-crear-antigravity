@@ -16,6 +16,7 @@ interface QuickReservationModalProps {
   patients: PatientRecord[];
   initialData?: AppointmentRecord | null;
   initialRoomId?: string;
+  initialProfessionalId?: string;
   initialDate?: string;
   initialStartTime?: string;
   initialKind?: 'block' | 'session';
@@ -30,7 +31,7 @@ export function QuickReservationModal(props: QuickReservationModalProps) {
 
 function ReservationForm({
   onClose, currentUser, rooms, appointments, patients, initialData,
-  initialRoomId, initialDate, initialStartTime, initialKind, onSave, onDelete,
+  initialRoomId, initialProfessionalId, initialDate, initialStartTime, initialKind, onSave, onDelete,
 }: QuickReservationModalProps) {
   const [professionals] = useProfessionals();
   const patientListId = useId();
@@ -47,7 +48,7 @@ function ReservationForm({
   const [detail, setDetail] = useState(reservationDetail(initialData));
   const activeProfessionals = professionals.filter(p => p.status === 'Activo' || p.id === initialData?.professionalId);
   const [therapistId, setTherapistId] = useState(
-    initialData?.professionalId || initialData?.proId || currentUser.professionalId ||
+    initialData?.professionalId || initialData?.proId || initialProfessionalId || currentUser.professionalId ||
     (currentUser.role === 'admin' ? activeProfessionals[0]?.id || '' : currentUser.id)
   );
   const [recurrence, setRecurrence] = useState<NonNullable<AppointmentRecord['recurrence']>>(initialData?.recurrence || 'none');
