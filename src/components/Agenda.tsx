@@ -552,26 +552,9 @@ export const Agenda = ({
           TOOLBAR MÓVIL (< md): LIMPIA, COMPACTA Y CON FILTROS EN PANEL
           ========================================================================= */}
       <div className="md:hidden rounded-2xl border border-[#E5EAE5] bg-white p-2.5 shadow-2xs shrink-0 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-1 w-full">
-          {/* Navegación temporal: Hoy, +1 sem, Ant, Sig, Selector de fecha */}
-          <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5 min-w-0 shrink">
-            <button
-              type="button"
-              onClick={() => setSelectedDate(new Date())}
-              className="rounded-lg px-2 py-1 text-xs font-bold text-[#46766B] hover:bg-white transition shrink-0"
-              title="Ir a hoy"
-            >
-              Hoy
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDate(addDays(selectedDate, 7))}
-              className="rounded-lg px-1.5 py-1 text-[11px] font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition shrink-0 hidden min-[360px]:inline-block"
-              title="Avanzar 1 semana"
-            >
-              +1 sem
-            </button>
-            <div className="h-3.5 w-px bg-[#D5DDD7] my-auto mx-0.5 shrink-0" />
+        <div className="flex items-center justify-between gap-1.5 w-full">
+          {/* Navegación temporal: < Hoy > */}
+          <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5 shrink-0">
             <button
               type="button"
               onClick={() =>
@@ -583,9 +566,16 @@ export const Agenda = ({
                 )
               }
               title={timeMode === 'weekly' ? 'Semana anterior' : 'Día anterior'}
-              className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40] shrink-0"
+              className="rounded-lg p-1.5 text-[#52635D] hover:bg-white active:scale-95 transition"
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(new Date())}
+              className="px-2.5 py-1 text-xs font-bold text-[#34433F] hover:bg-white rounded-lg transition"
+            >
+              Hoy
             </button>
             <button
               type="button"
@@ -598,23 +588,25 @@ export const Agenda = ({
                 )
               }
               title={timeMode === 'weekly' ? 'Semana siguiente' : 'Día siguiente'}
-              className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40] shrink-0"
+              className="rounded-lg p-1.5 text-[#52635D] hover:bg-white active:scale-95 transition"
             >
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
-            <input
-              type="date"
-              value={format(selectedDate, 'yyyy-MM-dd')}
-              onChange={(e) => {
-                const parsed = parseDay(e.target.value);
-                if (parsed) setSelectedDate(parsed);
-              }}
-              className="bg-transparent border-none text-[11px] font-bold text-[#34433F] outline-none px-1 py-0.5 cursor-pointer w-[90px] shrink min-w-0"
-            />
           </div>
 
+          {/* Selector de fecha */}
+          <input
+            type="date"
+            value={format(selectedDate, 'yyyy-MM-dd')}
+            onChange={(e) => {
+              const parsed = parseDay(e.target.value);
+              if (parsed) setSelectedDate(parsed);
+            }}
+            className="rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] px-2 py-1 text-xs font-bold text-[#34433F] outline-none min-w-0 flex-1 max-w-[130px] focus:border-[#46766B] focus:bg-white"
+          />
+
           {/* Acciones Derecha: Botón Filtros (con badge de activo) + Botón Reservar */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0 ml-auto">
             <button
               type="button"
               onClick={() => setShowMobileFilters((open) => !open)}
@@ -733,25 +725,8 @@ export const Agenda = ({
               <span className="text-sm font-bold text-[#264A40] hidden sm:inline">Agenda</span>
             </div>
 
-            {/* Navegación temporal: Hoy, +1 sem, Ant, Sig, Selector de fecha */}
+            {/* Navegación temporal: < Hoy > */}
             <div className="flex items-center rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
-              <button
-                type="button"
-                onClick={() => setSelectedDate(new Date())}
-                className="rounded-md px-2 py-1 text-xs font-bold text-[#46766B] hover:bg-white transition"
-                title="Ir a hoy"
-              >
-                Hoy
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedDate(addDays(selectedDate, 7))}
-                className="rounded-md px-2 py-1 text-xs font-semibold text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
-                title="Avanzar 1 semana"
-              >
-                +1 sem
-              </button>
-              <div className="h-4 w-px bg-[#D5DDD7] my-auto mx-0.5" />
               <button
                 type="button"
                 onClick={() =>
@@ -763,9 +738,16 @@ export const Agenda = ({
                   )
                 }
                 title={timeMode === 'weekly' ? 'Semana anterior' : 'Día anterior'}
-                className="rounded-md p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
+                className="rounded-md p-1.5 text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
               >
-                <ChevronLeft className="h-3.5 w-3.5" />
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDate(new Date())}
+                className="rounded-md px-2.5 py-1 text-xs font-bold text-[#34433F] hover:bg-white transition"
+              >
+                Hoy
               </button>
               <button
                 type="button"
@@ -778,20 +760,22 @@ export const Agenda = ({
                   )
                 }
                 title={timeMode === 'weekly' ? 'Semana siguiente' : 'Día siguiente'}
-                className="rounded-md p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
+                className="rounded-md p-1.5 text-[#52635D] hover:bg-white hover:text-[#264A40] transition"
               >
-                <ChevronRight className="h-3.5 w-3.5" />
+                <ChevronRight className="h-4 w-4" />
               </button>
-              <input
-                type="date"
-                value={format(selectedDate, 'yyyy-MM-dd')}
-                onChange={(e) => {
-                  const parsed = parseDay(e.target.value);
-                  if (parsed) setSelectedDate(parsed);
-                }}
-                className="bg-transparent border-none text-xs font-semibold text-[#34433F] outline-none px-1.5 py-0.5 cursor-pointer max-w-[115px]"
-              />
             </div>
+
+            {/* Selector de fecha */}
+            <input
+              type="date"
+              value={format(selectedDate, 'yyyy-MM-dd')}
+              onChange={(e) => {
+                const parsed = parseDay(e.target.value);
+                if (parsed) setSelectedDate(parsed);
+              }}
+              className="rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] text-xs font-semibold text-[#34433F] outline-none px-2.5 py-1 cursor-pointer focus:border-[#46766B] focus:bg-white"
+            />
 
             {/* Modos de tiempo: Día | Sem | Mes */}
             <div className="flex items-center rounded-lg border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">

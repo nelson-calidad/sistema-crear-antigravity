@@ -184,7 +184,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
 
   const myProId = currentUser.professionalId || currentUser.id;
 
-  const navigateDate = (direction: 'prev' | 'next' | 'today' | 'nextWeek' | 'prevWeek') => {
+  const navigateDate = (direction: 'prev' | 'next' | 'today') => {
     if (direction === 'today') {
       setCurrentDateStr(
         new Intl.DateTimeFormat('en-CA', {
@@ -194,18 +194,6 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
           day: '2-digit',
         }).format(new Date())
       );
-      return;
-    }
-    if (direction === 'nextWeek') {
-      const curr = new Date(`${currentDateStr}T12:00:00`);
-      curr.setDate(curr.getDate() + 7);
-      setCurrentDateStr(curr.toISOString().split('T')[0]);
-      return;
-    }
-    if (direction === 'prevWeek') {
-      const curr = new Date(`${currentDateStr}T12:00:00`);
-      curr.setDate(curr.getDate() - 7);
-      setCurrentDateStr(curr.toISOString().split('T')[0]);
       return;
     }
     const curr = new Date(`${currentDateStr}T12:00:00`);
@@ -485,37 +473,27 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
           <div className="space-y-3">
             {/* Barra de Controles Compacta */}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-3xl border border-[#E5EAE5] bg-white p-3 shadow-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center gap-1 rounded-2xl border border-[#DDE3DF] bg-[#F9FBF9] p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => navigateDate('today')}
-                    className="px-2.5 py-1 text-xs font-bold text-[#46766B] hover:bg-[#EAEFEA] rounded-xl transition shrink-0"
-                    title="Ir al día de hoy"
-                  >
-                    Hoy
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigateDate('nextWeek')}
-                    className="px-2.5 py-1 text-xs font-semibold text-[#52635D] hover:bg-[#EAEFEA] hover:text-[#264A40] rounded-xl transition shrink-0 hidden min-[380px]:inline-block"
-                    title="Avanzar 1 semana"
-                  >
-                    +1 sem
-                  </button>
-                  <div className="h-4 w-px bg-[#DDE3DF] my-auto mx-0.5 shrink-0" />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center rounded-2xl border border-[#DDE3DF] bg-[#F9FBF9] p-0.5">
                   <button
                     type="button"
                     onClick={() => navigateDate('prev')}
-                    className="rounded-xl p-1.5 text-[#52635D] hover:bg-[#EAEFEA] transition shrink-0"
+                    className="rounded-xl p-1.5 text-[#52635D] hover:bg-[#EAEFEA] active:scale-95 transition"
                     title={viewMode === 'week' ? 'Semana anterior' : 'Día anterior'}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
+                    onClick={() => navigateDate('today')}
+                    className="px-3 py-1 text-xs font-bold text-[#34433F] hover:bg-[#EAEFEA] rounded-xl transition"
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => navigateDate('next')}
-                    className="rounded-xl p-1.5 text-[#52635D] hover:bg-[#EAEFEA] transition shrink-0"
+                    className="rounded-xl p-1.5 text-[#52635D] hover:bg-[#EAEFEA] active:scale-95 transition"
                     title={viewMode === 'week' ? 'Semana siguiente' : 'Día siguiente'}
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -526,7 +504,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                   type="date"
                   value={currentDateStr}
                   onChange={(e) => setCurrentDateStr(e.target.value)}
-                  className="rounded-2xl border border-[#DDE3DF] bg-[#F9FBF9] px-2.5 py-1.5 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:outline-none"
+                  className="rounded-2xl border border-[#DDE3DF] bg-[#F9FBF9] px-3 py-1.5 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:outline-none"
                 />
 
                 <span className="hidden md:inline-block text-xs font-bold capitalize text-[#34433F] ml-1">
