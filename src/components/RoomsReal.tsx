@@ -27,6 +27,38 @@ const HOURS_SLOTS = [
 
 const WEEKDAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
+const DEFAULT_ROOMS_INFO: Record<
+  string,
+  {
+    tag: string;
+    badgeTone: string;
+    disciplines: string[];
+    description: string;
+  }
+> = {
+  c1: {
+    tag: 'Pedagogía y Evaluación',
+    badgeTone: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    disciplines: ['Psicología', 'Psicopedagogía', 'Educación Especial'],
+    description:
+      'Espacio flexible para entrevistas diagnósticas, evaluaciones pedagógicas y sesiones interdisciplinarias.',
+  },
+  c2: {
+    tag: 'Rehabilitación y Movimiento',
+    badgeTone: 'bg-teal-50 text-teal-800 border-teal-200',
+    disciplines: ['Psicomotricidad', 'Terapia Ocupacional'],
+    description:
+      'Equipado para estimulación temprana, actividades de movimiento, integración sensorial y psicomotricidad.',
+  },
+  c3: {
+    tag: 'Atención Tranquila y Lenguaje',
+    badgeTone: 'bg-sky-50 text-sky-800 border-sky-200',
+    disciplines: ['Fonoaudiología', 'Psicología'],
+    description:
+      'Ambiente calmo y acústicamente protegido para atención individualizada, fonoaudiología y estimulación del lenguaje.',
+  },
+};
+
 interface RoomsRealProps {
   onOpenModal?: (
     room?: string,
@@ -82,14 +114,7 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
     setError('');
     try {
       if (room) await save('rooms', room);
-      if (agreement) {
-        if (!agreement.professionalId || agreement.start >= agreement.end) {
-          throw new Error('Elegí profesional y horario válido.');
-        }
-        await save('agreements', agreement);
-      }
       setRoom(null);
-      setAgreement(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -186,8 +211,7 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
 
   const handleSlotAction = (slot: UnifiedOccupancySlot) => {
     if (slot.source === 'agreements') {
-      const found = agreements.rows.find((a) => a.id === slot.id);
-      if (found) setAgreement(found);
+      setSelectedSlotDetail(slot);
       return;
     }
     if (slot.source === 'rentals') {
@@ -244,13 +268,13 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
         <div>
           <h1 className="text-2xl sm:text-3xl font-semibold text-[#34433F]">Consultorios</h1>
           <p className="text-sm text-[#6D7C76]">
-            Espacios, acuerdos mensuales, alquileres y disponibilidad real unificada con la agenda de terapeutas
+            Espacios, alquileres y disponibilidad en tiempo real unificada con la agenda de terapeutas
           </p>
         </div>
         <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto">
           <button
             type="button"
-            className="min-h-11 rounded-xl border border-[#D7DFDA] bg-white px-4 py-2 text-sm font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
+            className="min-h-11 rounded-xl bg-[#46766B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B675D] shadow-xs inline-flex items-center justify-center gap-1.5"
             onClick={() =>
               setRental({
                 id: uid(),
@@ -276,27 +300,8 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
               })
             }
           >
-            Nuevo alquiler
-          </button>
-          <button
-            type="button"
-            className="min-h-11 rounded-xl bg-[#46766B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B675D]"
-            onClick={() =>
-              setAgreement({
-                id: uid(),
-                professionalId: '',
-                roomId: 'c1',
-                days: '1',
-                start: '14:00',
-                end: '20:00',
-                amount: 65000,
-                dueDay: 10,
-                status: 'activo',
-                notes: '',
-              })
-            }
-          >
-            Nuevo acuerdo mensual
+            <Plus className="h-4 w-4" />
+            <span>Nuevo alquiler de consultorio</span>
           </button>
         </div>
       </div>
@@ -306,12 +311,7 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
           {rooms.error}
         </p>
       )}
-      {agreements.error && (
-        <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">
-          {agreements.error}
-        </p>
-      )}
-      {error && !room && !agreement && !rental && (
+      {error && !room && !rental && (
         <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">
           {error}
         </p>
@@ -327,37 +327,94 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
             disciplines: '',
             thirdPartyEnabled: false,
           };
+          const fallback = DEFAULT_ROOMS_INFO[defaultRoom.id] || {
+            tag: 'Consultorio',
+            badgeTone: 'bg-gray-50 text-gray-700 border-gray-200',
+            disciplines: ['Atención clínica'],
+            description: 'Espacio de atención interdisciplinaria.',
+          };
+
+          const displayDescription = value.description?.trim() || fallback.description;
+          const displayDisciplines = value.disciplines?.trim()
+            ? value.disciplines.split(',').map((d) => d.trim()).filter(Boolean)
+            : fallback.disciplines;
+
           return (
             <section
               key={value.id}
-              className="rounded-2xl border border-[#E5EAE5] bg-white p-5 shadow-xs"
+              className="flex flex-col justify-between rounded-2xl border border-[#E5EAE5] bg-white p-5 shadow-xs transition hover:shadow-md"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h2 className="text-lg font-semibold text-[#34433F]">{value.name}</h2>
-                  <p className="mt-0.5 text-sm text-[#6D7C76]">
-                    {value.description || 'Sin descripción'}
-                  </p>
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${fallback.badgeTone}`}
+                    >
+                      {fallback.tag}
+                    </span>
+                    <h2 className="mt-2 text-lg font-bold text-[#34433F] truncate">
+                      {value.name}
+                    </h2>
+                  </div>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#46766B]">
+                    <DoorOpen className="h-5 w-5" />
+                  </span>
                 </div>
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#46766B]">
-                  <DoorOpen className="h-4 w-4" />
-                </span>
+
+                <p className="mt-2.5 text-xs sm:text-sm text-[#556560] leading-relaxed">
+                  {displayDescription}
+                </p>
+
+                <div className="mt-3.5 space-y-1.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#6D7C76]">
+                    Disciplinas preparadas
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {displayDisciplines.map((d) => (
+                      <span
+                        key={d}
+                        className="rounded-lg bg-[#F1F5F3] px-2 py-0.5 text-xs font-semibold text-[#2C4F44]"
+                      >
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 text-xs text-[#34433F]">
+                  <span className="font-semibold text-[#6D7C76]">Alquiler a terceros:</span>
+                  <span
+                    className={`inline-flex items-center gap-1 font-bold ${
+                      value.thirdPartyEnabled ? 'text-emerald-700' : 'text-[#8E9B96]'
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        value.thirdPartyEnabled ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}
+                    />
+                    {value.thirdPartyEnabled ? 'Habilitado' : 'Desactivado'}
+                  </span>
+                </div>
               </div>
-              <p className="mt-3 text-sm text-[#34433F]">
-                <strong className="font-semibold">Disciplinas:</strong>{' '}
-                {value.disciplines || 'Sin configurar'}
-              </p>
-              <p className="mt-1 text-sm text-[#34433F]">
-                <strong className="font-semibold">Alquiler a terceros:</strong>{' '}
-                {value.thirdPartyEnabled ? 'Habilitado' : 'Desactivado'}
-              </p>
-              <button
-                type="button"
-                className="mt-4 rounded-xl border border-[#D7DFDA] px-3.5 py-2 text-sm font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
-                onClick={() => setRoom(value)}
-              >
-                Editar espacio
-              </button>
+
+              <div className="mt-4 pt-3 border-t border-[#F0F4F2] flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  className="rounded-xl border border-[#D7DFDA] px-3 py-1.5 text-xs font-semibold text-[#34433F] hover:bg-[#F1F3EF] transition"
+                  onClick={() => setRoom(value)}
+                >
+                  Configurar espacio
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-xl bg-[#46766B] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#3B675D] transition"
+                  onClick={() => handleFreeSlotReserve(value.id, '09:00')}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Reservar aquí</span>
+                </button>
+              </div>
             </section>
           );
         })}
@@ -697,307 +754,56 @@ export function RoomsReal({ onOpenModal, onNavigate }: RoomsRealProps = {}) {
         )}
       </section>
 
-      {/* Sección Acuerdos de uso mensuales */}
-      <section className="rounded-2xl border border-[#E5EAE5] bg-white p-5 shadow-xs">
-        <div>
-          <h2 className="text-lg font-semibold text-[#34433F]">Acuerdos de uso mensual</h2>
-          <p className="text-xs text-[#6D7C76]">
-            Importe mensual fijo por profesional, independiente de la cantidad de pacientes y turnos realizados.
-          </p>
-        </div>
-        {agreements.rows.length === 0 ? (
-          <p className="mt-3 text-sm text-[#6D7C76]">Todavía no hay acuerdos registrados.</p>
-        ) : (
-          <div className="mt-3 divide-y divide-[#E5EAE5]">
-            {agreements.rows.map((x) => {
-              const currentMonth = localDate().slice(0, 7);
-              const matchingPaid = money.rows.filter(
-                (row) =>
-                  (row.id === `rent-${x.id}-${currentMonth}` ||
-                    row.sourceId === x.id ||
-                    row.id.startsWith(`rent-${x.id}-${currentMonth}`)) &&
-                  row.status === 'pagado'
-              );
-              const paidAmount = matchingPaid.reduce((sum, r) => sum + Number(r.amount || 0), 0);
-              const agreedAmount = Number(x.amount || 0);
-              const pendingAmount = Math.max(agreedAmount - paidAmount, 0);
-              const isPaid = paidAmount >= agreedAmount && agreedAmount > 0;
-              const isPartial = paidAmount > 0 && paidAmount < agreedAmount;
-
-              return (
-                <div
-                  key={x.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-3"
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <strong className="text-sm font-bold text-[#34433F]">
-                        {resolveProName(x.professionalId)}
-                      </strong>
-                      <span className="rounded-full bg-[#EEF2EE] px-2.5 py-0.5 text-xs font-medium text-[#46766B]">
-                        Acuerdo mensual institucional
-                      </span>
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                          isPaid
-                            ? 'bg-[#DDEAE2] text-[#1D4E38]'
-                            : isPartial
-                              ? 'bg-[#FEF3C7] text-[#92400E]'
-                              : 'bg-[#F6E9DB] text-[#8A521D]'
-                        }`}
-                      >
-                        {isPaid ? 'Al día (Cobrado)' : isPartial ? 'Parcialmente cobrado' : 'Pendiente este mes'}
-                      </span>
-                      {x.dueDay && (
-                        <span className="text-[11px] text-[#7A8A84]">
-                          Vence día {x.dueDay}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-sm text-[#34433F]">
-                      {ROOMS.find((r) => r.id === x.roomId)?.name} ·{' '}
-                      {WEEKDAYS_ES[Number(x.days)] || x.days} · {x.start}–{x.end}
-                    </p>
-                    <p className="text-xs text-[#6D7C76]">
-                      Acordado mensual: ${agreedAmount.toLocaleString('es-AR')} · Cobrado este mes: ${paidAmount.toLocaleString('es-AR')} ·{' '}
-                      <span className={pendingAmount > 0 ? 'font-semibold text-[#8A521D]' : ''}>
-                        Saldo pendiente: ${pendingAmount.toLocaleString('es-AR')}
-                      </span>
-                    </p>
-                    {(x.startDate || x.endDate) && (
-                      <p className="text-[11px] text-[#7A8A84]">
-                        Vigencia: {x.startDate ? `Desde ${x.startDate}` : ''} {x.endDate ? `hasta ${x.endDate}` : 'indefinida'}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="rounded-xl border border-[#D7DFDA] px-3 py-1.5 text-xs font-semibold text-[#34433F] hover:bg-[#F1F3EF]"
-                      onClick={() => setAgreement(x)}
-                    >
-                      Editar
-                    </button>
-                    {onNavigate && (
-                      <button
-                        type="button"
-                        className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
-                          pendingAmount > 0
-                            ? 'border-[#46766B] bg-[#E8F3EE] text-[#46766B] hover:bg-[#DDEAE2]'
-                            : 'border-[#D7DFDA] bg-white text-[#52635D] hover:bg-[#F1F3EF]'
-                        }`}
-                        onClick={() => onNavigate('finance')}
-                      >
-                        {pendingAmount > 0 ? 'Cobrar en Finanzas →' : 'Ver en Finanzas →'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Modal: Editar Consultorio o Acuerdo Mensual */}
-      {(room || agreement) && (
+      {/* Modal: Configurar Consultorio */}
+      {room && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-3">
           <div className="max-h-[94dvh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-[#34433F]">
-                {room ? 'Configurar Consultorio' : 'Acuerdo mensual de uso'}
+                Configurar Consultorio
               </h2>
               <button
                 type="button"
                 className="text-sm font-semibold text-[#6D7C76] hover:text-[#34433F]"
-                onClick={() => {
-                  setRoom(null);
-                  setAgreement(null);
-                }}
+                onClick={() => setRoom(null)}
               >
                 Cerrar
               </button>
             </div>
-            {room ? (
-              <div className="space-y-3 text-sm">
-                <label className="block">
-                  Nombre
-                  <input
-                    className={input}
-                    value={room.name}
-                    onChange={(e) => setRoom({ ...room, name: e.target.value })}
-                  />
-                </label>
-                <label className="block">
-                  Descripción
-                  <input
-                    className={input}
-                    value={room.description}
-                    onChange={(e) => setRoom({ ...room, description: e.target.value })}
-                  />
-                </label>
-                <label className="block">
-                  Disciplinas compatibles
-                  <input
-                    className={input}
-                    value={room.disciplines}
-                    onChange={(e) => setRoom({ ...room, disciplines: e.target.value })}
-                  />
-                </label>
-                <label className="flex items-center gap-2 pt-1 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={room.thirdPartyEnabled}
-                    onChange={(e) => setRoom({ ...room, thirdPartyEnabled: e.target.checked })}
-                  />
-                  Habilitar alquiler a terceros
-                </label>
-              </div>
-            ) : (
-              agreement && (
-                <div className="grid gap-3 text-sm sm:grid-cols-2">
-                  <label className="block">
-                    Profesional
-                    <select
-                      className={input}
-                      value={agreement.professionalId}
-                      onChange={(e) =>
-                        setAgreement({ ...agreement, professionalId: e.target.value })
-                      }
-                    >
-                      <option value="">Seleccionar</option>
-                      {professionalOptions.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    Consultorio
-                    <select
-                      className={input}
-                      value={agreement.roomId}
-                      onChange={(e) => setAgreement({ ...agreement, roomId: e.target.value })}
-                    >
-                      {ROOMS.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    Día reservado
-                    <select
-                      className={input}
-                      value={agreement.days}
-                      onChange={(e) => setAgreement({ ...agreement, days: e.target.value })}
-                    >
-                      {WEEKDAYS_ES.map((day, i) => (
-                        <option key={day} value={i}>
-                          {day}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    Importe mensual acordado
-                    <input
-                      className={input}
-                      type="number"
-                      min="0"
-                      placeholder="0 (o monto acordado)"
-                      value={agreement.amount === 0 ? '' : agreement.amount}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setAgreement({
-                          ...agreement,
-                          amount: val === '' ? 0 : Math.max(0, Number(val)),
-                        });
-                      }}
-                    />
-                  </label>
-                  <label className="block">
-                    Fecha de inicio
-                    <input
-                      className={input}
-                      type="date"
-                      value={agreement.startDate || ''}
-                      onChange={(e) =>
-                        setAgreement({ ...agreement, startDate: e.target.value })
-                      }
-                    />
-                  </label>
-                  <label className="block">
-                    Fecha de finalización (opcional)
-                    <input
-                      className={input}
-                      type="date"
-                      value={agreement.endDate || ''}
-                      onChange={(e) =>
-                        setAgreement({ ...agreement, endDate: e.target.value })
-                      }
-                    />
-                  </label>
-                  <label className="block">
-                    Desde (horario habitual)
-                    <input
-                      className={input}
-                      type="time"
-                      value={agreement.start}
-                      onChange={(e) => setAgreement({ ...agreement, start: e.target.value })}
-                    />
-                  </label>
-                  <label className="block">
-                    Hasta (horario habitual)
-                    <input
-                      className={input}
-                      type="time"
-                      value={agreement.end}
-                      onChange={(e) => setAgreement({ ...agreement, end: e.target.value })}
-                    />
-                  </label>
-                  <label className="block">
-                    Día de vencimiento
-                    <input
-                      className={input}
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={agreement.dueDay}
-                      onChange={(e) =>
-                        setAgreement({ ...agreement, dueDay: Number(e.target.value) })
-                      }
-                    />
-                  </label>
-                  <label className="block">
-                    Estado
-                    <select
-                      className={input}
-                      value={agreement.status}
-                      onChange={(e) =>
-                        setAgreement({
-                          ...agreement,
-                          status: e.target.value as Agreement['status'],
-                        })
-                      }
-                    >
-                      <option value="activo">activo</option>
-                      <option value="pausado">pausado</option>
-                    </select>
-                  </label>
-                  <label className="block sm:col-span-2">
-                    Observaciones
-                    <textarea
-                      className={input}
-                      value={agreement.notes}
-                      onChange={(e) => setAgreement({ ...agreement, notes: e.target.value })}
-                    />
-                  </label>
-                </div>
-              )
-            )}
+            <div className="space-y-3 text-sm">
+              <label className="block">
+                Nombre
+                <input
+                  className={input}
+                  value={room.name}
+                  onChange={(e) => setRoom({ ...room, name: e.target.value })}
+                />
+              </label>
+              <label className="block">
+                Descripción
+                <input
+                  className={input}
+                  value={room.description}
+                  onChange={(e) => setRoom({ ...room, description: e.target.value })}
+                />
+              </label>
+              <label className="block">
+                Disciplinas compatibles (separadas por coma)
+                <input
+                  className={input}
+                  value={room.disciplines}
+                  onChange={(e) => setRoom({ ...room, disciplines: e.target.value })}
+                />
+              </label>
+              <label className="flex items-center gap-2 pt-1 font-medium">
+                <input
+                  type="checkbox"
+                  checked={room.thirdPartyEnabled}
+                  onChange={(e) => setRoom({ ...room, thirdPartyEnabled: e.target.checked })}
+                />
+                Habilitar alquiler a terceros
+              </label>
+            </div>
             {error && (
               <p role="alert" className="mt-3 text-sm text-red-700">
                 {error}

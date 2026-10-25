@@ -107,7 +107,42 @@ type CalendarColumn = {
   date?: Date;
 };
 
-const getAppointmentName = (appointment: AppointmentRecord) => {
+const isExternalRental = (appointment: AppointmentRecord) => {
+  const isRentalSource = (appointment as any).source === 'rentals';
+  const proId = appointment.professionalId || appointment.proId;
+  const title = (appointment.title || '').toLowerCase();
+  return (isRentalSource && !proId) || title.includes('subalquiler') || title.includes('alquiler externo') || title.startsWith('alquiler ');
+};
+
+const getAppointmentTypeLabel = (appointment: AppointmentRecord) => {
+  if (isExternalRental(appointment)) {
+    return 'Alquiler externo';
+  }
+  const kind = appointment.kind || appointment.type;
+  if (kind === 'interview') return 'Entrevista';
+  if (kind === 'block') return 'Reserva de terapeuta';
+  return 'Sesión clínica';
+};
+
+const getAppointmentName = (appointment: AppointmentRecord, proName?: string) => {
+  if (isExternalRental(appointment)) {
+    const occupant = appointment.patient?.trim();
+    if (occupant) return occupant;
+    const cleanTitle = appointment.title
+      ?.replace(/^(Subalquiler externo|Alquiler consultorio)\s*·?\s*/i, '')
+      .trim();
+    return cleanTitle || 'Subalquiler externo';
+  }
+
+  const kind = appointment.kind || appointment.type;
+  if (kind === 'block') {
+    const raw = appointment.title?.trim();
+    if (raw && raw !== 'Nueva Reserva' && raw !== 'Reserva sala' && raw !== 'Reserva de consultorio') {
+      return raw;
+    }
+    return proName ? `Reserva · ${proName}` : (raw || 'Reserva de consultorio');
+  }
+
   const raw = appointment.patient?.trim() || appointment.title?.trim() || '';
   if (!raw || raw === 'Nueva Reserva') {
     return 'Sin nombre';
@@ -115,16 +150,42 @@ const getAppointmentName = (appointment: AppointmentRecord) => {
   return raw;
 };
 
+const getAppointmentSubtitle = (appointment: AppointmentRecord, proName?: string) => {
+  if (isExternalRental(appointment)) {
+    const occupant = appointment.patient?.trim();
+    return occupant ? `Externo · ${occupant}` : 'Alquiler externo a terceros';
+  }
+  const kind = appointment.kind || appointment.type;
+  if (kind === 'block') {
+    return proName ? `Terapeuta: ${proName}` : 'Reserva de consultorio';
+  }
+  return `Prof. ${proName || 'Sin profesional'}`;
+};
+
 const getAppointmentKind = (appointment: AppointmentRecord) =>
   appointment.kind || appointment.type || 'session';
 
 const getTypeLabel = (kind?: string) => {
   if (kind === 'interview') return 'Entrevista';
-  if (kind === 'block') return 'Reserva sala';
+  if (kind === 'block') return 'Reserva de terapeuta';
   return 'Sesión clínica';
 };
 
-const getTypeStyles = (kind?: string, proId?: string) => {
+const getTypeStyles = (appointment: AppointmentRecord | string | undefined, proId?: string) => {
+  if (typeof appointment === 'object' && appointment !== null) {
+    if (isExternalRental(appointment)) {
+      return 'bg-[#FFFBEB] text-[#92400E] border-[#FDE68A] hover:border-[#F59E0B]';
+    }
+    const kind = appointment.kind || appointment.type;
+    if (kind === 'interview') {
+      return 'bg-[#FEF6EC] text-[#7A4515] border-[#F2D7B8] hover:border-[#E8B880]';
+    }
+    if (kind === 'block') {
+      return 'bg-[#F5F1FA] text-[#4F3677] border-[#DFD3F2] hover:border-[#C4B2E3]';
+    }
+    return getTherapistPastel(proId || appointment.professionalId || appointment.proId);
+  }
+  const kind = appointment;
   if (kind === 'interview') {
     return 'bg-[#FEF6EC] text-[#7A4515] border-[#F2D7B8] hover:border-[#E8B880]';
   }
@@ -282,6 +343,9 @@ export const Agenda = ({
   }, [filteredAppointments, selectedDate, timeMode]);
 
   const getProfessionalName = (appointment: AppointmentRecord) => {
+    if (isExternalRental(appointment)) {
+      return appointment.patient?.trim() || 'Alquiler externo';
+    }
     const pro = professionals.find((p) => p.id === (appointment.professionalId || appointment.proId));
     return pro?.name || 'Sin profesional';
   };
@@ -1100,8 +1164,7 @@ export const Agenda = ({
                               const pro = professionals.find(
                                 (p) => p.id === (booking.professionalId || booking.proId)
                               );
-                              const kind = booking.kind || booking.type;
-                              const pastelClass = getTypeStyles(kind, pro?.id);
+                              const pastelClass = getTypeStyles(booking, pro?.id);
 
                               return (
                                 <div
@@ -1124,14 +1187,14 @@ export const Agenda = ({
                                           </span>
                                         )}
                                         <span className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold">
-                                          {getTypeLabel(kind)}
+                                          {getAppointmentTypeLabel(booking)}
                                         </span>
                                       </div>
                                       <h4 className="mt-1 font-bold text-sm leading-tight text-[#264A40] truncate">
-                                        {getAppointmentName(booking)}
+                                        {getAppointmentName(booking, pro?.name)}
                                       </h4>
                                       <div className="mt-1 flex items-center gap-1.5 text-xs opacity-90 truncate">
-                                        <span>Prof. {pro?.name || 'Sin profesional'}</span>
+                                        <span>{getAppointmentSubtitle(booking, pro?.name)}</span>
                                         <span>•</span>
                                         <span>{room.name.split('—')[0].trim()}</span>
                                       </div>
@@ -1312,8 +1375,7 @@ export const Agenda = ({
                             };
                             const widthPercent = 100 / appLayout.maxCols;
                             const leftPercent = appLayout.colIndex * widthPercent;
-                            const kind = app.kind || app.type;
-                            const cardStyles = getTypeStyles(kind, pro?.id);
+                            const cardStyles = getTypeStyles(app, pro?.id);
 
                             return (
                               <motion.div
@@ -1324,7 +1386,7 @@ export const Agenda = ({
                                   e.stopPropagation();
                                   onOpenModal(room?.name, pro?.name, app);
                                 }}
-                                title={`${app.start} - ${app.end} · ${getAppointmentName(app)} (${getTypeLabel(kind)}) · Prof. ${getProfessionalName(app)} · ${getRoomName(app)} · Estado: ${app.status}`}
+                                title={`${app.start} - ${app.end} · ${getAppointmentName(app, pro?.name)} (${getAppointmentTypeLabel(app)}) · ${getAppointmentSubtitle(app, pro?.name)} · ${getRoomName(app)} · Estado: ${app.status}`}
                                 style={{
                                   top: `${getPositionFromTime(app.start)}px`,
                                   height: `${appointmentHeight}px`,
@@ -1348,14 +1410,14 @@ export const Agenda = ({
                                     />
                                   </div>
                                   <h4 className="font-bold text-[11px] leading-tight text-[#264A40] mt-0.5 truncate">
-                                    {getAppointmentName(app)}
+                                    {getAppointmentName(app, pro?.name)}
                                   </h4>
                                 </div>
 
                                 {appointmentHeight >= 44 && (
                                   <div className="flex items-center justify-between text-[9px] opacity-80 pt-0.5 border-t border-current/10 leading-none truncate">
                                     <span className="truncate">
-                                      {viewMode === 'rooms' ? `Prof. ${getProfessionalName(app)}` : getRoomName(app)}
+                                      {viewMode === 'rooms' ? getAppointmentSubtitle(app, pro?.name) : getRoomName(app)}
                                     </span>
                                     {app.recurrence === 'weekly' && (
                                       <span className="flex items-center gap-0.5 shrink-0 ml-1">
@@ -1443,7 +1505,12 @@ export const Agenda = ({
                           className="rounded-lg bg-[#F4FAF7] border border-[#CFE2D8] px-1.5 py-0.5 text-[10px] font-semibold text-[#2C5E50] truncate"
                         >
                           <span className="font-mono text-[9px] mr-1">{app.start}</span>
-                          <span>{getAppointmentName(app)}</span>
+                          <span>
+                            {getAppointmentName(
+                              app,
+                              professionals.find((p) => p.id === (app.professionalId || app.proId))?.name
+                            )}
+                          </span>
                         </div>
                       ))}
                       {dayAppointments.length > 2 && (
