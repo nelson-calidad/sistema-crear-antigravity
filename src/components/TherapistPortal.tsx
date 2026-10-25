@@ -17,6 +17,8 @@ import {
   Search,
   LayoutDashboard,
   Users,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import logo from '../assets/logo-crear.png';
 import type {
@@ -38,6 +40,7 @@ import {
 import { AuthUser, CREAR_TEAM, logoutUser } from '../lib/crearAuth';
 import { useProfessionals } from '../lib/professionalsStore';
 import { useRecords } from '../lib/crearStore';
+import { readStoredValue, writeStoredValue } from '../lib/browserStorage';
 import { buildUnifiedOccupancyAppointments } from '../lib/occupancy';
 import { QuickReservationModal } from './QuickReservationModal';
 import { occursOn, type Slot } from '../lib/scheduling';
@@ -134,6 +137,25 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
     startTime?: string;
     kind?: 'block' | 'session';
   }>({});
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return (readStoredValue('theme') as 'light' | 'dark') || 'light';
+    }
+    return 'light';
+  });
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    const root = window.document.documentElement;
+    if (nextTheme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    writeStoredValue('theme', nextTheme);
+  };
 
   const [notice, setNotice] = useState<{
     tone: 'saving' | 'success' | 'error';
@@ -381,6 +403,16 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
 
           {/* Acciones Derecha */}
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
+              className="flex h-9 w-9 items-center justify-center rounded-2xl border border-[#D5DDD7] bg-[#FAF8F5] text-[#52635D] hover:bg-[#EEF2EE] hover:text-[#34433F] transition shrink-0"
+              aria-label="Cambiar modo oscuro / claro"
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-indigo-600" />}
+            </button>
+
             {currentUser.role === 'admin' && onOpenAdminSuite && (
               <button
                 type="button"
@@ -891,6 +923,20 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                 </p>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex w-full items-center justify-between rounded-2xl border border-[#D5DDD7] bg-[#F9FBF9] p-3.5 text-xs font-bold text-[#34433F] hover:bg-[#EEF2EE] transition"
+            >
+              <div className="flex items-center gap-2">
+                {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-indigo-500" />}
+                <span>Modo {theme === 'dark' ? 'Oscuro' : 'Claro'}</span>
+              </div>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-[#46766B]">
+                {theme === 'dark' ? 'Oscuro' : 'Claro'}
+              </span>
+            </button>
 
             <button
               type="button"

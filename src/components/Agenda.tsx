@@ -552,13 +552,13 @@ export const Agenda = ({
           TOOLBAR MÓVIL (< md): LIMPIA, COMPACTA Y CON FILTROS EN PANEL
           ========================================================================= */}
       <div className="md:hidden rounded-2xl border border-[#E5EAE5] bg-white p-2.5 shadow-2xs shrink-0 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center justify-between gap-1 w-full">
           {/* Navegación temporal: Hoy, Ant, Sig, Selector de fecha */}
-          <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5">
+          <div className="flex items-center rounded-xl border border-[#D5DDD7] bg-[#FAF8F5] p-0.5 min-w-0 shrink">
             <button
               type="button"
               onClick={() => setSelectedDate(new Date())}
-              className="rounded-lg px-2 py-1 text-xs font-bold text-[#46766B] hover:bg-white transition"
+              className="rounded-lg px-2 py-1 text-xs font-bold text-[#46766B] hover:bg-white transition shrink-0"
             >
               Hoy
             </button>
@@ -573,9 +573,9 @@ export const Agenda = ({
                 )
               }
               title="Anterior"
-              className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
+              className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40] shrink-0"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
@@ -588,9 +588,9 @@ export const Agenda = ({
                 )
               }
               title="Siguiente"
-              className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40]"
+              className="rounded-lg p-1 text-[#6D7C76] hover:bg-white hover:text-[#264A40] shrink-0"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
             <input
               type="date"
@@ -599,24 +599,25 @@ export const Agenda = ({
                 const parsed = parseDay(e.target.value);
                 if (parsed) setSelectedDate(parsed);
               }}
-              className="bg-transparent border-none text-xs font-bold text-[#34433F] outline-none px-1 py-0.5 cursor-pointer max-w-[110px]"
+              className="bg-transparent border-none text-[11px] font-bold text-[#34433F] outline-none px-1 py-0.5 cursor-pointer w-[90px] shrink min-w-0"
             />
           </div>
 
           {/* Acciones Derecha: Botón Filtros (con badge de activo) + Botón Reservar */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={() => setShowMobileFilters((open) => !open)}
+              title="Filtros"
               className={cn(
-                'flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition',
+                'flex items-center gap-1 rounded-xl border px-2 py-1.5 text-xs font-bold transition shrink-0',
                 showMobileFilters || filterProId !== 'all' || showCancelled
                   ? 'border-[#46766B] bg-[#E8F3EE] text-[#2C5E50]'
                   : 'border-[#D5DDD7] bg-[#FAF8F5] text-[#52635D]'
               )}
             >
               <Filter className="h-3.5 w-3.5" />
-              <span className="text-[11px]">Filtros</span>
+              <span className="text-[11px] hidden min-[360px]:inline">Filtros</span>
               {(filterProId !== 'all' || showCancelled) && (
                 <span className="h-1.5 w-1.5 rounded-full bg-[#46766B]" />
               )}
@@ -625,7 +626,7 @@ export const Agenda = ({
             <button
               type="button"
               onClick={() => onOpenModal()}
-              className="flex items-center gap-1 rounded-xl bg-[#46766B] px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-[#3B645B] transition active:scale-95"
+              className="flex items-center gap-1 rounded-xl bg-[#46766B] px-2.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-[#3B645B] transition active:scale-95 shrink-0"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Reservar</span>
@@ -1037,23 +1038,23 @@ export const Agenda = ({
                       className="flex flex-col rounded-3xl border border-[#E5EAE5] bg-white p-3.5 sm:p-4 shadow-xs"
                     >
                       {/* Cabecera Consultorio */}
-                      <div className="flex items-center justify-between border-b border-[#F0F4F1] pb-3 mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#46766B]">
+                      <div className="flex items-center justify-between border-b border-[#F0F4F1] pb-3 mb-3 gap-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#46766B] shrink-0">
                             <DoorOpen className="h-4 w-4" />
                           </div>
-                          <div>
-                            <h3 className="text-sm font-bold text-[#34433F]">
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-bold text-[#34433F] truncate">
                               {room.name.split('—')[0].trim()}
                             </h3>
-                            <p className="text-[11px] text-[#6D7C76]">
+                            <p className="text-[11px] text-[#6D7C76] truncate">
                               {room.name.split('—')[1]?.trim() || 'Consultorio CREAR'}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-full bg-[#E8F3EE] px-2 py-0.5 text-[10px] font-bold text-[#326456]">
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="rounded-full bg-[#E8F3EE] px-2 py-0.5 text-[10px] font-bold text-[#326456] shrink-0">
                             {roomApps.length} {roomApps.length === 1 ? 'turno' : 'turnos'}
                           </span>
                           <button
@@ -1063,7 +1064,7 @@ export const Agenda = ({
                                 date: format(selectedDate, 'yyyy-MM-dd'),
                               })
                             }
-                            className="flex items-center gap-1 rounded-xl bg-[#F2F7F4] px-2.5 py-1.5 text-xs font-bold text-[#46766B] hover:bg-[#DDEAE2] transition"
+                            className="flex items-center gap-1 rounded-xl bg-[#F2F7F4] px-2 py-1 text-xs font-bold text-[#46766B] hover:bg-[#DDEAE2] transition shrink-0"
                           >
                             <Plus className="h-3.5 w-3.5" />
                             <span>Reservar</span>

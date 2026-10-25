@@ -81,6 +81,16 @@ interface SidebarProps {
 
 export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, theme, onToggleTheme, onOpenPortal }: SidebarProps) => {
   const authUser = useAuth();
+  const [isMobile, setIsMobile] = React.useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  React.useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const [isCollapsed, setIsCollapsed] = React.useState(() => {
     if (activeTab === 'agenda') return true;
     return readStoredValue('crear-sidebar-compact') === 'true';
@@ -90,12 +100,12 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
   React.useEffect(() => { writeStoredValue('crear-sidebar-compact', String(isCollapsed)); }, [isCollapsed]);
   React.useEffect(() => { writeStoredValue('crear-sidebar-hidden', String(isHidden)); }, [isHidden]);
 
-  // Si entra a Agenda, colapsar automáticamente para maximizar el ancho de la grilla
+  // Si entra a Agenda en desktop, colapsar automáticamente para maximizar el ancho de la grilla
   React.useEffect(() => {
-    if (activeTab === 'agenda') {
+    if (activeTab === 'agenda' && !isMobile) {
       setIsCollapsed(true);
     }
-  }, [activeTab]);
+  }, [activeTab, isMobile]);
   const menuItems = [
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'admissions', label: 'Consultas y Admisiones', icon: MessageCircle },
@@ -107,6 +117,8 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
     { id: 'coverage', label: 'Guardias CREAR', icon: CalendarDays },
     { id: 'settings', label: 'Configuración', icon: Settings },
   ];
+
+  const effectiveCollapsed = isMobile ? false : isCollapsed;
 
   return (
     <>
@@ -132,7 +144,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
         </button>
       </div>}
       <motion.div
-        animate={{ width: isHidden ? '0px' : isCollapsed ? '68px' : '230px' }}
+        animate={isMobile ? { width: '280px' } : { width: isHidden ? '0px' : isCollapsed ? '68px' : '230px' }}
         className={cn(
           'h-screen overflow-hidden bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800 flex flex-col relative',
           'fixed md:static inset-y-0 left-0 w-[280px] max-w-[85vw] md:w-auto z-50 md:z-auto',
@@ -143,7 +155,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
         <div className="px-3 pt-3.5 pb-2 flex items-center mb-1">
           <div className={cn(
             'overflow-hidden flex items-center justify-center transition-all duration-200 bg-white rounded-xl dark:bg-white',
-            isCollapsed ? 'w-10 h-10 p-1' : 'w-full h-12 p-1.5'
+            effectiveCollapsed ? 'w-10 h-10 p-1' : 'w-full h-12 p-1.5'
           )}>
             <img src={logoCrear} alt="Logo CREAR" className="w-full h-full object-contain" />
           </div>
@@ -156,23 +168,55 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
               icon={item.icon}
               label={item.label}
               active={activeTab === item.id}
-              collapsed={isCollapsed}
+              collapsed={effectiveCollapsed}
               onClick={() => setActiveTab(item.id)}
             />
           ))}
         </nav>
 
-        <div className="p-2.5 mt-auto border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30">
+        {/* Opción clara de Modo Oscuro / Claro en el menú */}
+        <div className="px-2.5 pb-2">
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className={cn(
+              "flex items-center gap-2.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold transition border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700",
+              effectiveCollapsed ? "justify-center px-1" : "justify-between"
+            )}
+            title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+              ) : (
+                <Moon className="w-4 h-4 text-indigo-500 shrink-0" />
+              )}
+              {!effectiveCollapsed && (
+                <span className="truncate">Modo {theme === 'dark' ? 'Oscuro' : 'Claro'}</span>
+              )}
+            </div>
+            {!effectiveCollapsed && (
+              <span className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-black shrink-0",
+                theme === 'dark' ? "bg-amber-400/20 text-amber-300" : "bg-indigo-50 text-indigo-600"
+              )}>
+                {theme === 'dark' ? 'Oscuro' : 'Claro'}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className="p-2.5 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30">
           {authUser && (
             <div className={cn(
               "flex items-center gap-2 mb-2 p-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 shadow-xs",
-              isCollapsed ? "justify-center" : "justify-between"
+              effectiveCollapsed ? "justify-center" : "justify-between"
             )}>
               <div className="flex items-center gap-2 overflow-hidden min-w-0">
                 <div className="w-7 h-7 rounded-lg bg-[#46766B] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
                   {authUser.name?.charAt(0) || 'U'}
                 </div>
-                {!isCollapsed && (
+                {!effectiveCollapsed && (
                   <div className="overflow-hidden min-w-0">
                     <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate leading-tight">{authUser.name}</p>
                     <p className="text-[10px] text-slate-400 capitalize truncate">{authUser.role}</p>
@@ -194,7 +238,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
               className="flex-1 flex items-center justify-center p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
               title={`Activar modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
             </button>
             <button
               onClick={() => setIsHidden(true)}
@@ -206,7 +250,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile, th
             </button>
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="flex-1 flex items-center justify-center p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+              className="hidden md:flex flex-1 items-center justify-center p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
               title={isCollapsed ? 'Expandir menú' : 'Colapsar menú'}
             >
               {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
