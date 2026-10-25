@@ -221,6 +221,7 @@ export function subscribeToSheetsAppointments(
 }
 
 export interface SyncFeedbackCallbacks {
+  waitForConfirmation?: boolean;
   onSaving?: (record: AppointmentRecord) => void;
   onConfirmed?: (record: AppointmentRecord) => void;
   onError?: (err: Error, record: AppointmentRecord) => void;
@@ -391,6 +392,7 @@ export async function bookAppointmentInSheets(
   };
 
   // 1. Estado 1: Guardando... (No se presenta como confirmada hasta recibir respuesta del servidor)
+  const previousRecord = cachedAppointments.find(item => item.id === id);
   const optimisticNext = isUpdate
     ? cachedAppointments.map((item) => (item.id === id ? payloadRecord : item))
     : [payloadRecord, ...cachedAppointments];
@@ -398,7 +400,7 @@ export async function bookAppointmentInSheets(
   callbacks.onSaving?.(payloadRecord);
 
   // 2. Sincronización real hacia Google Sheets
-  void callSheetsApi<{ ok: true; id: string }>({
+  const confirmation = callSheetsApi<{ ok: true; id: string }>({
     action: isUpdate ? 'update' : 'create',
     entity: 'appointments',
     id: isUpdate ? id : undefined,
@@ -412,14 +414,21 @@ export async function bookAppointmentInSheets(
         syncState: 'confirmed',
         syncError: undefined,
       };
-      const confirmedList = cachedAppointments.map((item) =>
-        item.id === id ? confirmedRecord : item
-      );
+      const confirmedList = cachedAppointments.some(item => item.id === id)
+        ? cachedAppointments.map(item => item.id === id ? confirmedRecord : item)
+        : [confirmedRecord, ...cachedAppointments];
       emitAppointments(confirmedList);
       callbacks.onConfirmed?.(confirmedRecord);
       void fetchAppointmentsFromSheets();
     })
     .catch((err) => {
+      if (callbacks.waitForConfirmation) {
+        // El formulario conserva el borrador. Un fallo no debe dejar una ocupación ficticia
+        // que bloquee el reintento, ni revertir reservas ajenas guardadas en paralelo.
+        const otherRecords = cachedAppointments.filter(item => item.id !== id);
+        emitAppointments(previousRecord ? [previousRecord, ...otherRecords] : otherRecords);
+        throw err;
+      }
       // Estado 3: Error al guardar (impedir pérdida silenciosa, mostrar error claro en la reserva)
       const errorMsg = err instanceof Error ? err.message : String(err);
       const erroredRecord: AppointmentRecord = {
@@ -435,6 +444,7 @@ export async function bookAppointmentInSheets(
       callbacks.onError?.(err instanceof Error ? err : new Error(errorMsg), erroredRecord);
     });
 
+  if (callbacks.waitForConfirmation) await confirmation;
   return payloadRecord;
 }
 

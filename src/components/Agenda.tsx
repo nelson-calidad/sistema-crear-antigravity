@@ -46,6 +46,7 @@ import {
 } from '../lib/appointmentPdf';
 import { useProfessionals } from '../lib/professionalsStore';
 import { forceRefreshAppointments } from '../lib/appointmentsStore';
+import { agendaColumnId } from '../lib/agendaColumns';
 
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
 const HOUR_HEIGHT = 68;
@@ -96,6 +97,7 @@ type AgendaProps = {
   appointments: AppointmentRecord[];
   focusDate?: string | null;
   onOpenTherapistView?: () => void;
+  onRefresh?: () => Promise<unknown>;
 };
 
 type CalendarColumn = {
@@ -231,9 +233,6 @@ const resolveOverlaps = (appointments: AppointmentRecord[]) => {
 
 const getCoverageLabel = (appointment: AppointmentRecord) => appointment.coverageType || 'particular';
 
-const hasAssignment = (appointment: AppointmentRecord) =>
-  Boolean(appointment.professionalId || appointment.proId || appointment.roomId);
-
 const formatDateEs = (date: Date, pattern: string) => format(date, pattern, { locale: es });
 
 const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
@@ -243,6 +242,7 @@ export const Agenda = ({
   appointments,
   focusDate,
   onOpenTherapistView,
+  onRefresh = forceRefreshAppointments,
 }: AgendaProps) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'professionals' | 'rooms'>('rooms');
@@ -385,8 +385,13 @@ export const Agenda = ({
         ? professionals.map((pro) => ({ id: pro.id, name: pro.name, color: pro.color }))
         : ROOMS.map((room) => ({ id: room.id, name: room.name }));
 
-    const hasUnassigned = selectedDateAppointments.some((app) => !hasAssignment(app));
-    return hasUnassigned ? [...base, UNASSIGNED_COLUMN] : base;
+    const hasUnassigned = selectedDateAppointments.some(
+      (app) => agendaColumnId(app, viewMode, base) === 'unassigned'
+    );
+    return hasUnassigned ? [...base, {
+      ...UNASSIGNED_COLUMN,
+      name: viewMode === 'professionals' ? 'Externos / Sin profesional' : 'Sin consultorio',
+    }] : base;
   }, [selectedDateAppointments, viewMode, timeMode, selectedDate, professionals]);
 
   const visibleAppointments = sortByStart(selectedDateAppointments);
@@ -408,14 +413,8 @@ export const Agenda = ({
     return Math.max((duration / 60) * HOUR_HEIGHT, 34);
   };
 
-  const isUnassigned = (appointment: AppointmentRecord) =>
-    !appointment.professionalId && !appointment.proId && !appointment.roomId;
-
   const matchesColumn = (appointment: AppointmentRecord, columnId: string) => {
-    if (columnId === 'unassigned') return isUnassigned(appointment);
-    return viewMode === 'professionals'
-      ? (appointment.professionalId || appointment.proId) === columnId
-      : appointment.roomId === columnId;
+    return agendaColumnId(appointment, viewMode, viewMode === 'professionals' ? professionals : ROOMS) === columnId;
   };
 
   const handleDailyPdf = () => {
@@ -524,7 +523,7 @@ export const Agenda = ({
   const handleRefresh = async () => {
     try {
       setIsRefreshing(true);
-      await forceRefreshAppointments();
+      await onRefresh();
     } catch {
       // Ignora error puntual de red
     } finally {

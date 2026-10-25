@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { X, Calendar, AlertTriangle, Trash2, CheckCircle2, Plus } from 'lucide-react';
-import type { AppointmentRecord, ConfiguredRoom, PatientRecord, ServiceCatalogItem } from '../types';
+import { useId, useMemo, useRef, useState, type FormEvent } from 'react';
+import { X, Calendar, AlertTriangle, Trash2, CheckCircle2, Loader2 } from 'lucide-react';
+import type { AppointmentRecord, ConfiguredRoom, PatientRecord } from '../types';
 import type { AuthUser } from '../lib/crearAuth';
-import { CREAR_TEAM } from '../lib/crearAuth';
 import { useProfessionals } from '../lib/professionalsStore';
 import { conflictOnDate, occursOn, type Slot } from '../lib/scheduling';
+import { localDate } from '../lib/crearStore';
+import { reservationDetail, reservationDetails, reservationPurpose, type ReservationPurpose } from '../lib/reservationDetails';
 
 interface QuickReservationModalProps {
   isOpen: boolean;
@@ -13,616 +14,198 @@ interface QuickReservationModalProps {
   rooms: ConfiguredRoom[];
   appointments: AppointmentRecord[];
   patients: PatientRecord[];
-  services: ServiceCatalogItem[];
   initialData?: AppointmentRecord | null;
   initialRoomId?: string;
   initialDate?: string;
   initialStartTime?: string;
   initialKind?: 'block' | 'session';
   onSave: (record: Partial<AppointmentRecord>) => Promise<void>;
-  onCreatePatient: (name: string, professionalId: string) => Promise<PatientRecord>;
   onDelete?: (id: string) => Promise<void>;
 }
 
-export function QuickReservationModal({
-  isOpen,
-  onClose,
-  currentUser,
-  rooms,
-  appointments,
-  patients,
-  services,
-  initialData,
-  initialRoomId,
-  initialDate,
-  initialStartTime,
-  initialKind,
-  onSave,
-  onCreatePatient,
-  onDelete,
+// Cada apertura monta un formulario nuevo, sin cambiar el orden de los hooks.
+export function QuickReservationModal(props: QuickReservationModalProps) {
+  return props.isOpen ? <ReservationForm {...props} /> : null;
+}
+
+function ReservationForm({
+  onClose, currentUser, rooms, appointments, patients, initialData,
+  initialRoomId, initialDate, initialStartTime, initialKind, onSave, onDelete,
 }: QuickReservationModalProps) {
-  if (!isOpen) return null;
-
-  const defaultDate = initialData?.date || initialDate || new Date().toISOString().split('T')[0];
+  const [professionals] = useProfessionals();
+  const patientListId = useId();
+  const submitting = useRef(false);
   const defaultStart = initialData?.start || initialStartTime || '15:00';
-
-  const addMinutesToTime = (start: string, mins: number) => {
-    const [h, m] = start.split(':').map(Number);
-    if (isNaN(h) || isNaN(m)) return '15:45';
-    const total = Math.min(22 * 60, h * 60 + m + mins);
-    const endH = Math.floor(total / 60);
-    const endM = total % 60;
-    return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
-  };
-
-  const defaultEnd = initialData?.end || addMinutesToTime(defaultStart, 45);
-
-  const [bookingKind, setBookingKind] = useState<'session' | 'block'>(
-    initialData ? (initialData.kind === 'block' ? 'block' : 'session') : initialKind || 'block'
-  );
-  const [roomId, setRoomId] = useState(initialData?.roomId || initialRoomId || rooms[0]?.id || 'c1');
-  const [date, setDate] = useState(defaultDate);
+  const [hour, minute] = defaultStart.split(':').map(Number);
+  const endMinutes = Math.min(23 * 60 + 59, hour * 60 + minute + 60);
+  const defaultEnd = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+  const [roomId, setRoomId] = useState(initialData?.roomId || initialRoomId || rooms[0]?.id || '');
+  const [date, setDate] = useState(initialData?.date || initialDate || localDate());
   const [startTime, setStartTime] = useState(defaultStart);
-  const [endTime, setEndTime] = useState(defaultEnd);
-  const [allProfessionals] = useProfessionals();
-  const activeProfessionals = useMemo(
-    () => allProfessionals.filter((p) => p.status === 'Activo' || p.id === initialData?.professionalId),
-    [allProfessionals, initialData?.professionalId]
-  );
-
+  const [endTime, setEndTime] = useState(initialData?.end || defaultEnd);
+  const [purpose, setPurpose] = useState<ReservationPurpose>(initialData ? reservationPurpose(initialData) : initialKind || 'block');
+  const [detail, setDetail] = useState(reservationDetail(initialData));
+  const activeProfessionals = professionals.filter(p => p.status === 'Activo' || p.id === initialData?.professionalId);
   const [therapistId, setTherapistId] = useState(
-    initialData?.professionalId ||
-      (currentUser.role === 'admin'
-        ? currentUser.professionalId || activeProfessionals[0]?.id || CREAR_TEAM[4].id
-        : currentUser.professionalId || currentUser.id)
+    initialData?.professionalId || initialData?.proId || currentUser.professionalId ||
+    (currentUser.role === 'admin' ? activeProfessionals[0]?.id || '' : currentUser.id)
   );
-
-  const selectedProRecord = useMemo(
-    () => allProfessionals.find((p) => p.id === therapistId),
-    [allProfessionals, therapistId]
-  );
-
-  // Paciente y Prestación (priorizando prestaciones vinculadas a la profesional si existen)
-  const activeServices = useMemo(() => {
-    const base = services.filter((s) => s.active !== false);
-    if (selectedProRecord?.serviceIds && selectedProRecord.serviceIds.length > 0) {
-      const linked = base.filter(
-        (s) => selectedProRecord.serviceIds?.includes(s.id) || s.id === initialData?.serviceId
-      );
-      if (linked.length > 0) return linked;
-    }
-    return base;
-  }, [services, selectedProRecord, initialData?.serviceId]);
-  const defaultService = useMemo(() => {
-    if (initialData?.serviceId) {
-      return activeServices.find((s) => s.id === initialData.serviceId) || activeServices[0];
-    }
-    const proSpecialty = selectedProRecord?.specialty || currentUser.specialty || '';
-    const bySpecialty = activeServices.find(
-      (s) => s.name.toLowerCase() === proSpecialty.toLowerCase()
-    );
-    return bySpecialty || activeServices[0];
-  }, [initialData, activeServices, selectedProRecord, currentUser.specialty]);
-
-  const [selectedServiceId, setSelectedServiceId] = useState(defaultService?.id || '');
-  const [selectedPatientId, setSelectedPatientId] = useState(initialData?.patientId || '');
-  const [manualPatientName, setManualPatientName] = useState(initialData?.patient || '');
-  const [addingNewPatient, setAddingNewPatient] = useState(false);
-  const [newPatientName, setNewPatientName] = useState('');
-
-  const [isWeekly, setIsWeekly] = useState(initialData?.recurrence === 'weekly');
+  const [recurrence, setRecurrence] = useState<NonNullable<AppointmentRecord['recurrence']>>(initialData?.recurrence || 'none');
   const [untilDate, setUntilDate] = useState(initialData?.untilDate || '');
-
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const isPatientVisit = purpose === 'session' || purpose === 'interview';
+  const proPatients = patients.filter(p => p.status !== 'inactive' && (!p.professionalId || p.professionalId === therapistId));
+  const selectedDays = recurrence === 'weekly'
+    ? initialData?.date === date && initialData.selectedDays?.length
+      ? initialData.selectedDays
+      : [new Date(`${date}T12:00:00`).getDay()]
+    : [];
+  const details = reservationDetails(purpose, detail);
 
-  // Pacientes activos de la profesional seleccionada
-  const proPatients = useMemo(() => {
-    return patients.filter(
-      (p) =>
-        p.status !== 'inactive' &&
-        (!p.professionalId || p.professionalId === therapistId)
-    );
-  }, [patients, therapistId]);
-
-  const currentTherapist = useMemo(() => {
-    const dynamicPro = allProfessionals.find((t) => t.id === therapistId);
-    if (dynamicPro) {
-      return { name: dynamicPro.name, id: dynamicPro.id };
-    }
-    return (
-      CREAR_TEAM.find((t) => t.id === therapistId) || {
-        name: currentUser.name,
-        id: currentUser.id,
-      }
-    );
-  }, [therapistId, allProfessionals, currentUser]);
-
-  // Detectar si el turno cae dentro de un bloque propio ya reservado (no genera conflicto, sino que se vincula)
-  const matchingOwnBlock = useMemo(() => {
-    if (bookingKind !== 'session') return null;
-    return appointments.find(
-      (a) =>
-        a.status !== 'cancelled' &&
-        (a.kind === 'block' || a.type === 'block') &&
-        a.roomId === roomId &&
-        a.professionalId === therapistId &&
-        occursOn(a as Slot, date) &&
-        a.start <= startTime &&
-        a.end >= endTime
-    );
-  }, [bookingKind, appointments, roomId, therapistId, date, startTime, endTime]);
-
-  // Validación instantánea de conflicto
+  const candidate: Slot = {
+    id: initialData?.id || 'new-reservation', kind: details.kind, date,
+    start: startTime, end: endTime, roomId, professionalId: therapistId,
+    status: 'confirmed', recurrence, selectedDays,
+    untilDate: recurrence === 'none' ? undefined : untilDate || undefined,
+    excludedDates: initialData?.excludedDates || [],
+  };
   const conflict = useMemo(() => {
-    if (!startTime || !endTime || startTime >= endTime) return null;
+    if (!date || !startTime || !endTime || startTime >= endTime) return undefined;
+    return conflictOnDate(candidate, appointments.map(a => ({
+      ...a, kind: a.kind || a.type || 'session', roomId: a.roomId || '',
+      professionalId: a.professionalId || a.proId || '',
+    })), date);
+  }, [appointments, date, startTime, endTime, roomId, therapistId, details.kind, initialData]);
 
-    const candidate: Slot = {
-      id: initialData?.id || 'temp-id',
-      kind: bookingKind,
-      date,
-      start: startTime,
-      end: endTime,
-      roomId,
-      professionalId: therapistId,
-      status: 'confirmed',
-      recurrence: isWeekly ? 'weekly' : 'none',
-      selectedDays: isWeekly ? [new Date(`${date}T12:00:00`).getDay()] : [],
-      untilDate: untilDate || undefined,
-    };
-
-    const existingSlots: Slot[] = appointments
-      .filter((a) => a.id !== initialData?.id && a.status !== 'cancelled')
-      .map((a) => ({
-        id: a.id,
-        kind: a.kind || a.type || 'session',
-        date: a.date,
-        start: a.start,
-        end: a.end,
-        roomId: a.roomId || '',
-        professionalId: a.professionalId || '',
-        status: a.status,
-        recurrence: a.recurrence,
-        selectedDays: a.selectedDays,
-        untilDate: a.untilDate,
-        excludedDates: a.excludedDates,
-      }));
-
-    try {
-      return conflictOnDate(candidate, existingSlots, date);
-    } catch {
-      return null;
-    }
-  }, [bookingKind, roomId, date, startTime, endTime, therapistId, isWeekly, untilDate, appointments, initialData]);
-
-  async function handleQuickCreatePatient() {
-    if (!newPatientName.trim()) return;
-    const created = await onCreatePatient(newPatientName.trim(), therapistId);
-    setSelectedPatientId(created.id);
-    setManualPatientName(created.name);
-    setNewPatientName('');
-    setAddingNewPatient(false);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (submitting.current) return;
     setError('');
-
-    if (startTime >= endTime) {
-      setError('La hora de inicio debe ser anterior a la hora de finalización.');
+    if (!roomId || !therapistId || !date || !startTime || !endTime || startTime >= endTime) {
+      setError('Elegí consultorio, profesional, fecha y un horario de fin posterior al inicio.');
       return;
     }
-
+    if (recurrence !== 'none' && untilDate && untilDate < date) {
+      setError('La fecha final de repetición no puede ser anterior a la reserva.');
+      return;
+    }
     if (conflict) {
-      setError(`Horario ocupado de ${conflict.start} a ${conflict.end}.`);
+      setError(`El consultorio o la profesional ya tiene una reserva de ${conflict.start} a ${conflict.end}.`);
       return;
     }
-
-    let finalPatientId = selectedPatientId;
-    let finalPatientName = manualPatientName.trim();
-
-    if (bookingKind === 'session') {
-      if (addingNewPatient && newPatientName.trim()) {
-        const created = await onCreatePatient(newPatientName.trim(), therapistId);
-        finalPatientId = created.id;
-        finalPatientName = created.name;
-      } else if (selectedPatientId) {
-        const found = proPatients.find((p) => p.id === selectedPatientId);
-        if (found) finalPatientName = found.name;
-      }
-
-      if (!finalPatientName) {
-        finalPatientName = 'Sesión reservada';
-      }
-    }
-
-    const chosenService = activeServices.find((s) => s.id === selectedServiceId);
-
+    submitting.current = true;
     setBusy(true);
     try {
-      const record: Partial<AppointmentRecord> = {
+      const patient = proPatients.find(p => p.name.trim() === detail.trim());
+      const retainedPatientId = initialData?.patient === detail.trim() &&
+        (initialData.professionalId || initialData.proId) === therapistId ? initialData.patientId : '';
+      const ownBlock = details.kind !== 'block' ? appointments.find(a =>
+        a.id !== initialData?.id && a.status !== 'cancelled' && (a.kind || a.type) === 'block' &&
+        a.roomId === roomId && (a.professionalId || a.proId) === therapistId &&
+        occursOn(a as Slot, date) && a.start <= startTime && a.end >= endTime
+      ) : undefined;
+      await onSave({
+        ...initialData,
+        ...candidate,
         id: initialData?.id,
-        roomId,
-        date,
-        start: startTime,
-        end: endTime,
-        professionalId: therapistId,
-        proId: therapistId,
-        kind: bookingKind,
-        type: bookingKind,
-        patientId: bookingKind === 'session' ? finalPatientId : '',
-        patient: bookingKind === 'session' ? finalPatientName : '',
-        serviceId: bookingKind === 'session' ? chosenService?.id || '' : '',
-        serviceName: bookingKind === 'session' ? chosenService?.name || '' : '',
-        roomBlockId: matchingOwnBlock?.id || '',
-        title:
-          bookingKind === 'block'
-            ? `Reserva de consultorio — ${currentTherapist.name}`
-            : finalPatientName,
-        recurrence: isWeekly ? 'weekly' : 'none',
-        selectedDays: isWeekly ? [new Date(`${date}T12:00:00`).getDay()] : [],
-        untilDate: isWeekly ? untilDate : undefined,
         status: 'confirmed',
-      };
-
-      onClose(); // Cierre instantáneo para fluidez total
-      void onSave(record);
+        ...reservationDetails(purpose, detail, patient?.id || retainedPatientId || ''),
+        proId: therapistId,
+        serviceId: isPatientVisit ? initialData?.serviceId || '' : '',
+        serviceName: isPatientVisit ? initialData?.serviceName || '' : '',
+        roomBlockId: ownBlock?.id || '',
+        untilDate: recurrence === 'none' ? '' : untilDate,
+      });
+      onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar.');
+      setError(err instanceof Error ? err.message : 'No se pudo guardar. Tus datos siguen aquí para reintentar.');
+    } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
 
   async function handleDelete() {
-    if (!initialData?.id || !onDelete) return;
-    const idToDelete = initialData.id;
-    onClose();
-    void onDelete(idToDelete);
+    if (!initialData?.id || !onDelete || submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      await onDelete(initialData.id);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cancelar la reserva.');
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
   }
 
+  const input = 'min-h-11 w-full rounded-xl border border-[#D5DDD7] bg-[#FAFCFA] px-3 py-2 text-sm text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none';
+  const label = 'block text-xs font-semibold text-[#52635D] mb-1.5';
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4 backdrop-blur-xs antialiased animate-[fadeIn_.12s_ease-out] overflow-y-auto">
-      <div className="w-full max-w-lg max-h-[94dvh] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-[#E5EAE5] bg-white shadow-2xl">
-        {/* Header Minimalista */}
-        <div className="flex shrink-0 items-center justify-between border-b border-[#EAEFEA] bg-[#F9FBF9] px-4 sm:px-5 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#DDEAE2] text-[#46766B]">
-              <Calendar className="h-4 w-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-[#34433F]">
-                {initialData ? 'Editar registro' : 'Nuevo registro en agenda'}
-              </h2>
-              <p className="text-[11px] text-[#6D7C76]">
-                {currentTherapist.name}
-              </p>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4 backdrop-blur-xs">
+      <div role="dialog" aria-modal="true" aria-label={initialData ? 'Editar reserva' : 'Nueva reserva'} className="w-full max-w-lg max-h-[94dvh] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-[#E5EAE5] bg-white shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-[#EAEFEA] bg-[#F9FBF9] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <Calendar className="h-5 w-5 text-[#46766B]" />
+            <div><h2 className="font-bold text-[#34433F]">{initialData ? 'Editar reserva' : 'Nueva reserva'}</h2>
+              <p className="text-xs text-[#6D7C76]">{professionals.find(p => p.id === therapistId)?.name || currentUser.name}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl p-2 text-[#889892] transition hover:bg-[#EAEFEA] hover:text-[#34433F]"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <button type="button" disabled={busy} onClick={onClose} aria-label="Cerrar reserva" className="rounded-xl p-2 text-[#889892] hover:bg-[#EAEFEA] disabled:opacity-50"><X className="h-5 w-5" /></button>
         </div>
-
-        {/* Formulario Rápido Clic y Clic */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-5 pb-6 space-y-3.5 overflow-y-auto overscroll-contain flex-1">
-          {error && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {conflict && (
-            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-              <span>
-                <strong>
-                  {rooms.find((r) => r.id === (conflict.roomId || roomId))?.name.split('—')[0].trim() || 'Consultorio'}
-                </strong>{' '}
-                no disponible de <strong>{conflict.start} a {conflict.end}</strong>.
-              </span>
-            </div>
-          )}
-
-          {/* Selector: Reserva de Consultorio (rápida) vs Turno con Paciente */}
-          <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-[#F2F5F3] p-1">
-            <button
-              type="button"
-              onClick={() => setBookingKind('block')}
-              className={`rounded-xl py-2 text-xs font-bold transition ${
-                bookingKind === 'block'
-                  ? 'bg-white text-[#34433F] shadow-xs'
-                  : 'text-[#6D7C76] hover:text-[#34433F]'
-              }`}
-            >
-              Reserva Consultorio
-            </button>
-            <button
-              type="button"
-              onClick={() => setBookingKind('session')}
-              className={`rounded-xl py-2 text-xs font-bold transition ${
-                bookingKind === 'session'
-                  ? 'bg-white text-[#34433F] shadow-xs'
-                  : 'text-[#6D7C76] hover:text-[#34433F]'
-              }`}
-            >
-              Turno con Paciente
-            </button>
-          </div>
-
-          {/* 1. Consultorio (Clic directo) */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#52635D] mb-1.5">
-              1. Consultorio
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {rooms.map((room) => {
-                const isSelected = room.id === roomId;
-                return (
-                  <button
-                    key={room.id}
-                    type="button"
-                    onClick={() => setRoomId(room.id)}
-                    className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl border text-center transition ${
-                      isSelected
-                        ? 'border-[#46766B] bg-[#EBF4F0] text-[#1D3E35] font-bold ring-2 ring-[#46766B]/20'
-                        : 'border-[#E5EAE5] bg-[#FDFEFC] text-[#52635D] hover:bg-[#F4F9F6]'
-                    }`}
-                  >
-                    <span className="text-xs font-bold">{room.name.split('—')[0].trim()}</span>
-                    <span className="text-[10px] text-[#6D7C76] truncate max-w-full">
-                      {room.name.split('—')[1]?.trim() || 'Disponible'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 2. Fecha y Horario + Botones rápidos de duración */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[#52635D]">
-                2. Fecha y Horario (24 hs)
-              </label>
-              <div className="flex gap-1">
-                {[
-                  { label: '30m', mins: 30 },
-                  { label: '45m', mins: 45 },
-                  { label: '60m', mins: 60 },
-                  ...(bookingKind === 'block' ? [{ label: '4 hs', mins: 240 }] : []),
-                ].map((preset) => (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => setEndTime(addMinutesToTime(startTime, preset.mins))}
-                    className="rounded-lg border border-[#D5DDD7] bg-[#F9FBF9] px-2 py-0.5 text-[10px] font-bold text-[#46766B] hover:bg-[#E8F3EE]"
-                  >
-                    +{preset.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="min-h-11 w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-3 py-2 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
-              />
-              <div className="grid grid-cols-2 gap-2 sm:col-span-2">
-                <input
-                  type="time"
-                  required
-                  value={startTime}
-                  onChange={(e) => {
-                    const nextStart = e.target.value;
-                    setStartTime(nextStart);
-                    const chosen = activeServices.find((s) => s.id === selectedServiceId);
-                    setEndTime(addMinutesToTime(nextStart, bookingKind === 'block' ? 60 : chosen?.durationMinutes || 45));
-                  }}
-                  className="min-h-11 w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-3 py-2 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
-                />
-                <input
-                  type="time"
-                  required
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="min-h-11 w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-3 py-2 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Profesional (Solo elegible por Administración; fijo para Terapeuta) */}
-          {currentUser.role === 'admin' && (
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#52635D] mb-1">
-                Profesional titular
-              </label>
-              <select
-                value={therapistId}
-                onChange={(e) => setTherapistId(e.target.value)}
-                className="w-full rounded-2xl border border-[#D5DDD7] bg-[#FAFCFA] px-3 py-2.5 text-xs font-bold text-[#34433F] focus:border-[#46766B] focus:bg-white focus:outline-none"
-              >
-                {activeProfessionals.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name} — {member.specialty || 'Profesional'}
-                  </option>
-                ))}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
+          {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
+          {conflict && <div role="alert" className="flex gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900"><AlertTriangle className="h-4 w-4 shrink-0" /><span>El consultorio o la profesional ya tiene una reserva de {conflict.start} a {conflict.end}.</span></div>}
+          <fieldset disabled={busy} className="space-y-4 disabled:opacity-70">
+            <label className={label}>Consultorio
+              <select required value={roomId} onChange={e => setRoomId(e.target.value)} className={`${input} mt-1.5`}>
+                <option value="" disabled>Elegir consultorio</option>
+                {rooms.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
               </select>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className={`${label} col-span-2`}>Fecha<input type="date" required value={date} onChange={e => setDate(e.target.value)} className={`${input} mt-1.5`} /></label>
+              <label className={label}>Desde<input type="time" required value={startTime} onChange={e => setStartTime(e.target.value)} className={`${input} mt-1.5`} /></label>
+              <label className={label}>Hasta<input type="time" required value={endTime} onChange={e => setEndTime(e.target.value)} className={`${input} mt-1.5`} /></label>
             </div>
-          )}
-
-          {/* 3. Paciente y Prestación (solo cuando es Turno de Paciente) */}
-          {bookingKind === 'session' && (
-            <div className="space-y-3 rounded-2xl border border-[#E5EAE5] bg-[#F9FBF9] p-3.5">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-[#52635D]">
-                    3. Paciente
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setAddingNewPatient((v) => !v)}
-                    className="flex items-center gap-1 text-[11px] font-bold text-[#46766B] hover:underline"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>{addingNewPatient ? 'Elegir de mi lista' : 'Nuevo paciente'}</span>
-                  </button>
-                </div>
-
-                {addingNewPatient || proPatients.length === 0 ? (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nombre y apellido del paciente"
-                      value={addingNewPatient ? newPatientName : manualPatientName}
-                      onChange={(e) =>
-                        addingNewPatient
-                          ? setNewPatientName(e.target.value)
-                          : setManualPatientName(e.target.value)
-                      }
-                      className="flex-1 rounded-2xl border border-[#D5DDD7] bg-white px-3 py-2.5 text-xs font-semibold text-[#34433F] focus:border-[#46766B] focus:outline-none"
-                    />
-                    {addingNewPatient && (
-                      <button
-                        type="button"
-                        onClick={() => void handleQuickCreatePatient()}
-                        className="rounded-2xl bg-[#46766B] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#3B645B]"
-                      >
-                        Listo
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <select
-                    value={selectedPatientId}
-                    onChange={(e) => {
-                      const pid = e.target.value;
-                      setSelectedPatientId(pid);
-                      const found = proPatients.find((p) => p.id === pid);
-                      if (found) setManualPatientName(found.name);
-                    }}
-                    className="w-full rounded-2xl border border-[#D5DDD7] bg-white px-3 py-2.5 text-xs font-semibold text-[#34433F] focus:border-[#46766B] focus:outline-none"
-                  >
-                    <option value="">Seleccionar paciente...</option>
-                    {proPatients.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#52635D] mb-1">
-                  4. Tipo de prestación
-                </label>
-                <select
-                  value={selectedServiceId}
-                  onChange={(e) => {
-                    const sid = e.target.value;
-                    setSelectedServiceId(sid);
-                    const srv = activeServices.find((s) => s.id === sid);
-                    if (srv) {
-                      setEndTime(addMinutesToTime(startTime, srv.durationMinutes));
-                    }
-                  }}
-                  className="w-full rounded-2xl border border-[#D5DDD7] bg-white px-3 py-2.5 text-xs font-semibold text-[#34433F] focus:border-[#46766B] focus:outline-none"
-                >
-                  {activeServices.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.durationMinutes} min)
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* 5. Repetición: Único o Semanal */}
-          <div className="flex items-center justify-between rounded-2xl border border-[#E5EAE5] bg-[#FAFCFA] px-3.5 py-2.5">
-            <span className="text-xs font-bold text-[#34433F]">Repetición</span>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => setIsWeekly(false)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-                  !isWeekly
-                    ? 'bg-[#46766B] text-white'
-                    : 'bg-white border border-[#D5DDD7] text-[#6D7C76]'
-                }`}
-              >
-                Único
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsWeekly(true)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-                  isWeekly
-                    ? 'bg-[#46766B] text-white'
-                    : 'bg-white border border-[#D5DDD7] text-[#6D7C76]'
-                }`}
-              >
-                Semanal
-              </button>
-            </div>
-          </div>
-
-          {isWeekly && (
-            <div className="flex items-center justify-between gap-2 px-1">
-              <label className="text-xs text-[#6D7C76]">Repetir hasta (opcional):</label>
-              <input
-                type="date"
-                value={untilDate}
-                min={date}
-                onChange={(e) => setUntilDate(e.target.value)}
-                className="rounded-xl border border-[#D5DDD7] bg-white px-2.5 py-1.5 text-xs text-[#34433F]"
-              />
-            </div>
-          )}
-
-          {/* Botones de Acción Directa */}
-          <div className="flex items-center justify-between gap-2 pt-2">
-            {initialData?.id && onDelete ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={handleDelete}
-                className="flex items-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700 hover:bg-rose-100"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>Cancelar</span>
-              </button>
-            ) : (
-              <div />
-            )}
-
-            <div className="flex items-center gap-2 ml-auto">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-2xl border border-[#D5DDD7] bg-white px-4 py-3 text-xs font-semibold text-[#52635D] hover:bg-[#F9F8F5]"
-              >
-                Cerrar
-              </button>
-              <button
-                type="submit"
-                disabled={busy || Boolean(conflict)}
-                className="flex items-center gap-1.5 rounded-2xl bg-[#46766B] px-6 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[#3B645B] active:scale-95 disabled:opacity-50"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                <span>{initialData ? 'Guardar' : 'Confirmar'}</span>
-              </button>
-            </div>
+            {currentUser.role === 'admin' && <label className={label}>Profesional
+              <select required value={therapistId} onChange={e => { setTherapistId(e.target.value); setDetail(''); }} className={`${input} mt-1.5`}>
+                <option value="" disabled>Elegir profesional</option>
+                {activeProfessionals.map(pro => <option key={pro.id} value={pro.id}>{pro.name}</option>)}
+              </select>
+            </label>}
+            <label className={label}>Motivo
+              <select value={purpose} onChange={e => { setPurpose(e.target.value as ReservationPurpose); setDetail(''); }} className={`${input} mt-1.5`}>
+                <option value="block">Reservar consultorio</option>
+                <option value="session">Atención a paciente</option>
+                <option value="interview">Entrevista</option>
+                <option value="talk">Charla</option>
+                <option value="other">Otro</option>
+              </select>
+            </label>
+            <label className={label}>{isPatientVisit ? 'Paciente (opcional)' : 'Detalle (opcional)'}
+              <input type="text" list={isPatientVisit ? patientListId : undefined} value={detail} onChange={e => setDetail(e.target.value)} placeholder={isPatientVisit ? 'Nombre del paciente, si ya lo tenés' : 'Podés agregar un motivo o dejarlo vacío'} className={`${input} mt-1.5`} />
+              {isPatientVisit && <datalist id={patientListId}>{proPatients.map(p => <option key={p.id} value={p.name} />)}</datalist>}
+            </label>
+            <p className="text-xs text-[#6D7C76]">Podés reservar sin cargar paciente y completar los datos después.</p>
+            <label className={label}>Repetir
+              <select value={recurrence} onChange={e => setRecurrence(e.target.value as typeof recurrence)} className={`${input} mt-1.5`}>
+                <option value="none">No repetir</option><option value="weekly">Todas las semanas</option>
+                {initialData?.recurrence === 'daily' && <option value="daily">Todos los días</option>}
+                {initialData?.recurrence === 'weekdays' && <option value="weekdays">De lunes a viernes</option>}
+              </select>
+            </label>
+            {recurrence !== 'none' && <label className={label}>Repetir hasta (opcional)<input type="date" min={date} value={untilDate} onChange={e => setUntilDate(e.target.value)} className={`${input} mt-1.5`} /></label>}
+          </fieldset>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+            {initialData?.id && onDelete && <button type="button" disabled={busy} onClick={() => void handleDelete()} className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs font-semibold text-rose-700 disabled:opacity-50"><Trash2 className="h-4 w-4" />{recurrence === 'none' ? 'Cancelar reserva' : 'Cancelar toda la serie'}</button>}
+            <button type="submit" disabled={busy || Boolean(conflict)} className="ml-auto flex items-center gap-2 rounded-xl bg-[#46766B] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              {busy ? 'Guardando…' : initialData ? 'Guardar cambios' : 'Reservar'}
+            </button>
           </div>
         </form>
       </div>

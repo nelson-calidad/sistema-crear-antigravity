@@ -23,7 +23,6 @@ import type {
   AppointmentRecord,
   ConfiguredRoom,
   PatientRecord,
-  ServiceCatalogItem,
   TherapistAvailability,
 } from '../types';
 import {
@@ -31,7 +30,6 @@ import {
   bookAppointmentInSheets,
   cancelAppointmentInSheets,
   fetchRoomsFromSheets,
-  fetchServicesFromSheets,
   fetchPatientsFromSheets,
   savePatientMinimalInSheets,
   fetchTherapistAvailabilitiesFromSheets,
@@ -114,7 +112,6 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
   const rentalRecords = useRecords('rentals');
   const interviewRecords = useRecords('interviews');
   const [rooms, setRooms] = useState<ConfiguredRoom[]>([]);
-  const [services, setServices] = useState<ServiceCatalogItem[]>([]);
   const [patients, setPatients] = useState<PatientRecord[]>([]);
   const [availabilities, setAvailabilities] = useState<TherapistAvailability[]>([]);
 
@@ -152,7 +149,6 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
 
   useEffect(() => {
     void fetchRoomsFromSheets().then(setRooms);
-    void fetchServicesFromSheets().then(setServices);
     void fetchPatientsFromSheets().then(setPatients);
     void fetchTherapistAvailabilitiesFromSheets().then(setAvailabilities);
 
@@ -225,6 +221,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
   const handleSaveAppointment = async (record: Partial<AppointmentRecord>) => {
     try {
       await bookAppointmentInSheets(record, {
+        waitForConfirmation: true,
         onSaving: () => {
           pushNotice('saving', 'Guardando...');
         },
@@ -681,7 +678,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                                             ? `Acuerdo mensual — ${therapistName}`
                                             : (booking as any).source === 'rentals'
                                               ? booking.title || `Alquiler — ${therapistName}`
-                                              : `Reserva de consultorio — ${therapistName}`}
+                                              : booking.title || `Reserva de consultorio — ${therapistName}`}
                                         </p>
                                         {booking.professionalId === myProId || isAdmin ? (
                                           <button
@@ -697,7 +694,7 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
                                     ) : (
                                       <div className="mt-1 space-y-0.5 text-xs">
                                         <p className="font-bold">
-                                          Paciente: {booking.patient || booking.title || 'Registrado'}
+                                          {booking.title || booking.patient || 'Reserva'}
                                         </p>
                                         {booking.serviceName && (
                                           <p className="text-[11px] opacity-90">
@@ -973,14 +970,12 @@ export function TherapistPortal({ currentUser, onOpenAdminSuite }: TherapistPort
         rooms={rooms}
         appointments={unifiedAppointments}
         patients={patients}
-        services={services}
         initialData={editingAppointment}
         initialRoomId={modalPreselect.roomId}
         initialDate={modalPreselect.date}
         initialStartTime={modalPreselect.startTime}
         initialKind={modalPreselect.kind}
         onSave={handleSaveAppointment}
-        onCreatePatient={handleCreatePatient}
         onDelete={handleCancelAppointment}
       />
     </div>
@@ -1100,7 +1095,7 @@ function MyTurnsAndPatientsSection({
                     </div>
 
                     <p className="mt-2 text-sm font-bold text-[#34433F]">
-                      {isBlock ? 'Reserva de consultorio (Sin paciente)' : `Paciente: ${app.patient || app.title}`}
+                      {app.title || app.patient || 'Reserva de consultorio'}
                     </p>
                     {!isBlock && app.serviceName && (
                       <p className="text-xs text-[#6D7C76]">Prestación: {app.serviceName}</p>

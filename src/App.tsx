@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { deleteAppointment, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
+import { deleteAppointment, forceRefreshAppointments, getBackendLabel, getSessionUser, saveAppointment, subscribeToAppointments } from './lib/appointmentsStore';
 import { readStoredValue, writeStoredValue } from './lib/browserStorage';
 import logoCrear from './assets/logo-crear-mobile.jpg';
 import { isDemo, seedDemoData, useRecords } from './lib/crearStore';
@@ -219,7 +219,7 @@ function AdminApp({ onBackToAgenda, initialTab }: { onBackToAgenda?: () => void;
       case 'dashboard': return <Dashboard onNewInquiry={() => navigateToTab('admissions')} onNavigate={navigateToTab} />;
       case 'admissions': return <Admissions onNavigate={navigateToTab} />;
       case 'professionals': return <ProfessionalsGrid onAgenda={() => navigateToTab('agenda')} onOpenModal={handleOpenModal} />;
-      case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} onOpenTherapistView={onBackToAgenda} />;
+      case 'agenda': return <Agenda onOpenModal={handleOpenModal} appointments={agendaAppointments} focusDate={agendaFocusDate} onOpenTherapistView={onBackToAgenda} onRefresh={() => Promise.all([forceRefreshAppointments(), rentalRecords.refresh(), agreementRecords.refresh(), interviewRecords.refresh()])} />;
       case 'rooms': return <Rooms onOpenModal={handleOpenModal} onNavigate={navigateToTab} />;
       case 'responsibilities': return <Responsibilities />;
       case 'coverage': return <CoveragePlanner onOpenModal={handleOpenModal} />;
